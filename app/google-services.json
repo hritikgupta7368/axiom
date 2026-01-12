@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1005383839560",
+    "project_id": "ultra-f3f86",
+    "storage_bucket": "ultra-f3f86.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1005383839560:android:b204a30c976fc76cdd8d7d",
+        "android_client_info": {
+          "package_name": "com.example.axiom"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqTxcNkeIhQKHQuDDwcvc30GYK0ZoF6R8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
