@@ -1,6 +1,7 @@
 package com.example.axiom.ui.screens.calendar
 
 import android.graphics.Color.parseColor
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -8,6 +9,9 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,8 +27,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
@@ -41,14 +47,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.axiom.data.calendar.domain.*
 import com.example.axiom.ui.components.calender.ToggleableCalendar
 import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
+import com.example.axiom.ui.components.shared.button.AppIconButton
+import com.example.axiom.ui.components.shared.button.AppIcons
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
+import com.kizitonwose.calendar.core.yearMonth
 
 // ... Helper functions ...
 fun String.toComposeColor(): Color {
@@ -64,89 +74,277 @@ fun Color.toHex(): String {
 }
 
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen(
     modifier: Modifier = Modifier,
     viewModel: CalendarViewModel = hiltViewModel()
 ) {
-    val tasks by viewModel.tasksForSelectedDate.collectAsState()
-    var showCreateTaskSheet by remember { mutableStateOf(false) }
-    var taskDate by remember { mutableStateOf(LocalDate.now()) }
+    val today = remember { LocalDate.now() }
+    /* ---------------- SCREEN STATE ---------------- */
 
-    // State for Deletion Dialog
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var isWeekMode by remember { mutableStateOf(false) }
+    var visibleMonth by remember { mutableStateOf(selectedDate.yearMonth) }
+
+    val tasks by viewModel.tasksForSelectedDate.collectAsState()
+
+    var showCreateTaskSheet by remember { mutableStateOf(false) }
+
     var taskToDelete by remember { mutableStateOf<Task?>(null) }
 
+    var scrollTarget by remember { mutableStateOf<LocalDate?>(null) }
+
+    var actionTask by remember { mutableStateOf<Task?>(null) }
+
+
+
+    LaunchedEffect(scrollTarget) {
+        scrollTarget?.let { scrollTarget = null }
+    }
+
+
+
+    /* ---------------- UI ---------------- */
+
     Scaffold(
+        containerColor = Color.Black,
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showCreateTaskSheet = true },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
-                Icon(Icons.Filled.Add, null)
+                Icon(Icons.Default.Add, contentDescription = null)
             }
         }
-    ) { padding ->
+    )
+    { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding) // Apply the Scaffold's padding here
+                .padding(
+                    start = padding.calculateStartPadding(LayoutDirection.Ltr),
+                    end = padding.calculateEndPadding(LayoutDirection.Ltr),
+//                    bottom = padding.calculateBottomPadding(),
+                    top = 10.dp
+                )
         ) {
 
-            ToggleableCalendar(
-                selectedDate = taskDate,
-                onDateSelected = { date ->
-                    taskDate = date
-                    viewModel.setDate(date)
-                }
-            )
+            /* ---------- HEADER (CONTROL LIVES HERE) ---------- */
 
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 12.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-            )
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.Top
             ) {
-                Text(
-                    text = "Tasks",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = "${tasks.size} total",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+
+                /* ---------- LEFT SLOT (ALWAYS PRESENT) ---------- */
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 12.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+
+                    AnimatedContent(
+                        targetState = actionTask != null,
+                        transitionSpec = {
+                            fadeIn() togetherWith fadeOut()
+                        },
+                        label = "header-left-switch"
+                    ) { isActionMode ->
+
+                        if (isActionMode) {
+                            // CANCEL ICON (REPLACES TITLE)
+                            AppIconButton(
+                                icon = AppIcons.Close,
+                                contentDescription = "Cancel",
+                                onClick = { actionTask = null }
+                            )
+                        } else {
+                            // EXISTING TITLE ANIMATION — UNTOUCHED
+                            AnimatedContent(
+                                targetState = Pair(visibleMonth, isWeekMode),
+                                transitionSpec = {
+                                    (slideInVertically { it / 2 } + fadeIn())
+                                        .togetherWith(slideOutVertically { -it / 2 } + fadeOut())
+                                },
+                                label = "calendar-header"
+                            ) { (month, weekMode) ->
+
+                                Column(horizontalAlignment = Alignment.Start) {
+                                    if (!weekMode) {
+                                        Text(
+                                            text = month.month.name.lowercase()
+                                                .replaceFirstChar { it.uppercase() },
+                                            style = MaterialTheme.typography.displaySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = month.year.toString(),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    } else {
+                                        Text(
+                                            text = today.dayOfWeek.name.lowercase()
+                                                .replaceFirstChar { it.uppercase() },
+                                            style = MaterialTheme.typography.displaySmall,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = "${today.dayOfMonth} ${
+                                                today.month.name.lowercase()
+                                                    .replaceFirstChar { it.uppercase() }
+                                            }",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                /* ---------- RIGHT ACTIONS (NEVER MOVE) ---------- */
+                AnimatedContent(
+                    targetState = actionTask != null,
+                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    label = "header-actions-switch"
+                ) { isActionMode ->
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        if (isActionMode) {
+                            AppIconButton(
+                                icon = AppIcons.Edit,
+                                contentDescription = "Edit",
+                                onClick = {}
+                            )
+                            AppIconButton(
+                                icon = AppIcons.Delete,
+                                contentDescription = "Delete",
+                                onClick = {
+                                    viewModel.deleteTask(actionTask!!)
+                                    actionTask = null
+                                }
+                            )
+                        } else {
+                            AppIconButton(
+                                icon = AppIcons.Search,
+                                contentDescription = "Search",
+                                onClick = {}
+                            )
+                            IconButton(onClick = { isWeekMode = !isWeekMode }) {
+                                Icon(
+                                    imageVector = if (isWeekMode)
+                                        Icons.Filled.Menu
+                                    else
+                                        Icons.Filled.DateRange,
+                                    contentDescription = null
+                                )
+                            }
+                            AppIconButton(
+                                icon = AppIcons.ArrowForward,
+                                contentDescription = "Today",
+                                onClick = {
+                                    val today = LocalDate.now()
+                                    selectedDate = today
+                                    viewModel.setDate(today)
+                                    scrollTarget = today
+                                }
+                            )
+                        }
+                    }
+                }
+
             }
 
 
-            LazyColumn(modifier = Modifier.weight(1f)) {
+            Spacer(Modifier.height(12.dp))
 
+
+            /* ---------- CALENDAR (RENDER ONLY) ---------- */
+
+            ToggleableCalendar(
+                selectedDate = selectedDate,
+                isWeekMode = isWeekMode,
+                onDateSelected = {
+                    selectedDate = it
+                    viewModel.setDate(it)
+                },
+                onMonthChanged = {
+                    visibleMonth = it
+                },
+                scrollToDate = scrollTarget
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            /* ---------- TASK LIST ---------- */
+
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 item {
-                    TaskList(
-                        tasks = tasks,
-                        onToggle = { task -> viewModel.toggleTask(task) },
-                        onDelete = { task -> taskToDelete = task }
-                    )
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        Text(
+                            text = "Today",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "3 Events, 2 Tasks",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                item {
-                    Spacer(modifier = Modifier.height(80.dp))
+                if (tasks.isEmpty()) {
+                    item {
+                        Text(
+                            text = "No tasks for this day",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(top = 24.dp)
+                        )
+                    }
+                } else {
+                    items(
+                        items = tasks,
+                        key = { it.id }
+                    ) { task ->
+                        SimpleTaskRow(
+                            task = task,
+                            onToggle = { viewModel.toggleTask(it) },
+                            onLongPress = { actionTask = it }
+                        )
+
+                    }
                 }
             }
-            // --- Create Task Sheet ---
+
             AppBottomSheet(
                 showSheet = showCreateTaskSheet,
                 onDismiss = { showCreateTaskSheet = false }
             ) {
                 CreateTaskContent(
-                    date = taskDate,
+                    date = selectedDate,
                     onDone = { title, notes, priority, colorHex, recurrence ->
                         val task = Task(
                             id = UUID.randomUUID().toString(),
@@ -154,7 +352,7 @@ fun CalendarScreen(
                             notes = if (notes.isNotBlank()) TaskNotes(notes) else null,
                             createdAt = Instant.now(),
                             updatedAt = Instant.now(),
-                            scheduledDate = taskDate,
+                            scheduledDate = selectedDate,
                             priority = priority,
                             color = if (colorHex != null) TaskColor(colorHex) else null,
                             status = TaskStatus.PENDING,
@@ -166,37 +364,11 @@ fun CalendarScreen(
                 )
             }
 
-            // --- Deletion Confirmation Dialog ---
-            if (taskToDelete != null) {
-                AlertDialog(
-                    onDismissRequest = { taskToDelete = null },
-                    icon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                    title = { Text(text = "Delete Task?") },
-                    text = {
-                        Text("Are you sure you want to delete '${taskToDelete?.title}'? This cannot be undone.")
-                    },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                taskToDelete?.let { viewModel.deleteTask(it) }
-                                taskToDelete = null
-                            },
-                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Text("Delete")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { taskToDelete = null }) {
-                            Text("Cancel")
-                        }
-                    }
-                )
-            }
-        }
 
+        }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -384,53 +556,26 @@ fun CreateTaskContent(
     }
 }
 
-@Composable
-fun TaskList(
-    tasks: List<Task>,
-    onToggle: (Task) -> Unit,
-    onDelete: (Task) -> Unit
-) {
-    if (tasks.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 40.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "No tasks for this day",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-        }
-    } else {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            tasks.forEach { task ->
-                TaskRow(
-                    task = task,
-                    onToggle = { onToggle(task) },
-                    onDelete = { onDelete(task) }
-                )
-            }
-            Spacer(modifier = Modifier.height(80.dp))
-        }
-    }
-}
 
-@OptIn(ExperimentalFoundationApi::class)
+
+
+
+
+
+
 @Composable
-fun TaskRow(
+fun SimpleTaskRow(
     task: Task,
-    onToggle: () -> Unit,
-    onDelete: () -> Unit
+    onToggle: (Task) -> Unit,
+    onLongPress: (Task) -> Unit
 ) {
     val completed = task.status == TaskStatus.COMPLETED
     val haptic = LocalHapticFeedback.current
+
+    val alpha by animateFloatAsState(
+        targetValue = if (completed) 0.45f else 1f,
+        label = "task-alpha"
+    )
 
     val priorityColor = when (task.priority) {
         TaskPriority.CRITICAL -> MaterialTheme.colorScheme.error
@@ -439,97 +584,69 @@ fun TaskRow(
         TaskPriority.LOW -> MaterialTheme.colorScheme.secondary
     }
 
-    val taskColor = task.color?.hex?.toComposeColor() ?: Color.Transparent
-
-    val alpha by animateFloatAsState(targetValue = if (completed) 0.5f else 1f, label = "alpha")
-    val cardBgColor by animateColorAsState(
-        targetValue = if (completed) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        else MaterialTheme.colorScheme.surfaceContainerLow,
-        label = "bgColor"
-    )
-
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .alpha(alpha)
-            .clip(RoundedCornerShape(16.dp))
             .combinedClickable(
-                onClick = { onToggle() },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onToggle(task)
+                },
                 onLongClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onDelete()
+                    onLongPress(task)
                 }
             ),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = cardBgColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = if(completed) 0.dp else 2.dp)
+        verticalAlignment = Alignment.Top
     ) {
-        Row(
+
+        // DOT INDICATOR (changes when completed)
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Checkbox(
-                checked = completed,
-                onCheckedChange = { onToggle() },
-                modifier = Modifier
-                    .size(24.dp)
-                    .align(Alignment.CenterVertically)
+                .size(8.dp)
+                .offset(y = 6.dp)
+                .background(
+                    color = if (completed)
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    else
+                        priorityColor,
+                    shape = CircleShape
+                )
+        )
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+
+            // TITLE
+            Text(
+                text = task.title,
+                style = MaterialTheme.typography.bodyLarge,
+                textDecoration = if (completed)
+                    TextDecoration.LineThrough
+                else
+                    TextDecoration.None,
+                color = if (completed)
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                else
+                    MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(modifier = Modifier.width(16.dp))
+            // TIME (optional)
 
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = task.title,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            textDecoration = if (completed) TextDecoration.LineThrough else TextDecoration.None,
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    if (task.priority != TaskPriority.MEDIUM && task.priority != TaskPriority.LOW) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            imageVector = Icons.Default.Menu,
-                            contentDescription = "Priority",
-                            tint = priorityColor,
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
-                }
-
-                if (task.notes != null && task.notes.raw.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = task.notes.raw,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            if (taskColor != Color.Transparent) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .clip(CircleShape)
-                        .background(taskColor)
+                Text(
+                    text = "9:00 AM",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
+
         }
     }
 }
+
 
 private fun String.capitalize(): String {
     return this.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
