@@ -46,6 +46,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.axiom.data.finances.domain.CustomerFirm
 import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
+import com.example.axiom.ui.components.shared.button.AppIconButton
+import com.example.axiom.ui.components.shared.button.AppIcons
 import com.example.axiom.ui.screens.finances.FinancesViewModel
 import com.example.axiom.ui.screens.finances.FinancesViewModelFactory
 import kotlinx.coroutines.delay
@@ -130,14 +132,19 @@ fun CustomerScreen(onBack: () -> Unit) {
                 TopAppBar(
                     title = { Text("Customers", fontWeight = FontWeight.Bold) },
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
+                        AppIconButton(
+                            icon = AppIcons.Back,
+                            contentDescription = "Send",
+                            onClick = onBack
+                        )
+
                     },
                     actions = {
-                        IconButton(onClick = { openCreateSheet() }) {
-                            Icon(Icons.Default.Add, contentDescription = "Add Customer", tint = MaterialTheme.colorScheme.primary)
-                        }
+                        AppIconButton(
+                            icon = AppIcons.Add,
+                            contentDescription = "Add Customer",
+                            onClick = { openCreateSheet() }
+                        )
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background,
