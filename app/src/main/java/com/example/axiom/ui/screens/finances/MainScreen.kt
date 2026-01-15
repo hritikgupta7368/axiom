@@ -1,52 +1,76 @@
 package com.example.axiom.ui.screens.finances
 
-import android.util.Log
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.runtime.getValue
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.ListItem
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.AccountBox
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.data.finances.domain.*
 import com.example.axiom.data.finances.dataStore.FinancePreferences
+import com.example.axiom.data.finances.domain.SellerFirm
+import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
 import com.example.axiom.ui.navigation.BillsActions
 import kotlinx.coroutines.launch
 
+
+data class QuickAction(
+    val label: String,
+    val icon: ImageVector,
+    val color: Color
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(navActions : BillsActions) {
     val context = LocalContext.current
+    val scrollState = rememberScrollState()
+
     val viewModel: FinancesViewModel = viewModel(factory = FinancesViewModelFactory())
     val sellerFirms by viewModel.sellerFirms.collectAsStateWithLifecycle()
-    
+
     // DataStore Integration
     val financePreferences = remember { FinancePreferences(context) }
     val savedSellerName by financePreferences.selectedSellerFirmName.collectAsState(initial = null)
     val scope = rememberCoroutineScope()
 
-    var showSheet by remember { mutableStateOf(false) } 
+    var showSheet by remember { mutableStateOf(false) }
     var selectedOrg by remember { mutableStateOf("Select Organization") }
     var isCreatingNewFirm by remember { mutableStateOf(false) }
 
@@ -57,35 +81,57 @@ fun MainScreen(navActions : BillsActions) {
         }
     }
 
-    LaunchedEffect(sellerFirms) {
-        if (sellerFirms.isNotEmpty()) {
-            Log.d("DataLoaded", "sellerFirms now contains: ${sellerFirms.size} items")
-        }
-    }
 
 
     val actions = listOf(
-        "Invoices" to Icons.Default.List,         // Substitute for Receipt
-        "Customers" to Icons.Default.Person,     // Substitute for People
-        "Products" to Icons.Default.ShoppingCart, // Present in default set
-        "GST Analytics" to Icons.Default.AccountBox,
-        "Purchase" to Icons.Default.Add,
-        "Summary" to Icons.Default.Person
-//        "Challans" to Icons.Default.Send,         // Substitute for Shipping
-//        "Quotations" to Icons.Default.Search,       // Present in default set
-//        "Credit Note" to Icons.Default.Clear,      // Substitute for RemoveCircle
-//        "Pro Forma" to Icons.Default.Edit,         // Substitute for Description
-//        "Expenses" to Icons.Default.AccountBox,    // Substitute for Wallet
-        // Substitute for ShoppingCart (v2)
-//        "Delivery" to Icons.Default.Check,         // Substitute for LocalMall
+        QuickAction("Invoices", Icons.Default.List, Color(0xFF3B82F6)),
+        QuickAction("Customers", Icons.Default.Person, Color(0xFF10B981)),
+        QuickAction("Products", Icons.Default.ShoppingCart, Color(0xFFF97316)),
+        QuickAction("Analytics", Icons.Default.AccountBox, Color(0xFFA855F7)),
+        QuickAction("Purchase", Icons.Default.Add, Color(0xFFEC4899)),
+        QuickAction("Summary", Icons.Default.Person, Color(0xFF22D3EE)),
+        QuickAction("Challans", Icons.Default.Add, Color(0xFF6366F1)),
+        QuickAction("Quotations", Icons.Default.Add, Color(0xFF3B82F6)),
+
     )
 
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.radialGradient(
+                    0f to Color(0x662563EB),   // electric blue core
+                    0.4f to Color(0x4D7C3AED), // indigo–violet mid
+                    0.75f to Color(0x3323123F),// deep violet shadow
+                    1f to Color(0xFF05010A),   // near-black, not pure black
+                    center = Offset(0f, 0f),
+                    radius = 1500f
+                )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
+            )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+                .padding(bottom = 32.dp)
+        ) {
+            // Header
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp),
+                color = Color.Transparent
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Column() {
                         Text(
                             text = "ORGANIZATION",
                             fontSize = 11.sp,
@@ -97,172 +143,424 @@ fun MainScreen(navActions : BillsActions) {
                             modifier = Modifier.clickable {
                                 showSheet = true
                             }
+
                         ) {
                             Text(
                                 text = selectedOrg,
                                 fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Icon(Icons.Default.ArrowDropDown, null)
-                        }
-                    }
-                },
-                actions = {
-                    IconButton(onClick = navActions.onOpenProfile) {
-                        Icon(Icons.Default.AccountCircle, null)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
-                )
-            )
-        }
-    ) { padding ->
-        val horizontalPadding = 24.dp
-        LazyColumn(
-            modifier = Modifier
-                .padding(
-                    top = padding.calculateTopPadding(),
-                    bottom = padding.calculateBottomPadding()
-                )
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface),
-//            contentPadding = PaddingValues(24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-
-            /** OVERVIEW **/
-            item {
-                Column(modifier = Modifier.padding(horizontal = horizontalPadding)) {
-                    Text(
-                        text = "Overview",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-
-                    Spacer(Modifier.height(16.dp))
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        OverviewCard(
-                            title = "Sales",
-                            value = "₹12,450",
-                            icon = Icons.Default.Person,
-                            accent = MaterialTheme.colorScheme.primary
-                        )
-                        OverviewCard(
-                            title = "Users",
-                            value = "342",
-                            icon = Icons.Default.Person,
-                            accent = MaterialTheme.colorScheme.secondary
-                        )
-                    }
-                }
-            }
-            /** QUICK ACTIONS **/
-            item {
-                Column(modifier = Modifier.padding(horizontal = horizontalPadding)) {
-                    Text(
-                        text = "Quick Actions",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-            item {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
-                    modifier = Modifier
-                        .height(260.dp)
-                        .padding(horizontal = horizontalPadding),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(actions.size) { index ->
-                        val (label, icon) = actions[index]
-                        QuickActionItem(
-                            label = label,
-                            icon = icon
-                        ) {
-                            navActions.onNavigate(label)
-                        }
-                    }
-                }
-            }
-
-            /** RECENT ACTIVITIES **/
-            item {
-                Card(
-                    modifier = Modifier.padding(horizontal = horizontalPadding), // Apply padding
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Column {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Recent Activities",
-                                fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = Color.White,
                             )
-                            Text(
-                                "View All",
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Icon(Icons.Default.ArrowDropDown, null , tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-
-                        ActivityRow(
-                            title = "New Report Generated",
-                            subtitle = "Analysis Q3 • 2 mins ago",
-                            icon = Icons.Default.Edit
-                        )
-                        ActivityRow(
-                            title = "New Login Detected",
-                            subtitle = "MacBook Pro • 1 hr ago",
-                            icon = Icons.Default.Check
-                        )
                     }
+
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color(0x706366F1),
+                                        Color(0x70A855F7)
+                                    )
+                                )
+                            )
+                            .blur(8.dp)
+                    ) {}
+
                 }
+            }
+
+            // space
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Active Projects
+            ActiveProjectsSection()
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // Quick Actions
+            QuickActionsSection(
+                actions = actions,
+                onNavigate = { label ->
+                    navActions.onNavigate(label)
+                }
+            )
+
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Overview Section
+            OverviewSection()
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Stats Cards
+            StatsCardsSection()
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Performance Chart
+            PerformanceChartSection()
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Timeline
+            TimelineSection()
+
+            AppBottomSheet(
+                showSheet = showSheet,
+                onDismiss = {
+                    showSheet = false
+
+                }
+            ) {
+                OrganizationBottomSheetContent(
+                    sellerFirms = sellerFirms,
+                    onFirmSelected = { seller ->
+                        scope.launch {
+                            financePreferences.saveSelectedSellerFirm(seller.id, seller.name, seller.stateCode)
+                        }
+                        showSheet = false // Close after selection
+                    },
+                    onAddFirm = { firm ->
+                        viewModel.addSellerFirm(firm)
+                        // Optionally auto-select the new firm
+                        scope.launch {
+                            financePreferences.saveSelectedSellerFirm(firm.id, firm.name, firm.stateCode)
+                        }
+                        showSheet = false // Close after creation
+                    }
+                )
             }
         }
-        AppBottomSheet(
-            showSheet = showSheet,
-            onDismiss = { 
-                showSheet = false
+    }
+}
 
-            }
+
+
+@Composable
+fun ActiveProjectsSection() {
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            OrganizationBottomSheetContent(
-                sellerFirms = sellerFirms,
-                onFirmSelected = { seller ->
-                    scope.launch {
-                        financePreferences.saveSelectedSellerFirm(seller.id, seller.name, seller.stateCode)
-                    }
-                    showSheet = false // Close after selection
-                },
-                onAddFirm = { firm ->
-                    viewModel.addSellerFirm(firm)
-                    // Optionally auto-select the new firm
-                    scope.launch {
-                        financePreferences.saveSelectedSellerFirm(firm.id, firm.name, firm.stateCode)
-                    }
-                    showSheet = false // Close after creation
-                }
+            Text(
+                text = "Active Projects",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+
+            Button(
+                onClick = {},
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0x1A6366F1)
+                ),
+                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier.height(32.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "See all",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF6366F1)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            ProjectCard(
+                title = "Project Alpha",
+                category = "Digital Platform",
+                status = "LIVE",
+                progress = 0.75f,
+                statusColor = Color(0xFF3B82F6),
+                imageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuCC-aHyFZoD_kWlHXoWKoyKr9n5jwjjK4HIvq8rsXOuhy4DcJcK4k39y99VXcaxn2nwPgstQ7H770ShbIHUcrS33oAdm_fvjbSXnEDkVTy9Xchqf7g17V55PMKfyWFsIlir_n4PHyt_gZ6XJc3Lg9kiM84FlLKyEmRvJHG4cy3_Jd39y-s6W9ehiaRJIGvjAs8ZbFvrzC_NlCn4oGkUzw814vEZqEpMbdw5SeYSQ88wHxTnVbDrWCZl-PExsvabB1zrn5FPh313iwsW"
+            )
+
+            ProjectCard(
+                title = "Q3 Strategy",
+                category = "Finance",
+                status = "OK",
+                progress = null,
+                statusColor = Color(0xFF10B981),
+                imageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuAe5mE_c1MmJA5SrH-fqYrABc7Y8AnqE2tX0eosSPOfMUOTQNa30_3VHu1F2l0_dEZf4SvvmcXNJ7gNo0lNGG-0QlXHj1o7HlbbMAmrcumtVy098mMuZxBbJUP0bTHzBg5Vz0yTBQJ1ZmGelefPCMi9pwjyre8WSbFwpiuN0SZ7YBjvSDJntirhJ5p8VcL6HugSA-oVQjxZmshLy16f2Exsfqlz1zpztK3Vnt7YzcVZ4pGBy_90NXg1ef129YSB5a5MXm2C_Wu4VNKn",
+                showTeam = true
             )
         }
     }
-    }
+}
 
+@Composable
+fun ProjectCard(
+    title: String,
+    category: String,
+    status: String,
+    progress: Float?,
+    statusColor: Color,
+    imageUrl: String,
+    showTeam: Boolean = false
+) {
+    Box(
+        modifier = Modifier
+            .width(300.dp)
+            .height(200.dp)
+            .clip(RoundedCornerShape(40.dp))
+            .background(Color(0x0AFFFFFF))
+            .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(40.dp))
+    ) {
+        // Background Image
+//        AsyncImage(
+//            model = imageUrl,
+//            contentDescription = null,
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .height(208.dp),
+//            contentScale = ContentScale.Crop
+//        )
+
+        // Gradient Overlay
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to Color.Transparent,
+                        0.4f to Color(0x66000000),
+                        1f to Color.Black
+                    )
+                )
+        )
+
+        // Content
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(24.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column {
+                    Text(
+                        text = category.uppercase(),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        color = statusColor,
+                        letterSpacing = 2.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = title,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+                }
+
+                Surface(
+                    color = statusColor.copy(alpha = 0.8f),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(24.dp))
+                ) {
+                    Text(
+                        text = status,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (progress != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Text(
+                        text = "Completion",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0x99FFFFFF)
+                    )
+                    Text(
+                        text = "${(progress * 100).toInt()}%",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0x1AFFFFFF))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(progress)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color(0xFF2563EB),
+                                        Color(0xFF06B6D4)
+                                    )
+                                )
+                            )
+                    )
+                }
+            }
+
+            if (showTeam) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF262626))
+                                .border(2.dp, Color.Black, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "JD",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF404040))
+                                .border(2.dp, Color.Black, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "MK",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                    Text(
+                        text = "+4 members",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0x66FFFFFF)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun QuickActionsSection(
+    actions: List<QuickAction>,
+    onNavigate: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+    ) {
+        Text(
+            text = "Quick Actions",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+
+
+        actions.chunked(4).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                row.forEach { action ->
+                    QuickActionItem(
+                        label = action.label,
+                        icon = action.icon,
+                        color = action.color,
+                        onClick = { onNavigate(action.label) }
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+
+
+    }
+}
+
+@Composable
+fun QuickActionItem(label: String,icon: ImageVector, color: Color, isMore: Boolean = false , onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.width(64.dp) .clickable(onClick = onClick)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(color.copy(alpha = 0.1f))
+                .border(1.dp, color.copy(alpha = 0.2f), RoundedCornerShape(24.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (isMore) Color(0x66FFFFFF) else color,
+                modifier = Modifier.size(30.dp)
+            )
+        }
+
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (isMore) Color(0x66FFFFFF) else Color(0xB3FFFFFF),
+            textAlign = TextAlign.Center
+        )
+    }
+}
 
 @Composable
 fun CreateSellerFirmForm(
@@ -344,101 +642,6 @@ fun CreateSellerFirmForm(
                 Text("Create")
             }
         }
-    }
-}
-
-
-@Composable
-private fun OverviewCard(
-    title: String,
-    value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    accent: Color
-) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(Modifier.padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(accent.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(icon, null, tint = accent)
-                }
-                Spacer(Modifier.width(8.dp))
-                Text(title, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-            }
-            Spacer(Modifier.height(12.dp))
-            Text(
-                value,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    }
-}
-
-
-@Composable
-private fun QuickActionItem(
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }
-    ) {
-        Box(
-            modifier = Modifier
-                .size(56.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(16.dp))
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            label,
-            fontSize = 11.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1
-        )
-    }
-}
-
-@Composable
-private fun ActivityRow(
-    title: String,
-    subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.onSurface)
-        }
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            Text(subtitle, fontSize = 12.sp, color = Color.Gray)
-        }
-        Icon(Icons.Default.PlayArrow, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -561,4 +764,398 @@ private fun OrganizationRow(
 }
 
 
+@Composable
+fun OverviewSection() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+    ) {
+        Text(
+            text = "Overview",
+            fontSize = 30.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color.White
+        )
+        Text(
+            text = "Updates for today, Oct 24",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0x66FFFFFF),
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+}
+
+@Composable
+fun StatsCardsSection() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        StatsCard(
+            title = "Total Revenue",
+            value = "$142.8k",
+            change = "+18.4%",
+            iconColor = Color(0xFF3B82F6),
+            modifier = Modifier.weight(1f)
+        )
+
+        StatsCard(
+            title = "Active Users",
+            value = "2,842",
+            change = "+5.2%",
+            iconColor = Color(0xFFA855F7),
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+fun StatsCard(
+    title: String,
+    value: String,
+    change: String,
+    iconColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .height(140.dp)
+            .clip(RoundedCornerShape(32.dp))
+            .background(Color(0x08FFFFFF))
+            .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(32.dp))
+            .padding(24.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .align(Alignment.TopEnd)
+                .clip(CircleShape)
+                .background(iconColor.copy(alpha = 0.2f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.AccountCircle,
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(14.dp)
+            )
+        }
+
+        Column(
+            modifier = Modifier.align(Alignment.BottomStart)
+        ) {
+            Text(
+                text = title.uppercase(),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                color = Color(0x66FFFFFF),
+                letterSpacing = 2.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = value,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = change,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF10B981)
+            )
+        }
+    }
+}
+
+@Composable
+fun PerformanceChartSection() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .clip(RoundedCornerShape(40.dp))
+            .background(Color(0x08FFFFFF))
+            .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(40.dp))
+            .padding(32.dp)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column {
+                    Text(
+                        text = "WEEKLY ACTIVITY",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0x66FFFFFF),
+                        letterSpacing = 2.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Performance",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+                }
+
+                Surface(
+                    color = Color(0x0DFFFFFF),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(12.dp))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                        val alpha by infiniteTransition.animateFloat(
+                            initialValue = 0.3f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "alpha"
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF6366F1).copy(alpha = alpha))
+                        )
+                        Text(
+                            text = "Real-time",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xCCFFFFFF)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Simple chart representation
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp)
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val width = size.width
+                    val height = size.height
+
+                    // Draw gradient area
+                    val path = Path().apply {
+                        moveTo(0f, height * 0.67f)
+                        cubicTo(
+                            width * 0.25f, height * 0.53f,
+                            width * 0.25f, height * 0.73f,
+                            width * 0.5f, height * 0.4f
+                        )
+                        cubicTo(
+                            width * 0.75f, height * 0.4f,
+                            width * 0.75f, height * 0.6f,
+                            width, height * 0.27f
+                        )
+                        lineTo(width, height)
+                        lineTo(0f, height)
+                        close()
+                    }
+
+                    drawPath(
+                        path = path,
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0x806366F1),
+                                Color(0x006366F1)
+                            )
+                        )
+                    )
+
+                    // Draw line
+                    val linePath = Path().apply {
+                        moveTo(0f, height * 0.67f)
+                        cubicTo(
+                            width * 0.25f, height * 0.53f,
+                            width * 0.25f, height * 0.73f,
+                            width * 0.5f, height * 0.4f
+                        )
+                        cubicTo(
+                            width * 0.75f, height * 0.4f,
+                            width * 0.75f, height * 0.6f,
+                            width, height * 0.27f
+                        )
+                    }
+
+                    drawPath(
+                        path = linePath,
+                        color = Color(0xFF6366F1),
+                        style = Stroke(width = 4f)
+                    )
+
+                    // Draw points
+                    drawCircle(
+                        color = Color(0xFF6366F1),
+                        radius = 6f,
+                        center = Offset(width * 0.25f, height * 0.73f),
+                        style = Fill
+                    )
+                    drawCircle(
+                        color = Color.Black,
+                        radius = 4f,
+                        center = Offset(width * 0.25f, height * 0.73f),
+                        style = Fill
+                    )
+
+                    drawCircle(
+                        color = Color(0xFF6366F1),
+                        radius = 6f,
+                        center = Offset(width * 0.5f, height * 0.4f),
+                        style = Fill
+                    )
+                    drawCircle(
+                        color = Color.Black,
+                        radius = 4f,
+                        center = Offset(width * 0.5f, height * 0.4f),
+                        style = Fill
+                    )
+
+                    drawCircle(
+                        color = Color(0xFF6366F1),
+                        radius = 6f,
+                        center = Offset(width * 0.75f, height * 0.6f),
+                        style = Fill
+                    )
+                    drawCircle(
+                        color = Color.Black,
+                        radius = 4f,
+                        center = Offset(width * 0.75f, height * 0.6f),
+                        style = Fill
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                listOf("MOn", "TUE", "WED", "THU", "FRI", "SAT", "SUN").forEach { day ->
+                    Text(
+                        text = day,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0x4DFFFFFF)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TimelineSection() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+    ) {
+        Text(
+            text = "Timeline",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 20.dp)
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            TimelineItem(
+                title = "Invoice #9021 sent",
+                subtitle = "To Global Tech • 2m ago",
+                iconColor = Color(0xFF3B82F6)
+            )
+
+            TimelineItem(
+                title = "Payment Received",
+                subtitle = "From Sarah K. • 45m ago",
+                iconColor = Color(0xFF10B981)
+            )
+        }
+    }
+}
+
+@Composable
+fun TimelineItem(
+    title: String,
+    subtitle: String,
+    iconColor: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color(0x08FFFFFF))
+            .border(1.dp, Color(0x0DFFFFFF), RoundedCornerShape(24.dp))
+            .padding(20.dp),
+        horizontalArrangement = Arrangement.spacedBy(20.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(iconColor.copy(alpha = 0.2f))
+                .border(1.dp, iconColor.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.AccountCircle,
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = subtitle,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0x66FFFFFF)
+            )
+        }
+
+        Icon(
+            imageVector = Icons.Default.AccountCircle,
+            contentDescription = null,
+            tint = Color(0x33FFFFFF),
+            modifier = Modifier.size(24.dp)
+        )
+    }
+}
 

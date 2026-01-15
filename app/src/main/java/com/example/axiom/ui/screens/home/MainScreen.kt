@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Person
@@ -32,6 +30,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.axiom.ui.components.shared.button.AppIconButton
+import com.example.axiom.ui.components.shared.button.AppIcons
 import com.example.axiom.ui.theme.AxiomTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,12 +45,11 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("Axiom") },
                 actions = {
-                    IconButton(onClick = onThemeToggle) {
-                        Icon(
-                            imageVector = if (isDarkTheme) Icons.Default.FavoriteBorder else Icons.Default.Favorite,
-                            contentDescription = "Toggle Theme"
-                        )
-                    }
+                    AppIconButton(
+                        icon = if (isDarkTheme) AppIcons.Moon else AppIcons.Sun,
+                        contentDescription = "Toggle Theme",
+                        onClick = onThemeToggle
+                    )
                 }
             )
         },

@@ -17,10 +17,12 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,6 +30,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -49,7 +54,7 @@ import com.example.axiom.ui.screens.finances.purchase.PurchasePreviewScreen
 import com.example.axiom.ui.screens.finances.purchase.PurchaseScreen
 import com.example.axiom.ui.screens.profile.ProfileScreen
 import com.example.axiom.ui.screens.settings.SettingsScreen
-
+import com.example.axiom.R
 
 sealed class Route(val route: String) {
 
@@ -122,9 +127,12 @@ fun RootScaffold(navController: NavHostController) {
             ?.any { it.route == Route.Tabs.route } == true
 
         Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
                 if (showBottomBar) {
-                    NavigationBar {
+                    NavigationBar(
+                        containerColor = Color.Black
+                    ) {
                         tabRoutes.forEach { route ->
                             NavigationBarItem(
                                 selected = currentDestination?.route == route.route,
@@ -136,17 +144,32 @@ fun RootScaffold(navController: NavHostController) {
                                     }
                                 },
                                 icon = {
-                                    Icon(
-                                        imageVector = when (route) {
-                                            Route.Home -> Icons.Default.Home
-                                            Route.Bills -> Icons.Default.List
-                                            Route.Calendar -> Icons.Default.DateRange
-                                            Route.Workspace -> Icons.Default.Star
-                                            Route.Settings -> Icons.Default.Settings
-                                            else -> Icons.Default.Home
-                                        },
-                                        contentDescription = null
-                                    )
+                                    when (route) {
+                                        Route.Home -> Icon(
+                                            imageVector = Icons.Default.Home,
+                                            contentDescription = "Home"
+                                        )
+                                        Route.Bills -> Icon(painter = painterResource(id = R.drawable.analytics), // Your custom icon
+                                            contentDescription = "Bills"
+                                        )
+                                        Route.Calendar -> Icon(
+                                            imageVector = Icons.Default.DateRange,
+                                            contentDescription = "Calendar"
+                                        )
+                                        Route.Workspace -> Icon(painter = painterResource(id = R.drawable.workspace), // Your custom icon
+                                            contentDescription = "Space"
+                                        )
+                                        Route.Settings -> Icon(
+                                            imageVector = Icons.Default.Settings,
+                                            contentDescription = "Settings"
+                                        )
+                                        // A fallback is good practice, though your list is exhaustive
+                                        else -> Icon(
+                                            imageVector = Icons.Default.Home,
+                                            contentDescription = "Home"
+                                        )
+                                    }
+
                                 },
                                 label = { Text(route.route) }
                             )

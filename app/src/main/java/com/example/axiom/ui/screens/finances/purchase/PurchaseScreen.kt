@@ -25,11 +25,7 @@ fun PurchaseScreen(onBack: () -> Unit) {
             TopAppBar(
                 title = { Text(text = "Purchase Screen") },
                 navigationIcon = {
-                    AppIconButton(
-                        icon = AppIcons.Send,
-                        contentDescription = "Send",
-                        onClick = {}
-                    )
+
 
                 }
             )
@@ -45,37 +41,7 @@ fun PurchaseScreen(onBack: () -> Unit) {
             Text(text = "AppIconButton variants", modifier = Modifier.padding(bottom = 16.dp))
 
             // Simple icon button
-            AppIconButton(
-                icon = AppIcons.Send,
-                contentDescription = "Send",
-                onClick = {}
-            )
-            AppButton(
-                text = "Submit",
-                onClick = {}
-            )
-            AppButton(
-                text = "Send",
-                icon = AppIcons.Send,
-                onClick = {}
-            )
-            AppButton(
-                text = "Saving",
-                loading = true,
-                onClick = {}
-            )
-            AppButton(
-                text = "Continue",
-                enabled = false,
-                onClick = {}
-            )
-            AppButton(
-                icon = AppIcons.Send,
-                text = "Cancel",
-                onClick = { /* ... */ },
-                buttonColor = Color.Blue,
-                contentColor = Color.White
-            )
+
 
         }
     }
