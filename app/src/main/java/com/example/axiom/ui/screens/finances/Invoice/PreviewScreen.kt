@@ -29,7 +29,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,6 +38,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.axiom.data.finances.domain.Invoice
 import com.example.axiom.data.finances.domain.InvoiceItem
+import com.example.axiom.ui.components.shared.button.AppIcon
+import com.example.axiom.ui.components.shared.button.AppIconButton
+import com.example.axiom.ui.components.shared.button.AppIcons
 import com.example.axiom.ui.screens.finances.FinancesViewModel
 import com.example.axiom.ui.screens.finances.FinancesViewModelFactory
 import com.example.axiom.ui.screens.finances.InvoiceViewModel
@@ -84,6 +86,12 @@ fun InvoicePreviewScreen(
         }
     }
 
+    fun deleteInvoice(id: String){
+        // a dialog modal for confirmation
+        viewModel.deleteInvoice(id)
+        onBack()
+    }
+
 
     val currentCustomer by viewModel.currentInvoiceCustomer.collectAsStateWithLifecycle()
     val invoiceNo = currentInvoice?.invoiceNo ?: "---"
@@ -96,7 +104,7 @@ fun InvoicePreviewScreen(
     Scaffold(
         containerColor = Color(0xFF000000),
         topBar = {
-            PreviewTopBar(onBack = onBack)
+            PreviewTopBar(onBack = onBack , onDelete = { deleteInvoice(invoiceId ?: "") })
         },
         bottomBar = {
             currentInvoice?.let { nonNullInvoice ->
@@ -153,7 +161,7 @@ fun InvoicePreviewScreen(
 // -----------------------------------------------------------------------------
 
 @Composable
-fun PreviewTopBar(onBack: () -> Unit) {
+fun PreviewTopBar(onBack: () -> Unit , onDelete: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -162,32 +170,33 @@ fun PreviewTopBar(onBack: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        IconButton(
+
+        AppIconButton(
+            icon = AppIcons.Back,
+            contentDescription = "back button",
             onClick = onBack,
-            modifier = Modifier
-                .size(40.dp)
-                .background(Color.Transparent, CircleShape)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = Color(0xFFFFFFFF)
-            )
-        }
+        )
         Text(
             text = "Invoice Preview",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFFFFFFFF)
         )
-        // Hidden/Dummy Edit button to balance layout
-        IconButton(
-            onClick = {},
-            enabled = false,
-            modifier = Modifier.alpha(0f)
-        ) {
-            Icon(Icons.Default.Edit, null)
+
+        Row() {
+            // Hidden/Dummy Edit button to balance layout
+            AppIconButton(
+                icon = AppIcons.Edit,
+                contentDescription = "edit button",
+                onClick = onBack,
+            )
+            AppIconButton(
+                icon = AppIcons.Delete,
+                contentDescription = "delete button",
+                onClick = onDelete,
+            )
         }
+
     }
     HorizontalDivider(color = Color(0xFF334155), thickness = 1.dp)
 }

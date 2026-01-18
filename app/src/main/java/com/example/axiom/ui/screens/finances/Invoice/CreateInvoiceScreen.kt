@@ -53,6 +53,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.ListItem
 import androidx.compose.ui.text.style.TextAlign
 import com.example.axiom.MainActivity
@@ -194,6 +195,7 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
 
 
     var shippingCharges by remember { mutableStateOf(0.0) }
+    val shippedTo by remember { mutableStateOf("") }
 
 
     // Bottom Sheet State
@@ -239,6 +241,8 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
             customerDetails = selectedCustomer,
             supplyType = supplyType,
             items = invoiceItems.toList(),
+            shippingCharge = shippingCharges,
+            shippedTo = shippedTo,
             totalBeforeTax = totalBeforeTax,
             gst = gst,
             totalAmount = totalAmount,
@@ -443,6 +447,8 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                     }
                 }
 
+
+
                 // --- Tax Breakdown ---
                 Card(
                     colors = CardDefaults.cardColors(containerColor = SurfaceDark),
@@ -565,6 +571,8 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                     SettingItem(icon = Icons.Outlined.Edit, title = "Select Signature", badge = "Selected")
                     HorizontalDivider(color = BorderDark)
                     SettingItem(icon = Icons.Outlined.Info, title = "Notes & Terms")
+                    HorizontalDivider(color = BorderDark)
+                    SettingItem(icon = Icons.Outlined.PlayArrow, title = "Add Shipping To")
                 }
             }
         }
@@ -870,35 +878,6 @@ fun ProductItemCard(item: InvoiceItem, onDelete: () -> Unit, onQtyChange: (Doubl
         // Price & Qty
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("₹${"%.2f".format(item.total)}", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            
-            // Qty Controls
-//            Row(
-//                verticalAlignment = Alignment.CenterVertically,
-//                modifier = Modifier
-//                    .clip(RoundedCornerShape(4.dp))
-//                    .background(Color(0xFF334155))
-//            ) {
-//                IconButton(
-//                    onClick = { onQtyChange(item.quantity - 1) },
-//                    modifier = Modifier.size(24.dp)
-//                ) {
-//                    Icon(Icons.Default.Delete, null, tint = TextWhite, modifier = Modifier.size(14.dp))
-//                }
-//
-//                Text(
-//                    "${item.quantity.toInt()}",
-//                    color = TextWhite,
-//                    fontSize = 12.sp,
-//                    modifier = Modifier.padding(horizontal = 4.dp)
-//                )
-//
-//                IconButton(
-//                    onClick = { onQtyChange(item.quantity + 1) },
-//                    modifier = Modifier.size(24.dp)
-//                ) {
-//                    Icon(Icons.Default.Add, null, tint = TextWhite, modifier = Modifier.size(14.dp))
-//                }
-//            }
 
 
             QuantityEditor(

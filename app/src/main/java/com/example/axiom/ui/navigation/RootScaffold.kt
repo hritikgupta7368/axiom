@@ -56,6 +56,17 @@ import com.example.axiom.ui.screens.profile.ProfileScreen
 import com.example.axiom.ui.screens.settings.SettingsScreen
 import com.example.axiom.R
 
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import com.example.axiom.ui.screens.notes.CreateNoteScreen
+import com.example.axiom.ui.screens.notes.NotesScreen
+import com.example.axiom.ui.screens.vault.VaultScreen
+
+
 sealed class Route(val route: String) {
 
     // Graphs
@@ -90,6 +101,11 @@ sealed class Route(val route: String) {
     data object GSTSummary : Route("gst_summary")
     data object PdfPreview : Route("pdf_preview")
 
+    data object Vault : Route("vault")
+
+    data object Notes : Route("notes")
+    data object CreateNote : Route ("create_note")
+
 
 }
 
@@ -101,6 +117,17 @@ data class BillsActions(
 data object InvoicePreview : Route("invoice_preview/{invoiceId}") {
     fun createRoute(invoiceId: String) = "invoice_preview/$invoiceId"
 }
+
+// added for animtaion
+
+sealed class BottomTab(route: String) : Route(route) {
+    data object Home : BottomTab("home")
+    data object Bills : BottomTab("bills")
+    data object Calendar : BottomTab("calendar")
+    data object Workspace : BottomTab("space")
+    data object Settings : BottomTab("settings")
+}
+
 
 @Composable
 fun RootScaffold(navController: NavHostController) {
@@ -115,12 +142,13 @@ fun RootScaffold(navController: NavHostController) {
         val currentDestination = backStackEntry?.destination
 
         val tabRoutes = listOf(
-            Route.Home,
-            Route.Bills,
-            Route.Calendar,
-            Route.Workspace,
-            Route.Settings
+            BottomTab.Home,
+            BottomTab.Bills,
+            BottomTab.Calendar,
+            BottomTab.Workspace,
+            BottomTab.Settings
         )
+
 
         val showBottomBar = currentDestination
             ?.hierarchy
@@ -129,7 +157,15 @@ fun RootScaffold(navController: NavHostController) {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
-                if (showBottomBar) {
+                AnimatedVisibility(
+                    visible = showBottomBar,
+                    enter = slideInVertically(
+                        initialOffsetY = { it / 2 }
+                    ) + fadeIn(),
+                    exit = slideOutVertically(
+                        targetOffsetY = { it /2 }
+                    ) + fadeOut()
+                ) {
                     NavigationBar(
                         containerColor = Color.Black
                     ) {
@@ -145,29 +181,11 @@ fun RootScaffold(navController: NavHostController) {
                                 },
                                 icon = {
                                     when (route) {
-                                        Route.Home -> Icon(
-                                            imageVector = Icons.Default.Home,
-                                            contentDescription = "Home"
-                                        )
-                                        Route.Bills -> Icon(painter = painterResource(id = R.drawable.analytics), // Your custom icon
-                                            contentDescription = "Bills"
-                                        )
-                                        Route.Calendar -> Icon(
-                                            imageVector = Icons.Default.DateRange,
-                                            contentDescription = "Calendar"
-                                        )
-                                        Route.Workspace -> Icon(painter = painterResource(id = R.drawable.workspace), // Your custom icon
-                                            contentDescription = "Space"
-                                        )
-                                        Route.Settings -> Icon(
-                                            imageVector = Icons.Default.Settings,
-                                            contentDescription = "Settings"
-                                        )
-                                        // A fallback is good practice, though your list is exhaustive
-                                        else -> Icon(
-                                            imageVector = Icons.Default.Home,
-                                            contentDescription = "Home"
-                                        )
+                                        BottomTab.Home -> Icon(Icons.Default.Home, null)
+                                        BottomTab.Bills -> Icon(painterResource(R.drawable.analytics), null)
+                                        BottomTab.Calendar -> Icon(Icons.Default.DateRange, null)
+                                        BottomTab.Workspace -> Icon(painterResource(R.drawable.workspace), null)
+                                        BottomTab.Settings -> Icon(Icons.Default.Settings, null)
                                     }
 
                                 },
@@ -177,6 +195,7 @@ fun RootScaffold(navController: NavHostController) {
                     }
                 }
             }
+
         ) { padding ->
 
             NavHost(
@@ -197,8 +216,18 @@ fun RootScaffold(navController: NavHostController) {
                         )
                     }
                     composable(Route.Calendar.route) { CalendarScreen() }
-                    composable(Route.Workspace.route) { WorkspaceScreen() }
-                    composable(Route.Settings.route) { SettingsScreen() }
+                    composable(Route.Workspace.route) { WorkspaceScreen(
+                        onVaultPreview = {
+                            navController.navigate(Route.Vault.route)
+                        },
+                        onNotesPreview = {
+                            navController.navigate(Route.Notes.route)
+                        }
+                    ) }
+                    composable(Route.Settings.route) { SettingsScreen(
+                        isDarkTheme = isDarkTheme,
+                        onThemeToggle = { isDarkTheme = !isDarkTheme }
+                    ) }
                     composable(Route.Bills.route) {
                         val actions = remember(navController) {
                             BillsActions(
@@ -210,7 +239,7 @@ fun RootScaffold(navController: NavHostController) {
                                         "Customers" -> navController.navigate(Route.Customers.route)
                                         "Products" -> navController.navigate(Route.Products.route)
                                         "Purchase" -> navController.navigate(Route.Purchases.route)
-                                        "GST Analytics" -> navController.navigate(Route.GSTAnalytics.route)
+                                        "Analytics" -> navController.navigate(Route.GSTAnalytics.route)
                                         "Summary" -> navController.navigate(Route.GSTSummary.route)
                                         else -> println("No route defined for $label")
                                     }
@@ -221,6 +250,15 @@ fun RootScaffold(navController: NavHostController) {
                     }
                 }
 
+                composable(Route.Vault.route) {
+                    VaultScreen(onBack = { navController.popBackStack() })
+                }
+                composable(Route.Notes.route) {
+                    NotesScreen(onBack = { navController.popBackStack() })
+                }
+                composable(Route.CreateNote.route) {
+                    CreateNoteScreen(onBack = { navController.popBackStack() })
+                }
                 // Routes without bottom nav bar
                 composable(Route.Profile.route) { ProfileScreen(onBack = { navController.popBackStack() }) }
                 composable(Route.Invoices.route) {

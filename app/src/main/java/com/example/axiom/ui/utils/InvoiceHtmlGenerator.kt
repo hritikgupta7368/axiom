@@ -21,40 +21,97 @@ object InvoiceHtmlGenerator {
         invoice: Invoice,
         logoUri: String
     ): String {
+        val hasShipping = invoice.shippingCharge != null && invoice.shippingCharge > 0
+        val itemLimit = if (hasShipping) MAX_ROWS - 1 else MAX_ROWS
+
+//        val itemRows = buildString {
+//            for (i in 0 until MAX_ROWS) {
+//                val item = invoice.items.getOrNull(i)
+//
+//                if (item != null) {
+//                    append(
+//                        """
+//                        <tr class="item-row">
+//                            <td>${i + 1}</td>
+//                            <td>${item.name}</td>
+//                            <td>${item.hsn}</td>
+//                            <td class="right">${item.quantity.toInt()}</td>
+//                            <td>${item.unit}</td>
+//                            <td class="right">${"%.2f".format(item.price)}</td>
+//                            <td class="right">${"%.2f".format(item.total)}</td>
+//                        </tr>
+//                        """.trimIndent()
+//                    )
+//                } else {
+//                    append(
+//                        """
+//                        <tr class="item-row">
+//                            <td>&nbsp;</td>
+//                            <td>&nbsp;</td>
+//                            <td>&nbsp;</td>
+//                            <td>&nbsp;</td>
+//                            <td>&nbsp;</td>
+//                            <td>&nbsp;</td>
+//                            <td>&nbsp;</td>
+//                        </tr>
+//                        """.trimIndent()
+//                    )
+//                }
+//            }
+//        }
 
         val itemRows = buildString {
-            for (i in 0 until MAX_ROWS) {
+
+            // 1. Render item rows
+            for (i in 0 until itemLimit) {
                 val item = invoice.items.getOrNull(i)
 
                 if (item != null) {
                     append(
                         """
-                        <tr class="item-row">
-                            <td>${i + 1}</td>
-                            <td>${item.name}</td>
-                            <td>${item.hsn}</td>
-                            <td class="right">${item.quantity.toInt()}</td>
-                            <td>${item.unit}</td>
-                            <td class="right">${"%.2f".format(item.price)}</td>
-                            <td class="right">${"%.2f".format(item.total)}</td>
-                        </tr>
-                        """.trimIndent()
+                <tr class="item-row">
+                    <td>${i + 1}</td>
+                    <td>${item.name}</td>
+                    <td>${item.hsn}</td>
+                    <td class="right">${item.quantity.toInt()}</td>
+                    <td>${item.unit}</td>
+                    <td class="right">${"%.2f".format(item.price)}</td>
+                    <td class="right">${"%.2f".format(item.total)}</td>
+                </tr>
+                """.trimIndent()
                     )
                 } else {
                     append(
                         """
-                        <tr class="item-row">
-                            <td>&nbsp;</td>
-                            <td>&nbsp;</td>
-                            <td>&nbsp;</td>
-                            <td>&nbsp;</td>
-                            <td>&nbsp;</td>
-                            <td>&nbsp;</td>
-                            <td>&nbsp;</td>
-                        </tr>
-                        """.trimIndent()
+                <tr class="item-row">
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                </tr>
+                """.trimIndent()
                     )
                 }
+            }
+
+            // 2. Append shipping row if present
+            if (hasShipping) {
+                append(
+                    """
+            <tr class="item-row">
+               <td>&nbsp;</td>
+                <td>Shipping Charges</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td>&nbsp;</td>
+                <td class="right">${"%.2f".format(invoice.shippingCharge)}</td>
+            </tr>
+            """.trimIndent()
+                )
             }
         }
 
@@ -64,6 +121,12 @@ object InvoiceHtmlGenerator {
 <head>
 <meta charset="UTF-8" />
 <style>
+@font-face {
+    font-family: 'Impact';
+    src: url('file:///android_asset/impact.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
 @page {
                   size: A4;
                   margin: 12mm 4mm;
@@ -141,7 +204,7 @@ object InvoiceHtmlGenerator {
 
               /* CENTER — ONLY place where Impact is used */
               .s1-center {
-                  font-family: 'InvoiceTitle', sans-serif;
+                  font-family: 'Impact', sans-serif;
                   font-size: 38px;
                   font-weight: normal; /* Impact is already heavy */
                   letter-spacing: 0.5px;
@@ -207,10 +270,10 @@ object InvoiceHtmlGenerator {
                   width: 40%;
               }
               .col-2 {
-                  width: 20%;
+                  width: 25%;
               }
               .col-3 {
-                  width: 40%;
+                  width: 35%;
               }
 
               .col-2 .value {
@@ -445,7 +508,7 @@ object InvoiceHtmlGenerator {
 
                           <div class="row">
                               <span class="label">Vehicle No.</span>
-                              <span class="value"></span>
+                              <span class="value">${invoice.vehicleNumber}</span>
                           </div>
 
                           <div class="row">
@@ -457,7 +520,7 @@ object InvoiceHtmlGenerator {
                       <!-- COLUMN 3 -->
                       <div class="col col-3">
                           <div class="col-header">Shipped To :</div>
-                          <div class="shipped-value"></div>
+                          <div class="shipped-value">${invoice.shippedTo}</div>
                       </div>
                   </div>
 

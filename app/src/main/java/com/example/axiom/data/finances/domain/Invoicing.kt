@@ -110,6 +110,7 @@ data class Invoice(
     val items: List<InvoiceItem> = emptyList(),
     val totalBeforeTax: Double = 0.0,
     val gst: GstBreakdown = GstBreakdown(),
+    val shippingCharge: Double? = 0.0,
     val totalAmount: Double = 0.0,
     val amountInWords: String = "",
     val status: InvoiceStatus = InvoiceStatus.DRAFT,
