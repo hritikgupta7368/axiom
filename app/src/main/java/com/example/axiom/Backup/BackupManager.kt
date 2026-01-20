@@ -1,3 +1,4 @@
+// BackupManager.kt
 package com.example.axiom.Backup
 
 
@@ -16,10 +17,9 @@ class BackupManager(
     suspend fun exportVault(): AppBackup =
         withContext(Dispatchers.IO) {
 
-            val vaultEntries =
-                db.vaultDao()
-                    .exportAll()
-                    .map { it.toBackup() }
+            val vault = db.vaultDao().exportAll().map { it.toBackup() }
+            val tasks = db.calendarDao().exportTasks().map { it.toBackup() }
+            val events = db.calendarDao().exportEvents().map { it.toBackup() }
 
             AppBackup(
                 meta = BackupMeta(
@@ -27,7 +27,9 @@ class BackupManager(
                     dbVersion = AppDatabase.VERSION,
                     createdAt = System.currentTimeMillis()
                 ),
-                vaultEntries = vaultEntries
+                vaultEntries = vault,
+                tasks = tasks,
+                events = events
             )
         }
 
@@ -38,6 +40,11 @@ class BackupManager(
                 db.vaultDao().restore(
                     backup.vaultEntries.map { it.toEntity() }
                 )
+                db.calendarDao()
+                    .restoreTasks(backup.tasks.map { it.toEntity() })
+
+                db.calendarDao()
+                    .restoreEvents(backup.events.map { it.toEntity() })
             }
         }
 }
