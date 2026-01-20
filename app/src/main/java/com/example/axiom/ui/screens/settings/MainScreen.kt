@@ -14,13 +14,58 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.example.axiom.ui.components.shared.button.AppIconButton
 import com.example.axiom.ui.components.shared.button.AppIcons
+import com.example.axiom.ui.components.shared.ThemeToggle
+
+import android.app.Activity
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.axiom.Backup.*
+import com.example.axiom.DB.AppDatabase
+import kotlinx.coroutines.launch
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(
-    isDarkTheme: Boolean,
-    onThemeToggle: () -> Unit
-) {
+fun SettingsScreen() {
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val db = remember { AppDatabase.get(context) }
+    val backupManager = remember { BackupManager(db) }
+
+
+    // CREATE backup file
+    val exportLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.CreateDocument("application/json")
+        ) { uri: Uri? ->
+            if (uri != null) {
+                scope.launch {
+                    val backup = backupManager.exportVault()
+                    writeBackupToUri(context, uri, backup)
+                }
+            }
+        }
+
+    // PICK backup file
+    val importLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocument()
+        ) { uri: Uri? ->
+            if (uri != null) {
+                scope.launch {
+                    val backup = readBackupFromUri(context, uri)
+                    backupManager.restoreVault(backup)
+                }
+            }
+        }
+
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -38,18 +83,10 @@ fun SettingsScreen(
         ) {
             item {
                 SettingsSection(title = "Appearance") {
-                    SettingsRow(
-                        icon = if (isDarkTheme) AppIcons.Moon else AppIcons.Sun,
-                        title = "Dark Mode",
-                        subtitle = if (isDarkTheme) "Enabled" else "Disabled",
-                        trailing = {
-                            Switch(
-                                checked = isDarkTheme,
-                                onCheckedChange = { onThemeToggle() }
-                            )
-                        }
-                    )
                 }
+            }
+            item {
+                ThemeToggle()
             }
             item {
                 SettingsSection(title = "Account") {
@@ -67,16 +104,22 @@ fun SettingsScreen(
             }
             item {
                 SettingsSection(title = "Data") {
+                    // BACKUP
                     SettingsRow(
-                        icon = Icons.Default.Menu,
-                        title = "Backup",
-                        subtitle = "Cloud backup settings"
-                    )
+                        icon = Icons.Default.Check,
+                        title = "Backup Vault",
+                        subtitle = "Export vault data to file"
+                    ) {
+                        exportLauncher.launch("axiom_backup_vault.json")
+                    }
+                    // RESTORE
                     SettingsRow(
-                        icon = Icons.Default.Delete,
-                        title = "Clear Cache",
-                        subtitle = "Free local storage"
-                    )
+                        icon = Icons.Default.Build,
+                        title = "Restore Vault",
+                        subtitle = "Import vault data from file"
+                    ) {
+                        importLauncher.launch(arrayOf("application/json"))
+                    }
                 }
             }
             item {
@@ -128,12 +171,14 @@ private fun SettingsRow(
     icon: Any,
     title: String,
     subtitle: String,
-    trailing: @Composable (() -> Unit)? = null
+    onClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = trailing == null) {}
+            .clickable(enabled = onClick != null) {
+                onClick?.invoke()
+            }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -155,6 +200,6 @@ private fun SettingsRow(
             )
         }
 
-        trailing?.invoke()
+
     }
 }

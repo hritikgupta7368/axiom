@@ -55,13 +55,17 @@ import com.example.axiom.ui.screens.finances.purchase.PurchaseScreen
 import com.example.axiom.ui.screens.profile.ProfileScreen
 import com.example.axiom.ui.screens.settings.SettingsScreen
 import com.example.axiom.R
-
-
+import com.example.axiom.preferences.theme.ThemeMode
+import com.example.axiom.preferences.theme.ThemeViewModel
+import com.example.axiom.preferences.theme.ThemeViewModelFactory
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.axiom.ui.screens.notes.CreateNoteScreen
 import com.example.axiom.ui.screens.notes.NotesScreen
 import com.example.axiom.ui.screens.vault.VaultScreen
@@ -131,12 +135,21 @@ sealed class BottomTab(route: String) : Route(route) {
 
 @Composable
 fun RootScaffold(navController: NavHostController) {
-    // 1. Hoist Theme State
-    val systemDark = isSystemInDarkTheme()
-    var isDarkTheme by remember { mutableStateOf(systemDark) }
+    val context = LocalContext.current
+
+    // Theme here
+    val themeViewModel: ThemeViewModel = viewModel(
+        factory = ThemeViewModelFactory(context)
+    )
+    val themeMode by themeViewModel.themeMode.collectAsState(
+        initial = ThemeMode.DARK
+    )
+
+
+
 
     // 2. Wrap everything in UltraTheme to apply the change dynamically
-    AxiomTheme(darkTheme = isDarkTheme) {
+    AxiomTheme(darkTheme = themeMode == ThemeMode.DARK) {
 
         val backStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = backStackEntry?.destination
@@ -210,10 +223,7 @@ fun RootScaffold(navController: NavHostController) {
                 ) {
                     // 3. Pass state to HomeScreen
                     composable(Route.Home.route) {
-                        HomeScreen(
-                            isDarkTheme = isDarkTheme,
-                            onThemeToggle = { isDarkTheme = !isDarkTheme }
-                        )
+                        HomeScreen()
                     }
                     composable(Route.Calendar.route) { CalendarScreen() }
                     composable(Route.Workspace.route) { WorkspaceScreen(
@@ -224,10 +234,7 @@ fun RootScaffold(navController: NavHostController) {
                             navController.navigate(Route.Notes.route)
                         }
                     ) }
-                    composable(Route.Settings.route) { SettingsScreen(
-                        isDarkTheme = isDarkTheme,
-                        onThemeToggle = { isDarkTheme = !isDarkTheme }
-                    ) }
+                    composable(Route.Settings.route) { SettingsScreen() }
                     composable(Route.Bills.route) {
                         val actions = remember(navController) {
                             BillsActions(

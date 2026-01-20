@@ -36,21 +36,12 @@ import com.example.axiom.ui.theme.AxiomTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
-    isDarkTheme: Boolean,
-    onThemeToggle: () -> Unit
-) {
+fun HomeScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Axiom") },
-                actions = {
-                    AppIconButton(
-                        icon = if (isDarkTheme) AppIcons.Moon else AppIcons.Sun,
-                        contentDescription = "Toggle Theme",
-                        onClick = onThemeToggle
-                    )
-                }
+
             )
         },
         floatingActionButton = {
@@ -149,18 +140,3 @@ private fun QuickActionCard(
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    AxiomTheme {
-        HomeScreen(isDarkTheme = false, onThemeToggle = {})
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenDarkPreview() {
-    AxiomTheme(darkTheme = true) {
-        HomeScreen(isDarkTheme = true, onThemeToggle = {})
-    }
-}

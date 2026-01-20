@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
-import com.example.axiom.dataStore
+import com.example.axiom.DataStore.appDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -24,19 +24,19 @@ class FinancePreferences(private val context: Context) {
     }
 
     // Get selected Seller Firm Name
-    val selectedSellerFirmName: Flow<String?> = context.dataStore.data
+    val selectedSellerFirmName: Flow<String?> = context.appDataStore.data
         .map { preferences ->
             preferences[SELECTED_SELLER_FIRM_NAME_KEY]
         }
         
     // Get selected Seller Firm ID
-    val selectedSellerFirmId: Flow<String?> = context.dataStore.data
+    val selectedSellerFirmId: Flow<String?> = context.appDataStore.data
         .map { preferences ->
             preferences[SELECTED_SELLER_FIRM_ID_KEY]
         }
 
     val selectedSeller: Flow<SelectedSellerPref> =
-        context.dataStore.data.map { preferences ->
+        context.appDataStore.data.map { preferences ->
             SelectedSellerPref(
                 id = preferences[SELECTED_SELLER_FIRM_ID_KEY],
                 name = preferences[SELECTED_SELLER_FIRM_NAME_KEY],
@@ -47,7 +47,7 @@ class FinancePreferences(private val context: Context) {
 
     // Save selected Seller Firm
     suspend fun saveSelectedSellerFirm(id: String, name: String, stateCode: String) {
-        context.dataStore.edit { preferences ->
+        context.appDataStore.edit { preferences ->
             preferences[SELECTED_SELLER_FIRM_ID_KEY] = id
             preferences[SELECTED_SELLER_FIRM_NAME_KEY] = name
             preferences[SELECTED_SELLER_FIRM_STATE_CODE_KEY] = stateCode // <--- Save it
@@ -56,25 +56,25 @@ class FinancePreferences(private val context: Context) {
     
     // Clear selection if needed
     suspend fun clearSelectedSellerFirm() {
-        context.dataStore.edit { preferences ->
+        context.appDataStore.edit { preferences ->
             preferences.remove(SELECTED_SELLER_FIRM_ID_KEY)
             preferences.remove(SELECTED_SELLER_FIRM_NAME_KEY)
             preferences.remove(SELECTED_SELLER_FIRM_STATE_CODE_KEY) // <--- Clear it
         }
     }
 
-    val lastInvoiceNumber: Flow<Long> = context.dataStore.data
+    val lastInvoiceNumber: Flow<Long> = context.appDataStore.data
         .map { it[LAST_INVOICE_NUMBER_KEY] ?: 0L }
 
     suspend fun saveLastInvoiceNumber(number: Long) {
-        context.dataStore.edit {
+        context.appDataStore.edit {
             it[LAST_INVOICE_NUMBER_KEY] = number
         }
     }
     // Get Last Invoice Number
     suspend fun getAndIncrementInvoiceNumber(): Long {
         var nextNumber = 0L
-        context.dataStore.edit { prefs ->
+        context.appDataStore.edit { prefs ->
             val current = prefs[LAST_INVOICE_NUMBER_KEY] ?: 0L
             nextNumber = current + 1
             prefs[LAST_INVOICE_NUMBER_KEY] = nextNumber

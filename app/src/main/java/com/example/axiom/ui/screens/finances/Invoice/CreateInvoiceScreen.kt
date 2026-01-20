@@ -390,14 +390,28 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                         ProductItemCard(
                             item = item, 
                             onDelete = { invoiceItems.remove(item) },
+//                            onQtyChange = { newQty ->
+//                                if (newQty > 0) {
+//                                    val updatedItem = item.copy(
+//                                        quantity = newQty,
+//                                        total = newQty * item.price
+//                                    )
+//                                    invoiceItems[index] = updatedItem
+//                                }
+//                            }
                             onQtyChange = { newQty ->
-                                if (newQty > 0) {
-                                    val updatedItem = item.copy(
-                                        quantity = newQty, 
-                                        total = newQty * item.price
-                                    )
-                                    invoiceItems[index] = updatedItem
-                                }
+                                val updated = item.copy(
+                                    quantity = newQty,
+                                    total = newQty * item.price
+                                )
+                                invoiceItems[index] = updated
+                            },
+                            onPriceChange = { newPrice ->
+                                val updated = item.copy(
+                                    price = newPrice,
+                                    total = newPrice * item.quantity
+                                )
+                                invoiceItems[index] = updated
                             }
                         )
                     }
@@ -807,6 +821,8 @@ fun CustomTextField(
     trailingIcon: @Composable (() -> Unit)? = null,
     onClick: (() -> Unit)? = null
 ) {
+
+
     val containerModifier = modifier
         .fillMaxWidth()
         .height(56.dp)
@@ -847,7 +863,7 @@ fun CustomTextField(
 }
 
 @Composable
-fun ProductItemCard(item: InvoiceItem, onDelete: () -> Unit, onQtyChange: (Double) -> Unit) {
+fun ProductItemCard(item: InvoiceItem, onDelete: () -> Unit, onQtyChange: (Double) -> Unit , onPriceChange: (Double) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -872,7 +888,23 @@ fun ProductItemCard(item: InvoiceItem, onDelete: () -> Unit, onQtyChange: (Doubl
         // Info
         Column(modifier = Modifier.weight(1f)) {
             Text(item.name, color = TextWhite, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Text("Rate: ${item.price}", color = TextGray, fontSize = 12.sp)
+//            Text("Rate: ${item.price}", color = TextGray, fontSize = 12.sp)
+
+            OutlinedTextField(
+                value = if (item.price == 0.0) "" else item.price.toString(),
+                onValueChange = {
+                    val newPrice = it.toDoubleOrNull()
+                    if (newPrice != null && newPrice >= 0) {
+                        onPriceChange(newPrice)
+                    }
+                },
+                label = { Text("Rate", fontSize = 10.sp) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.width(90.dp),
+                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
+            )
+
         }
 
         // Price & Qty

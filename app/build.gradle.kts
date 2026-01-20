@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.ksp)
     id("com.google.dagger.hilt.android")
     id("com.google.gms.google-services")
+    alias(libs.plugins.kotlin.serialization) // aded for json
 }
 
 android {
@@ -96,7 +97,8 @@ dependencies {
     //pdf generator lib
     implementation("com.github.UttamPanchasara:PDF-Generator:2.0.0")
 
-
+    // for json converiosn
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
 
 }
