@@ -1,54 +1,183 @@
 package com.example.axiom.ui.theme
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+
+
+/* ───────────────────────────────────────────────
+   DARK COLOR SCHEME
+   Used when darkTheme == true
+   True black base for OLED
+   ─────────────────────────────────────────────── */
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+
+    /**
+     * PRIMARY
+     * Used for:
+     * - Primary buttons
+     * - FloatingActionButton
+     * - Selected states
+     * - Active icons
+     */
+    primary = BrandPrimary,
+
+    /**
+     * SECONDARY
+     * Used for:
+     * - Secondary actions
+     * - Accent UI elements
+     */
+    secondary = BrandSecondary,
+
+    /**
+     * TERTIARY
+     * Used for:
+     * - Decorative accents
+     * - Optional highlights
+     */
+    tertiary = BrandTertiary,
+
+    /**
+     * BACKGROUND
+     * Used for:
+     * - Entire screen background
+     * - Scaffold background
+     */
+    background = DarkBackground,
+
+    /**
+     * SURFACE
+     * Used for:
+     * - Cards
+     * - Dialogs
+     * - Bottom sheets
+     * - App bars
+     */
+    surface = DarkSurface,
+
+    /**
+     * SURFACE VARIANT
+     * Used for:
+     * - Elevated containers
+     * - Input field backgrounds
+     * - Grouped UI sections
+     */
+    surfaceVariant = DarkSurfaceVariant,
+
+    /**
+     * TEXT / ICON COLOR ON PRIMARY
+     * Text shown on buttons or FABs
+     */
+    onPrimary = Color.Black,
+
+    /**
+     * TEXT / ICON COLOR ON SECONDARY
+     */
+    onSecondary = Color.Black,
+
+    /**
+     * TEXT / ICON COLOR ON TERTIARY
+     */
+    onTertiary = Color.Black,
+
+    /**
+     * TEXT COLOR ON BACKGROUND
+     * Used for:
+     * - Main body text
+     * - Titles
+     */
+    onBackground = DarkTextPrimary,
+
+    /**
+     * TEXT COLOR ON SURFACE
+     * Used for:
+     * - Text inside cards / sheets
+     */
+    onSurface = DarkTextPrimary,
+
+    /**
+     * SECONDARY TEXT COLOR
+     * Used for:
+     * - Subtitles
+     * - Timestamps
+     * - Helper text
+     */
+    onSurfaceVariant = DarkTextSecondary,
+
+    /**
+     * OUTLINE
+     * Used for:
+     * - Borders
+     * - Dividers
+     * - Strokes
+     */
+    outline = DarkOutline,
+
+    /**
+     * ERROR COLOR
+     * Used for:
+     * - Error messages
+     * - Destructive actions
+     */
+    error = Error
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+/* ───────────────────────────────────────────────
+   LIGHT COLOR SCHEME
+   Used when darkTheme == false
+   ─────────────────────────────────────────────── */
+
+private val LightColorScheme = lightColorScheme(
+
+    // Same semantic meaning as dark mode
+    primary = BrandPrimary,
+    secondary = BrandSecondary,
+    tertiary = BrandTertiary,
+
+    // Screen background
+    background = LightBackground,
+
+    // Cards / sheets / dialogs
+    surface = LightSurface,
+
+    // Elevated UI containers
+    surfaceVariant = LightSurfaceVariant,
+
+    // Text on primary buttons
     onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+
+    // Text on secondary / tertiary
+    onSecondary = Color.Black,
+    onTertiary = Color.Black,
+
+    // Main text
+    onBackground = LightTextPrimary,
+    onSurface = LightTextPrimary,
+
+    // Secondary / helper text
+    onSurfaceVariant = LightTextSecondary,
+
+    // Borders / dividers
+    outline = LightOutline,
+
+    // Error states
+    error = Error
 )
 
 @Composable
 fun AxiomTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false, // DISABLED — breaks brand consistency
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val colorScheme =
+        if (darkTheme) DarkColorScheme else LightColorScheme
 
     MaterialTheme(
         colorScheme = colorScheme,

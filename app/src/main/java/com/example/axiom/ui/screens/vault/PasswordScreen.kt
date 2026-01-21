@@ -1,32 +1,63 @@
 package com.example.axiom.ui.screens.vault
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.animation.core.*
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,18 +70,9 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.data.calendar.domain.RecurrenceType
-import com.example.axiom.data.calendar.domain.Task
-import com.example.axiom.data.calendar.domain.TaskColor
-import com.example.axiom.data.calendar.domain.TaskNotes
-import com.example.axiom.data.calendar.domain.TaskPriority
-import com.example.axiom.data.calendar.domain.TaskRecurrence
-import com.example.axiom.data.calendar.domain.TaskStatus
 import com.example.axiom.data.vault.VaultEntryEntity
 import com.example.axiom.data.vault.VaultViewModel
 import com.example.axiom.data.vault.VaultViewModelFactory
@@ -58,7 +80,6 @@ import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.util.UUID
 
 // Data class for saved logins
 data class SavedLogin(
@@ -125,7 +146,7 @@ fun VaultScreen(
             }
         }
     )
-    {padding ->
+    { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -262,7 +283,9 @@ fun VaultScreen(
                                 Icon(
                                     imageVector = if (copiedMessage) Icons.Outlined.Check else Icons.Outlined.Notifications,
                                     contentDescription = "Copy",
-                                    tint = if (copiedMessage) Color(0xFF14B3AB) else Color(0xFF9CA3AF)
+                                    tint = if (copiedMessage) Color(0xFF14B3AB) else Color(
+                                        0xFF9CA3AF
+                                    )
                                 )
                             }
                         }
@@ -415,24 +438,24 @@ fun VaultScreen(
         }
 
 
-            // outer components
-            AppBottomSheet(
-                showSheet = showCreateTaskSheet,
-                onDismiss = { showCreateTaskSheet = false }
-            ) {
-                CreateVaultEntryContent(
-                    onDone = { service, user, password, note, icon, expiry ->
-                        vaultViewModel.addEntry(
-                            service = service,
-                            user = user,
-                            password = password,
-                            expiry = expiry,
-                            note = note
-                        )
-                        showCreateTaskSheet = false
-                    }
-                )
-            }
+        // outer components
+        AppBottomSheet(
+            showSheet = showCreateTaskSheet,
+            onDismiss = { showCreateTaskSheet = false }
+        ) {
+            CreateVaultEntryContent(
+                onDone = { service, user, password, note, icon, expiry ->
+                    vaultViewModel.addEntry(
+                        service = service,
+                        user = user,
+                        password = password,
+                        expiry = expiry,
+                        note = note
+                    )
+                    showCreateTaskSheet = false
+                }
+            )
+        }
         // model to delete
         deleteTarget?.let { entry ->
             AlertDialog(
@@ -461,7 +484,6 @@ fun VaultScreen(
 
     }
 }
-
 
 
 @OptIn(ExperimentalMaterial3Api::class)

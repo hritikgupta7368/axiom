@@ -1,20 +1,28 @@
 package com.example.axiom.data.temp
 
-import androidx.room.*
+import android.content.Context
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Entity
+import androidx.room.Index
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.PrimaryKey
+import androidx.room.Query
+import androidx.room.Update
+import com.example.axiom.DB.AppDatabase
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import android.content.Context
-import com.example.axiom.DB.AppDatabase
-import androidx.lifecycle.ViewModelProvider
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 enum class TaskStatus {
     PENDING,
@@ -51,7 +59,7 @@ data class TaskEntity(
 
     val startTime: Long,
     val endTime: Long,
-    val allDay: Boolean = false,
+    val allDay: Boolean,
 
     val status: TaskStatus = TaskStatus.PENDING,
     val priority: Priority,
@@ -103,11 +111,13 @@ interface CalendarDao {
 
     /* ---------- TASKS ---------- */
 
-    @Query("""
+    @Query(
+        """
         SELECT * FROM calendar_tasks
         WHERE date = :day
         ORDER BY startTime ASC, sortIndex ASC
-    """)
+    """
+    )
     fun tasksForDay(day: Long): Flow<List<TaskEntity>>
 
     @Insert
@@ -119,26 +129,30 @@ interface CalendarDao {
     @Delete
     suspend fun deleteTask(task: TaskEntity)
 
-    @Query("""
+    @Query(
+        """
         UPDATE calendar_tasks
         SET status = :status,
             updatedAt = :now
         WHERE id = :taskId
-    """)
+    """
+    )
     suspend fun updateStatus(
         taskId: Long,
         status: TaskStatus,
         now: Long
     )
 
-    @Query("""
+    @Query(
+        """
         UPDATE calendar_tasks
         SET date = :newDate,
             startTime = :newStart,
             endTime = :newEnd,
             updatedAt = :now
         WHERE id = :taskId
-    """)
+    """
+    )
     suspend fun rescheduleTask(
         taskId: Long,
         newDate: Long,
@@ -149,12 +163,14 @@ interface CalendarDao {
 
     /* ---------- CONFLICT CHECK ---------- */
 
-    @Query("""
+    @Query(
+        """
         SELECT * FROM calendar_tasks
         WHERE date = :day
           AND startTime < :end
           AND endTime > :start
-    """)
+    """
+    )
     suspend fun findConflicts(
         day: Long,
         start: Long,
@@ -163,11 +179,13 @@ interface CalendarDao {
 
     /* ---------- EVENTS ---------- */
 
-    @Query("""
+    @Query(
+        """
         SELECT * FROM calendar_events
         WHERE date = :day
         ORDER BY startTime ASC
-    """)
+    """
+    )
     fun eventsForDay(day: Long): Flow<List<EventEntity>>
 
     @Insert
@@ -216,7 +234,8 @@ class CalendarRepository(
         color: Int,
         recurrenceRule: String?,
         sortIndex: Int,
-        timeZone: String
+        timeZone: String,
+        allDay: Boolean
     ) {
         dao.insertTask(
             TaskEntity(
@@ -229,7 +248,8 @@ class CalendarRepository(
                 color = color,
                 recurrenceRule = recurrenceRule,
                 sortIndex = sortIndex,
-                timeZone = timeZone
+                timeZone = timeZone,
+                allDay = allDay
             )
         )
     }
@@ -332,13 +352,14 @@ class CalendarViewModel(
         color: Int,
         recurrenceRule: String?,
         sortIndex: Int,
-        timeZone: String
+        timeZone: String,
+        allDay: Boolean
     ) {
         viewModelScope.launch {
             repo.addTask(
                 title, note, date, start, end,
                 priority, color, recurrenceRule,
-                sortIndex, timeZone
+                sortIndex, timeZone, allDay
             )
         }
     }
@@ -371,6 +392,28 @@ class CalendarViewModel(
             repo.deleteEvent(event)
         }
     }
+
+    fun addEvent(
+        title: String,
+        description: String?,
+        date: Long,
+        start: Long,
+        end: Long,
+        importance: Int,
+        pinned: Boolean,
+        color: Int,
+        timeZone: String
+    ) {
+        viewModelScope.launch {
+            repo.addEvent(
+                title, description, date, start, end,
+                importance, pinned, color, timeZone
+            )
+        }
+
+
+    }
+
 }
 
 // Factory code

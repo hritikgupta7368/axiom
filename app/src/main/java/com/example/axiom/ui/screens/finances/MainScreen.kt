@@ -1,18 +1,64 @@
 package com.example.axiom.ui.screens.finances
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -23,24 +69,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.axiom.data.finances.dataStore.FinancePreferences
@@ -58,7 +92,7 @@ data class QuickAction(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(navActions : BillsActions) {
+fun MainScreen(navActions: BillsActions) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
@@ -82,7 +116,6 @@ fun MainScreen(navActions : BillsActions) {
     }
 
 
-
     val actions = listOf(
         QuickAction("Invoices", Icons.Default.List, Color(0xFF3B82F6)),
         QuickAction("Customers", Icons.Default.Person, Color(0xFF10B981)),
@@ -93,23 +126,47 @@ fun MainScreen(navActions : BillsActions) {
         QuickAction("Challans", Icons.Default.Add, Color(0xFF6366F1)),
         QuickAction("Quotations", Icons.Default.Add, Color(0xFF3B82F6)),
 
+        )
+
+    val DarkBackgroundGradient = Brush.radialGradient(
+        0f to Color(0x662563EB),   // electric blue core
+        0.4f to Color(0x4D7C3AED), // indigo–violet mid
+        0.75f to Color(0x3323123F),// deep violet shadow
+        1f to Color(0xFF05010A),   // near-black edge
+        center = Offset(0f, 0f),
+        radius = 1500f
     )
+
+    val LightBackgroundGradient = Brush.radialGradient(
+        colorStops = arrayOf(
+            0.0f to Color(0xFFEFF6FF), // very light blue core
+            0.4f to Color(0xFFF5F3FF), // soft violet wash
+            0.7f to Color(0xFFF8FAFC), // near-white
+            1.0f to Color.White        // absolute white edge
+        ),
+        center = Offset.Unspecified,  // IMPORTANT: auto-centers
+        radius = Float.POSITIVE_INFINITY
+    )
+
+
+    val isDark = isSystemInDarkTheme()
+
+
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.radialGradient(
-                    0f to Color(0x662563EB),   // electric blue core
-                    0.4f to Color(0x4D7C3AED), // indigo–violet mid
-                    0.75f to Color(0x3323123F),// deep violet shadow
-                    1f to Color(0xFF05010A),   // near-black, not pure black
-                    center = Offset(0f, 0f),
-                    radius = 1500f
-                )
+//            .background(
+//                if (isSystemInDarkTheme())
+//                    DarkBackgroundGradient
+//                else
+//                    SolidColor(MaterialTheme.colorScheme.background)
+////                    LightBackgroundGradient
+//            )
+    )
 
-            )
-    ) {
+
+    {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -149,9 +206,13 @@ fun MainScreen(navActions : BillsActions) {
                                 text = selectedOrg,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
-                            Icon(Icons.Default.ArrowDropDown, null , tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(
+                                Icons.Default.ArrowDropDown,
+                                null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
 
@@ -221,7 +282,11 @@ fun MainScreen(navActions : BillsActions) {
                     sellerFirms = sellerFirms,
                     onFirmSelected = { seller ->
                         scope.launch {
-                            financePreferences.saveSelectedSellerFirm(seller.id, seller.name, seller.stateCode)
+                            financePreferences.saveSelectedSellerFirm(
+                                seller.id,
+                                seller.name,
+                                seller.stateCode
+                            )
                         }
                         showSheet = false // Close after selection
                     },
@@ -229,7 +294,11 @@ fun MainScreen(navActions : BillsActions) {
                         viewModel.addSellerFirm(firm)
                         // Optionally auto-select the new firm
                         scope.launch {
-                            financePreferences.saveSelectedSellerFirm(firm.id, firm.name, firm.stateCode)
+                            financePreferences.saveSelectedSellerFirm(
+                                firm.id,
+                                firm.name,
+                                firm.stateCode
+                            )
                         }
                         showSheet = false // Close after creation
                     }
@@ -238,7 +307,6 @@ fun MainScreen(navActions : BillsActions) {
         }
     }
 }
-
 
 
 @Composable
@@ -255,8 +323,8 @@ fun ActiveProjectsSection() {
                 text = "Active Projects",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+
+                )
 
             Button(
                 onClick = {},
@@ -316,6 +384,20 @@ fun ProjectCard(
     imageUrl: String,
     showTeam: Boolean = false
 ) {
+    val isDark = isSystemInDarkTheme()
+
+    val glassBackground =
+        if (isDark)
+            Color(0x14FFFFFF)   // subtle white glass on dark
+        else
+            Color(0x99FFFFFF)   // soft white card on light
+
+    val glassBorder =
+        if (isDark)
+            Color(0x26FFFFFF)
+        else
+            Color(0x1A000000)
+
     Box(
         modifier = Modifier
             .width(300.dp)
@@ -325,26 +407,13 @@ fun ProjectCard(
             .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(40.dp))
     ) {
         // Background Image
-//        AsyncImage(
-//            model = imageUrl,
-//            contentDescription = null,
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .height(208.dp),
-//            contentScale = ContentScale.Crop
-//        )
+
 
         // Gradient Overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.4f to Color(0x66000000),
-                        1f to Color.Black
-                    )
-                )
+                .background(glassBackground)
         )
 
         // Content
@@ -371,8 +440,8 @@ fun ProjectCard(
                         text = title,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
-                    )
+
+                        )
                 }
 
                 Surface(
@@ -384,7 +453,7 @@ fun ProjectCard(
                         text = status,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Black,
-                        color = Color.White,
+
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                     )
                 }
@@ -408,8 +477,8 @@ fun ProjectCard(
                         text = "${(progress * 100).toInt()}%",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black,
-                        color = Color.White
-                    )
+
+                        )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -501,8 +570,8 @@ fun QuickActionsSection(
             text = "Quick Actions",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
+
+            )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -530,11 +599,19 @@ fun QuickActionsSection(
 }
 
 @Composable
-fun QuickActionItem(label: String,icon: ImageVector, color: Color, isMore: Boolean = false , onClick: () -> Unit) {
+fun QuickActionItem(
+    label: String,
+    icon: ImageVector,
+    color: Color,
+    isMore: Boolean = false,
+    onClick: () -> Unit
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
-        modifier = Modifier.width(64.dp) .clickable(onClick = onClick)
+        modifier = Modifier
+            .width(64.dp)
+            .clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier
@@ -556,7 +633,7 @@ fun QuickActionItem(label: String,icon: ImageVector, color: Color, isMore: Boole
             text = label,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
-            color = if (isMore) Color(0x66FFFFFF) else Color(0xB3FFFFFF),
+//            color = if (isMore) Color(0x66FFFFFF) else Color(0xB3FFFFFF),
             textAlign = TextAlign.Center
         )
     }
@@ -580,7 +657,11 @@ fun CreateSellerFirmForm(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Create New Organization", style = MaterialTheme.typography.titleMedium, color = Color.Black)
+        Text(
+            "Create New Organization",
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.Black
+        )
 
         OutlinedTextField(
             value = name,

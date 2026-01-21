@@ -1,38 +1,33 @@
 package com.example.axiom.ui.navigation
 
+
 import android.net.Uri
-import com.example.axiom.ui.screens.calendar.CalendarScreen
-import com.example.axiom.ui.screens.finances.MainScreen
-import com.example.axiom.ui.screens.space.WorkspaceScreen
-import com.example.axiom.ui.screens.home.HomeScreen
-import com.example.axiom.ui.theme.AxiomTheme
-
-
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -41,10 +36,16 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
+import com.example.axiom.R
+import com.example.axiom.preferences.theme.ThemeMode
+import com.example.axiom.preferences.theme.ThemeViewModel
+import com.example.axiom.preferences.theme.ThemeViewModelFactory
+import com.example.axiom.ui.screens.calendar.CalendarScreen
 import com.example.axiom.ui.screens.finances.Invoice.CreateInvoiceScreen
 import com.example.axiom.ui.screens.finances.Invoice.InvoicePreviewScreen
 import com.example.axiom.ui.screens.finances.Invoice.InvoicesScreen
 import com.example.axiom.ui.screens.finances.Invoice.PdfPreviewScreen
+import com.example.axiom.ui.screens.finances.MainScreen
 import com.example.axiom.ui.screens.finances.analytics.GSTAnalyticsScreen
 import com.example.axiom.ui.screens.finances.analytics.GSTSummaryScreen
 import com.example.axiom.ui.screens.finances.customer.CustomerScreen
@@ -52,23 +53,14 @@ import com.example.axiom.ui.screens.finances.product.ProductScreen
 import com.example.axiom.ui.screens.finances.purchase.CreatePurchaseScreen
 import com.example.axiom.ui.screens.finances.purchase.PurchasePreviewScreen
 import com.example.axiom.ui.screens.finances.purchase.PurchaseScreen
-import com.example.axiom.ui.screens.profile.ProfileScreen
-import com.example.axiom.ui.screens.settings.SettingsScreen
-import com.example.axiom.R
-import com.example.axiom.preferences.theme.ThemeMode
-import com.example.axiom.preferences.theme.ThemeViewModel
-import com.example.axiom.preferences.theme.ThemeViewModelFactory
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.axiom.ui.screens.home.HomeScreen
 import com.example.axiom.ui.screens.notes.CreateNoteScreen
 import com.example.axiom.ui.screens.notes.NotesScreen
+import com.example.axiom.ui.screens.profile.ProfileScreen
+import com.example.axiom.ui.screens.settings.SettingsScreen
+import com.example.axiom.ui.screens.space.WorkspaceScreen
 import com.example.axiom.ui.screens.vault.VaultScreen
+import com.example.axiom.ui.theme.AxiomTheme
 
 
 sealed class Route(val route: String) {
@@ -108,7 +100,7 @@ sealed class Route(val route: String) {
     data object Vault : Route("vault")
 
     data object Notes : Route("notes")
-    data object CreateNote : Route ("create_note")
+    data object CreateNote : Route("create_note")
 
 
 }
@@ -118,6 +110,7 @@ data class BillsActions(
     val onOpenProfile: () -> Unit,
     val onNavigate: (String) -> Unit,
 )
+
 data object InvoicePreview : Route("invoice_preview/{invoiceId}") {
     fun createRoute(invoiceId: String) = "invoice_preview/$invoiceId"
 }
@@ -144,8 +137,6 @@ fun RootScaffold(navController: NavHostController) {
     val themeMode by themeViewModel.themeMode.collectAsState(
         initial = ThemeMode.DARK
     )
-
-
 
 
     // 2. Wrap everything in UltraTheme to apply the change dynamically
@@ -176,11 +167,12 @@ fun RootScaffold(navController: NavHostController) {
                         initialOffsetY = { it / 2 }
                     ) + fadeIn(),
                     exit = slideOutVertically(
-                        targetOffsetY = { it /2 }
+                        targetOffsetY = { it / 2 }
                     ) + fadeOut()
                 ) {
                     NavigationBar(
-                        containerColor = Color.Black
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        tonalElevation = 8.dp
                     ) {
                         tabRoutes.forEach { route ->
                             NavigationBarItem(
@@ -195,9 +187,17 @@ fun RootScaffold(navController: NavHostController) {
                                 icon = {
                                     when (route) {
                                         BottomTab.Home -> Icon(Icons.Default.Home, null)
-                                        BottomTab.Bills -> Icon(painterResource(R.drawable.analytics), null)
+                                        BottomTab.Bills -> Icon(
+                                            painterResource(R.drawable.analytics),
+                                            null
+                                        )
+
                                         BottomTab.Calendar -> Icon(Icons.Default.DateRange, null)
-                                        BottomTab.Workspace -> Icon(painterResource(R.drawable.workspace), null)
+                                        BottomTab.Workspace -> Icon(
+                                            painterResource(R.drawable.workspace),
+                                            null
+                                        )
+
                                         BottomTab.Settings -> Icon(Icons.Default.Settings, null)
                                     }
 
@@ -226,14 +226,16 @@ fun RootScaffold(navController: NavHostController) {
                         HomeScreen()
                     }
                     composable(Route.Calendar.route) { CalendarScreen() }
-                    composable(Route.Workspace.route) { WorkspaceScreen(
-                        onVaultPreview = {
-                            navController.navigate(Route.Vault.route)
-                        },
-                        onNotesPreview = {
-                            navController.navigate(Route.Notes.route)
-                        }
-                    ) }
+                    composable(Route.Workspace.route) {
+                        WorkspaceScreen(
+                            onVaultPreview = {
+                                navController.navigate(Route.Vault.route)
+                            },
+                            onNotesPreview = {
+                                navController.navigate(Route.Notes.route)
+                            }
+                        )
+                    }
                     composable(Route.Settings.route) { SettingsScreen() }
                     composable(Route.Bills.route) {
                         val actions = remember(navController) {
