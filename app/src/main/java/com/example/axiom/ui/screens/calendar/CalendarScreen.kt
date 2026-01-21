@@ -34,6 +34,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Divider
+import androidx.compose.material.IconButton
+import androidx.compose.material.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -49,10 +51,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SmallFloatingActionButton
@@ -197,6 +199,10 @@ fun CalendarScreen() {
     val taskCount = tasks.size
 
 
+    var searchMode by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+
+
 
     Scaffold(
         floatingActionButton = {
@@ -265,121 +271,170 @@ fun CalendarScreen() {
 
             /* ---------- HEADER ---------- */
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.Top
-            ) {
 
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 12.dp)
-                ) {
-                    AnimatedContent(
-                        targetState = actionItem != null,
-                        transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        label = "header-left"
-                    ) { actionMode ->
-                        if (actionMode) {
-                            AppIconButton(
-                                icon = AppIcons.Close,
-                                contentDescription = null,
-                                onClick = { actionItem = null }
+            AnimatedContent(
+                targetState = searchMode,
+                transitionSpec = {
+                    fadeIn() + slideInVertically { -it / 2 } togetherWith
+                            fadeOut() + slideOutVertically { it / 2 }
+                },
+                label = "header-root"
+            ) { isSearch ->
+
+                if (isSearch) {
+
+                    // SEARCH HEADER (FULL OVERRIDE)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("Search tasks & events") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary
                             )
-                        } else {
+                        )
+
+                        Spacer(Modifier.width(12.dp))
+
+                        TextButton(
+                            onClick = {
+                                searchQuery = ""
+                                searchMode = false
+                            }
+                        ) {
+                            Text("Cancel")
+                        }
+                    }
+
+                } else {
+
+                    // ORIGINAL HEADER — UNTOUCHED LOGIC
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 12.dp)
+                        ) {
                             AnimatedContent(
-                                targetState = Pair(visibleMonth, isWeekMode),
-                                transitionSpec = {
-                                    (slideInVertically { it / 2 } + fadeIn())
-                                        .togetherWith(slideOutVertically { -it / 2 } + fadeOut())
-                                },
-                                label = "month-switch"
-                            ) { (month, week) ->
-                                Column {
-                                    if (!week) {
-                                        Text(
-                                            month.month.name.lowercase()
-                                                .replaceFirstChar { it.uppercase() },
-                                            style = MaterialTheme.typography.displaySmall,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            month.year.toString(),
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    } else {
-                                        Text(
-                                            selectedDate.dayOfWeek.name.lowercase()
-                                                .replaceFirstChar { it.uppercase() },
-                                            style = MaterialTheme.typography.displaySmall,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            "${selectedDate.dayOfMonth} ${
-                                                selectedDate.month.name.lowercase()
-                                                    .replaceFirstChar { it.uppercase() }
-                                            }",
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                targetState = actionItem != null,
+                                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                                label = "header-left"
+                            ) { actionMode ->
+                                if (actionMode) {
+                                    AppIconButton(
+                                        icon = AppIcons.Close,
+                                        contentDescription = null,
+                                        onClick = { actionItem = null }
+                                    )
+                                } else {
+                                    AnimatedContent(
+                                        targetState = Pair(visibleMonth, isWeekMode),
+                                        transitionSpec = {
+                                            (slideInVertically { it / 2 } + fadeIn())
+                                                .togetherWith(slideOutVertically { -it / 2 } + fadeOut())
+                                        },
+                                        label = "month-switch"
+                                    ) { (month, week) ->
+                                        Column {
+                                            if (!week) {
+                                                Text(
+                                                    month.month.name.lowercase()
+                                                        .replaceFirstChar { it.uppercase() },
+                                                    style = MaterialTheme.typography.displaySmall,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                                Text(
+                                                    month.year.toString(),
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            } else {
+                                                Text(
+                                                    selectedDate.dayOfWeek.name.lowercase()
+                                                        .replaceFirstChar { it.uppercase() },
+                                                    style = MaterialTheme.typography.displaySmall,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                                Text(
+                                                    "${selectedDate.dayOfMonth} ${
+                                                        selectedDate.month.name.lowercase()
+                                                            .replaceFirstChar { it.uppercase() }
+                                                    }",
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                }
 
-                AnimatedContent(
-                    targetState = actionItem != null,
-                    transitionSpec = { fadeIn() togetherWith fadeOut() },
-                    label = "header-right"
-                ) { actionMode ->
-                    Row {
-                        if (actionMode) {
-                            AppIconButton(
-                                icon = AppIcons.Edit,
-                                contentDescription = null,
-                                onClick = {}
-                            )
-                            AppIconButton(
-                                icon = AppIcons.Delete,
-                                contentDescription = null,
-                                onClick = {
-                                    when (val item = actionItem) {
-                                        is ActionItem.Task -> viewModel.deleteTask(item.value)
-                                        is ActionItem.Event -> viewModel.deleteEvent(item.value)
-                                        null -> {}
+                        AnimatedContent(
+                            targetState = actionItem != null,
+                            transitionSpec = { fadeIn() togetherWith fadeOut() },
+                            label = "header-right"
+                        ) { actionMode ->
+                            Row {
+                                if (actionMode) {
+                                    AppIconButton(
+                                        icon = AppIcons.Edit,
+                                        contentDescription = null,
+                                        onClick = {}
+                                    )
+                                    AppIconButton(
+                                        icon = AppIcons.Delete,
+                                        contentDescription = null,
+                                        onClick = {
+                                            when (val item = actionItem) {
+                                                is ActionItem.Task -> viewModel.deleteTask(item.value)
+                                                is ActionItem.Event -> viewModel.deleteEvent(item.value)
+                                                null -> {}
+                                            }
+                                            actionItem = null
+                                        }
+                                    )
+                                } else {
+                                    AppIconButton(
+                                        icon = AppIcons.Search,
+                                        contentDescription = null,
+                                        onClick = { searchMode = true }
+                                    )
+                                    IconButton(onClick = { isWeekMode = !isWeekMode }) {
+                                        Icon(
+                                            if (isWeekMode) Icons.Default.Menu
+                                            else Icons.Default.DateRange,
+                                            null
+                                        )
                                     }
-                                    actionItem = null
+                                    AppIconButton(
+                                        icon = AppIcons.ArrowForward,
+                                        contentDescription = null,
+                                        onClick = {
+                                            selectedDate = LocalDate.now()
+                                            selectDate(selectedDate)
+                                        }
+                                    )
                                 }
-                            )
-                        } else {
-                            AppIconButton(
-                                icon = AppIcons.Search,
-                                contentDescription = null,
-                                onClick = {}
-                            )
-                            IconButton(onClick = { isWeekMode = !isWeekMode }) {
-                                Icon(
-                                    if (isWeekMode) Icons.Default.Menu
-                                    else Icons.Default.DateRange,
-                                    null
-                                )
                             }
-
-                            AppIconButton(
-                                icon = AppIcons.ArrowForward,
-                                contentDescription = null,
-                                onClick = {
-                                    selectedDate = LocalDate.now()
-                                    selectDate(selectedDate)
-                                }
-                            )
                         }
                     }
                 }
             }
+
 
             // actual body starts here
             ToggleableCalendar(
