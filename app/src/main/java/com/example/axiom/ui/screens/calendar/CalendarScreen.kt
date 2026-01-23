@@ -54,7 +54,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SmallFloatingActionButton
@@ -97,6 +96,7 @@ import com.kizitonwose.calendar.core.yearMonth
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.YearMonth
 import java.time.ZoneId
 
 
@@ -153,7 +153,302 @@ private fun priorityColor(priority: Priority, completed: Boolean): Color {
 
     }
 
+}
 
+private fun eventTimeLabel(event: EventEntity): String {
+    if (event.allDay) return "All day"
+
+    val zone = ZoneId.systemDefault()
+    val start = Instant.ofEpochMilli(event.startTime)
+        .atZone(zone)
+        .toLocalTime()
+    val end = Instant.ofEpochMilli(event.endTime)
+        .atZone(zone)
+        .toLocalTime()
+
+    return "$start – $end"
+}
+
+
+@Composable
+fun MultiFab(
+    fabExpanded: Boolean,
+    onFabToggle: () -> Unit,
+    onCreateTask: () -> Unit,
+    onCreateEvent: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+
+        AnimatedVisibility(
+            visible = fabExpanded,
+            enter = fadeIn() + slideInVertically { it / 2 },
+            exit = fadeOut() + slideOutVertically { it / 2 }
+        ) {
+            SmallFloatingActionButton(
+                onClick = onCreateTask,
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(Icons.Default.Check, contentDescription = "Create Task")
+            }
+        }
+
+        AnimatedVisibility(
+            visible = fabExpanded,
+            enter = fadeIn() + slideInVertically { it / 2 },
+            exit = fadeOut() + slideOutVertically { it / 2 }
+        ) {
+            SmallFloatingActionButton(
+                onClick = onCreateEvent,
+                containerColor = MaterialTheme.colorScheme.secondary
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = "Create Event")
+            }
+        }
+
+        FloatingActionButton(
+            onClick = onFabToggle
+        ) {
+            Icon(
+                imageVector = if (fabExpanded)
+                    Icons.Default.Close
+                else
+                    Icons.Default.Add,
+                contentDescription = null
+            )
+        }
+    }
+
+
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CalendarTopHeader(
+    searchMode: Boolean,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onSearchCancel: () -> Unit,
+
+    actionItem: ActionItem?,
+    visibleMonth: YearMonth,
+    selectedDate: LocalDate,
+    isWeekMode: Boolean,
+
+    onClearAction: () -> Unit,
+    onEditAction: () -> Unit,
+    onDeleteAction: () -> Unit,
+
+    onSearchClick: () -> Unit,
+    onToggleWeekMode: () -> Unit,
+    onJumpToToday: () -> Unit,
+) {
+    AnimatedContent(
+        targetState = searchMode,
+        transitionSpec = {
+            fadeIn() + slideInVertically { -it / 2 } togetherWith
+                    fadeOut() + slideOutVertically { it / 2 }
+        },
+        label = "calendar-header-root"
+    ) { isSearch ->
+
+        if (isSearch) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Search tasks & events") },
+                    singleLine = true
+                )
+
+                Spacer(Modifier.width(12.dp))
+
+                TextButton(onClick = onSearchCancel) {
+                    Text("Cancel")
+                }
+            }
+
+        } else {
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+
+                // LEFT
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 12.dp)
+                ) {
+                    AnimatedContent(
+                        targetState = actionItem != null,
+                        transitionSpec = { fadeIn() togetherWith fadeOut() },
+                        label = "header-left"
+                    ) { actionMode ->
+
+                        if (actionMode) {
+                            AppIconButton(
+                                icon = AppIcons.Close,
+                                contentDescription = null,
+                                onClick = onClearAction
+                            )
+                        } else {
+                            AnimatedContent(
+                                targetState = Pair(visibleMonth, isWeekMode),
+                                transitionSpec = {
+                                    (slideInVertically { it / 2 } + fadeIn())
+                                        .togetherWith(
+                                            slideOutVertically { -it / 2 } + fadeOut()
+                                        )
+                                },
+                                label = "month-switch"
+                            ) { (month, week) ->
+                                Column {
+                                    if (!week) {
+                                        Text(
+                                            month.month.name.lowercase()
+                                                .replaceFirstChar { it.uppercase() },
+                                            style = MaterialTheme.typography.displaySmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            month.year.toString(),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    } else {
+                                        Text(
+                                            selectedDate.dayOfWeek.name.lowercase()
+                                                .replaceFirstChar { it.uppercase() },
+                                            style = MaterialTheme.typography.displaySmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            "${selectedDate.dayOfMonth} ${
+                                                selectedDate.month.name.lowercase()
+                                                    .replaceFirstChar { it.uppercase() }
+                                            }",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // RIGHT
+                AnimatedContent(
+                    targetState = actionItem != null,
+                    transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    label = "header-right"
+                ) { actionMode ->
+                    Row {
+                        if (actionMode) {
+                            AppIconButton(
+                                icon = AppIcons.Edit,
+                                contentDescription = null,
+                                onClick = onEditAction
+                            )
+                            AppIconButton(
+                                icon = AppIcons.Delete,
+                                contentDescription = null,
+                                onClick = onDeleteAction
+                            )
+                        } else {
+                            AppIconButton(
+                                icon = AppIcons.Search,
+                                contentDescription = null,
+                                onClick = onSearchClick
+                            )
+                            IconButton(onClick = onToggleWeekMode) {
+                                Icon(
+                                    if (isWeekMode) Icons.Default.Menu
+                                    else Icons.Default.DateRange,
+                                    null
+                                )
+                            }
+                            AppIconButton(
+                                icon = AppIcons.ArrowForward,
+                                contentDescription = null,
+                                onClick = onJumpToToday
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun CalendarEventRow(
+    event: EventEntity,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
+    val bgColor = Color(event.color).copy(alpha = 0.12f)
+    val accentColor = Color(event.color)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(bgColor)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
+        // Accent bar
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .height(42.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(accentColor)
+        )
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+
+            Text(
+                text = event.title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            Text(
+                text = eventTimeLabel(event),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -202,59 +497,39 @@ fun CalendarScreen() {
     var searchMode by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
+    val searchedTasks = remember(searchQuery, tasks) {
+        if (searchQuery.isBlank()) emptyList()
+        else tasks.filter {
+            it.title.contains(searchQuery, ignoreCase = true) ||
+                    (it.note?.contains(searchQuery, ignoreCase = true) == true)
+        }
+    }
+
+    val searchedEvents = remember(searchQuery, events) {
+        if (searchQuery.isBlank()) emptyList()
+        else events.filter {
+            it.title.contains(searchQuery, ignoreCase = true) ||
+                    (it.description?.contains(searchQuery, ignoreCase = true) == true)
+        }
+    }
+
+
 
 
     Scaffold(
         floatingActionButton = {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-
-                AnimatedVisibility(
-                    visible = fabExpanded,
-                    enter = fadeIn() + slideInVertically { it / 2 },
-                    exit = fadeOut() + slideOutVertically { it / 2 }
-                ) {
-                    SmallFloatingActionButton(
-                        onClick = {
-                            fabExpanded = false
-                            showCreateTaskSheet = true
-                        },
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ) {
-                        Icon(Icons.Default.Check, contentDescription = "Create Task")
-                    }
+            MultiFab(
+                fabExpanded = fabExpanded,
+                onFabToggle = { fabExpanded = !fabExpanded },
+                onCreateTask = {
+                    fabExpanded = false
+                    showCreateTaskSheet = true
+                },
+                onCreateEvent = {
+                    fabExpanded = false
+                    showCreateEventSheet = true
                 }
-
-                AnimatedVisibility(
-                    visible = fabExpanded,
-                    enter = fadeIn() + slideInVertically { it / 2 },
-                    exit = fadeOut() + slideOutVertically { it / 2 }
-                ) {
-                    SmallFloatingActionButton(
-                        onClick = {
-                            fabExpanded = false
-                            showCreateEventSheet = true
-                        },
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Create Event")
-                    }
-                }
-
-                FloatingActionButton(
-                    onClick = { fabExpanded = !fabExpanded }
-                ) {
-                    Icon(
-                        imageVector = if (fabExpanded)
-                            Icons.Default.Close
-                        else
-                            Icons.Default.Add,
-                        contentDescription = null
-                    )
-                }
-            }
+            )
         }
 
     ) { padding ->
@@ -270,328 +545,214 @@ fun CalendarScreen() {
         ) {
 
             /* ---------- HEADER ---------- */
-
-
-            AnimatedContent(
-                targetState = searchMode,
-                transitionSpec = {
-                    fadeIn() + slideInVertically { -it / 2 } togetherWith
-                            fadeOut() + slideOutVertically { it / 2 }
+            CalendarTopHeader(
+                searchMode = searchMode,
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it },
+                onSearchCancel = {
+                    searchQuery = ""
+                    searchMode = false
                 },
-                label = "header-root"
-            ) { isSearch ->
 
-                if (isSearch) {
-
-                    // SEARCH HEADER (FULL OVERRIDE)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            modifier = Modifier.weight(1f),
-                            placeholder = { Text("Search tasks & events") },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                focusedBorderColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
-
-                        Spacer(Modifier.width(12.dp))
-
-                        TextButton(
-                            onClick = {
-                                searchQuery = ""
-                                searchMode = false
-                            }
-                        ) {
-                            Text("Cancel")
-                        }
-                    }
-
-                } else {
-
-                    // ORIGINAL HEADER — UNTOUCHED LOGIC
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(end = 12.dp)
-                        ) {
-                            AnimatedContent(
-                                targetState = actionItem != null,
-                                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                                label = "header-left"
-                            ) { actionMode ->
-                                if (actionMode) {
-                                    AppIconButton(
-                                        icon = AppIcons.Close,
-                                        contentDescription = null,
-                                        onClick = { actionItem = null }
-                                    )
-                                } else {
-                                    AnimatedContent(
-                                        targetState = Pair(visibleMonth, isWeekMode),
-                                        transitionSpec = {
-                                            (slideInVertically { it / 2 } + fadeIn())
-                                                .togetherWith(slideOutVertically { -it / 2 } + fadeOut())
-                                        },
-                                        label = "month-switch"
-                                    ) { (month, week) ->
-                                        Column {
-                                            if (!week) {
-                                                Text(
-                                                    month.month.name.lowercase()
-                                                        .replaceFirstChar { it.uppercase() },
-                                                    style = MaterialTheme.typography.displaySmall,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                                Text(
-                                                    month.year.toString(),
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            } else {
-                                                Text(
-                                                    selectedDate.dayOfWeek.name.lowercase()
-                                                        .replaceFirstChar { it.uppercase() },
-                                                    style = MaterialTheme.typography.displaySmall,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                                Text(
-                                                    "${selectedDate.dayOfMonth} ${
-                                                        selectedDate.month.name.lowercase()
-                                                            .replaceFirstChar { it.uppercase() }
-                                                    }",
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        AnimatedContent(
-                            targetState = actionItem != null,
-                            transitionSpec = { fadeIn() togetherWith fadeOut() },
-                            label = "header-right"
-                        ) { actionMode ->
-                            Row {
-                                if (actionMode) {
-                                    AppIconButton(
-                                        icon = AppIcons.Edit,
-                                        contentDescription = null,
-                                        onClick = {}
-                                    )
-                                    AppIconButton(
-                                        icon = AppIcons.Delete,
-                                        contentDescription = null,
-                                        onClick = {
-                                            when (val item = actionItem) {
-                                                is ActionItem.Task -> viewModel.deleteTask(item.value)
-                                                is ActionItem.Event -> viewModel.deleteEvent(item.value)
-                                                null -> {}
-                                            }
-                                            actionItem = null
-                                        }
-                                    )
-                                } else {
-                                    AppIconButton(
-                                        icon = AppIcons.Search,
-                                        contentDescription = null,
-                                        onClick = { searchMode = true }
-                                    )
-                                    IconButton(onClick = { isWeekMode = !isWeekMode }) {
-                                        Icon(
-                                            if (isWeekMode) Icons.Default.Menu
-                                            else Icons.Default.DateRange,
-                                            null
-                                        )
-                                    }
-                                    AppIconButton(
-                                        icon = AppIcons.ArrowForward,
-                                        contentDescription = null,
-                                        onClick = {
-                                            selectedDate = LocalDate.now()
-                                            selectDate(selectedDate)
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-
-            // actual body starts here
-            ToggleableCalendar(
+                actionItem = actionItem,
+                visibleMonth = visibleMonth,
                 selectedDate = selectedDate,
                 isWeekMode = isWeekMode,
-                onDateSelected = {
-                    selectedDate = it
-                    selectDate(it)
+
+                onClearAction = { actionItem = null },
+                onEditAction = { },
+                onDeleteAction = {
+                    when (val item = actionItem) {
+                        is ActionItem.Task -> viewModel.deleteTask(item.value)
+                        is ActionItem.Event -> viewModel.deleteEvent(item.value)
+                        null -> {}
+                    }
+                    actionItem = null
                 },
-                onMonthChanged = { visibleMonth = it },
-                scrollToDate = scrollTarget
+
+                onSearchClick = { searchMode = true },
+                onToggleWeekMode = { isWeekMode = !isWeekMode },
+                onJumpToToday = {
+                    selectedDate = LocalDate.now()
+                    selectDate(selectedDate)
+                }
             )
 
-            Spacer(Modifier.height(12.dp))
+            
 
-            /* ---------- LIST ---------- */
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 1.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-
-                item {
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.background.copy(alpha = 0.95f)
+            Column {
+                /* ---------- SEARCH MODE ---------- */
+                AnimatedVisibility(
+                    visible = searchMode,
+                    enter = fadeIn() + slideInVertically { it / 4 },
+                    exit = fadeOut() + slideOutVertically { it / 4 }
+                ) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 0.dp, vertical = 0.dp)
-                        ) {
-                            Text(
-                                text = "Today",
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
+                        if (searchedEvents.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = "Events",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
 
-                            Spacer(Modifier.height(4.dp))
+                            items(searchedEvents, key = { "se-${it.id}" }) { event ->
+                                CalendarEventRow(
+                                    event = event,
+                                    onClick = { detailItem = DetailItem.Event(event) },
+                                    onLongClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        actionItem = ActionItem.Event(event)
+                                    }
+                                )
+                            }
 
-                            Text(
-                                text = "$eventCount Events, $taskCount Tasks",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+
                         }
-                    }
-                }
 
 
-                if (tasks.isEmpty() && events.isEmpty()) {
-                    item {
-                        Text(
-                            "Nothing scheduled",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                /* ---------- EVENTS ---------- */
+                        if (searchedTasks.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = "Tasks",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
 
-                items(events, key = { "event-${it.id}" }) { event ->
-
-                    val bgColor =
-                        Color(event.color).copy(alpha = 0.12f)
-
-                    val accentColor =
-                        Color(event.color)
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 0.dp, vertical = 6.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(bgColor)
-                            .combinedClickable(
-                                onClick = {
-                                    detailItem = DetailItem.Event(event)
-                                },
-                                onLongClick = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    actionItem = ActionItem.Event(event)
-                                }
-                            )
-                            .padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        // Left accent bar
-                        Box(
-                            modifier = Modifier
-                                .width(4.dp)
-                                .height(42.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(accentColor)
-                        )
-
-                        Spacer(Modifier.width(12.dp))
-
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
-
-                            Text(
-                                text = event.title,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-
-                            Spacer(Modifier.height(4.dp))
-
-                            Text(
-                                text =
-                                    if (event.allDay) {
-                                        "All day"
-                                    } else {
-                                        val zone = ZoneId.systemDefault()
-                                        val start =
-                                            Instant.ofEpochMilli(event.startTime)
-                                                .atZone(zone)
-                                                .toLocalTime()
-                                        val end =
-                                            Instant.ofEpochMilli(event.endTime)
-                                                .atZone(zone)
-                                                .toLocalTime()
-                                        "$start – $end"
+                            items(searchedTasks, key = { it.id }) { task ->
+                                TaskRow(
+                                    task = task,
+                                    onClick = { detailItem = DetailItem.Task(task) },
+                                    onLongClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        actionItem = ActionItem.Task(task)
                                     },
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                                    onToggleComplete = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewModel.completeTask(task.id)
+                                    }
+                                )
+                            }
+                        }
+
+                        if (searchedEvents.isEmpty() && searchedTasks.isEmpty()) {
+                            item {
+                                Text(
+                                    text = "No results found",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
+                /* ---------- NORMAL MODE ---------- */
+                AnimatedVisibility(
+                    visible = !searchMode,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Column {
+                        ToggleableCalendar(
+                            selectedDate = selectedDate,
+                            isWeekMode = isWeekMode,
+                            onDateSelected = {
+                                selectedDate = it
+                                selectDate(it)
+                            },
+                            onMonthChanged = { visibleMonth = it },
+                            scrollToDate = scrollTarget
+                        )
 
 
-                /* ---------- TASKS ---------- */
+                        Spacer(Modifier.height(12.dp))
+
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 1.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+
+                            // heading events
+                            item {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = MaterialTheme.colorScheme.background.copy(alpha = 0.95f)
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 0.dp, vertical = 0.dp)
+                                    ) {
+                                        Text(
+                                            text = "Today",
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            color = MaterialTheme.colorScheme.onBackground
+                                        )
+
+                                        Spacer(Modifier.height(4.dp))
+
+                                        Text(
+                                            text = "$eventCount Events, $taskCount Tasks",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (tasks.isEmpty() && events.isEmpty()) {
+                                item {
+                                    Text(
+                                        "Nothing scheduled",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            /* ---------- EVENTS ---------- */
+
+                            items(events, key = { "event-${it.id}" }) { event ->
+                                CalendarEventRow(
+                                    event = event,
+                                    onClick = {
+                                        detailItem = DetailItem.Event(event)
+                                    },
+                                    onLongClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        actionItem = ActionItem.Event(event)
+                                    }
+                                )
+                            }
+
+                            /* ---------- TASKS ---------- */
+                            items(tasks, key = { it.id }) { task ->
+                                TaskRow(
+                                    task = task,
+                                    onClick = { detailItem = DetailItem.Task(task) },
+                                    onLongClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        actionItem = ActionItem.Task(task)
+                                    },
+                                    onToggleComplete = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        viewModel.completeTask(task.id)
+                                    }
+                                )
+                            }
 
 
-                items(tasks, key = { it.id }) { task ->
-                    TaskRow(
-                        task = task,
-                        onClick = { detailItem = DetailItem.Task(task) },
-                        onLongClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                            actionItem = ActionItem.Task(task)
-                        },
-                        onToggleComplete = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            viewModel.completeTask(task.id)
                         }
-                    )
+                    }
                 }
-
 
             }
+
 
             /* ---------- CREATE TASK ---------- */
 
@@ -656,9 +817,9 @@ fun CalendarScreen() {
             }
 
 
-        }
-    }
-}
+        }  // column ends here
+    }   // Scaffold ends here
+} // CalendarScreen ends here
 
 
 @OptIn(ExperimentalFoundationApi::class)

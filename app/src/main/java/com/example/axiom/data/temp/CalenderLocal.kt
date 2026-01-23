@@ -197,6 +197,29 @@ interface CalendarDao {
     @Delete
     suspend fun deleteEvent(event: EventEntity)
 
+    /* ---------- SEARCH TASKS ---------- */
+    @Query(
+        """
+    SELECT * FROM calendar_tasks
+    WHERE title LIKE '%' || :query || '%'
+       OR note LIKE '%' || :query || '%'
+    ORDER BY date DESC, startTime ASC
+"""
+    )
+    fun searchTasks(query: String): Flow<List<TaskEntity>>
+
+    /* ---------- SEARCH EVENTS ---------- */
+    @Query(
+        """
+    SELECT * FROM calendar_events
+    WHERE title LIKE '%' || :query || '%'
+       OR description LIKE '%' || :query || '%'
+    ORDER BY date DESC, startTime ASC
+"""
+    )
+    fun searchEvents(query: String): Flow<List<EventEntity>>
+
+
     /* ---------- BACKUP ---------- */
 
     @Query("SELECT * FROM calendar_tasks")
@@ -304,6 +327,14 @@ class CalendarRepository(
 
     suspend fun deleteEvent(event: EventEntity) =
         dao.deleteEvent(event)
+
+
+    fun searchTasks(query: String): Flow<List<TaskEntity>> =
+        dao.searchTasks(query)
+
+    fun searchEvents(query: String): Flow<List<EventEntity>> =
+        dao.searchEvents(query)
+
 }
 
 // ViewModel
@@ -313,6 +344,8 @@ class CalendarViewModel(
 ) : ViewModel() {
 
     private val selectedDay = MutableStateFlow<Long?>(null)
+    private val searchQuery = MutableStateFlow("")
+
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val tasks: StateFlow<List<TaskEntity>> =
@@ -338,6 +371,38 @@ class CalendarViewModel(
                 emptyList()
             )
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val searchedTasks: StateFlow<List<TaskEntity>> =
+        searchQuery
+            .flatMapLatest { q ->
+                if (q.isBlank()) flowOf(emptyList())
+                else repo.searchTasks(q)
+            }
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(5_000),
+                emptyList()
+            )
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val searchedEvents: StateFlow<List<EventEntity>> =
+        searchQuery
+            .flatMapLatest { q ->
+                if (q.isBlank()) flowOf(emptyList())
+                else repo.searchEvents(q)
+            }
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(5_000),
+                emptyList()
+            )
+
+
+    fun updateSearchQuery(query: String) {
+        searchQuery.value = query
+    }
+
+    val searchQueryState: StateFlow<String> = searchQuery
     fun selectDay(day: Long) {
         selectedDay.value = day
     }

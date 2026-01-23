@@ -14,7 +14,14 @@ android {
     compileSdk {
         version = release(36)
     }
-
+    signingConfigs {
+        create("release") { // Use create() for Kotlin DSL
+            storeFile = file("axiom-release.keystore")
+            storePassword = "Pizza@123"
+            keyAlias = "axiom"
+            keyPassword = "Pizza@123"
+        }
+    }
     defaultConfig {
         applicationId = "com.example.axiom"
         minSdk = 26
@@ -26,13 +33,26 @@ android {
     }
 
     buildTypes {
-        release {
-            isMinifyEnabled = false
+
+        getByName("release") {
+            // Reference the signing config we created above
+            signingConfig = signingConfigs.getByName("release")
+
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+//        release {
+//            isMinifyEnabled = true
+//            isShrinkResources = true
+//            proguardFiles(
+//                getDefaultProguardFile("proguard-android-optimize.txt"),
+//                "proguard-rules.pro"
+//            )
+//        }
         create("profile") {
             initWith(getByName("release"))
 
