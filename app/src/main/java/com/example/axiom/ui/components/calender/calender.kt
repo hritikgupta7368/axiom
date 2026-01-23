@@ -1,55 +1,51 @@
 package com.example.axiom.ui.components.calender
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
-import com.kizitonwose.calendar.compose.CalendarState
-import com.kizitonwose.calendar.compose.HorizontalCalendar
-import com.kizitonwose.calendar.compose.WeekCalendar
-import com.kizitonwose.calendar.compose.rememberCalendarState
-import com.kizitonwose.calendar.compose.weekcalendar.rememberWeekCalendarState
-import com.kizitonwose.calendar.core.CalendarMonth
-import com.kizitonwose.calendar.core.*
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.launch
-import java.time.LocalDate
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.material3.IconButton
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.DpSize
-import androidx.compose.material3.Icon
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.MaterialTheme
-import java.time.YearMonth
-
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.kizitonwose.calendar.compose.HorizontalCalendar
+import com.kizitonwose.calendar.compose.WeekCalendar
+import com.kizitonwose.calendar.compose.rememberCalendarState
+import com.kizitonwose.calendar.compose.weekcalendar.rememberWeekCalendarState
+import com.kizitonwose.calendar.core.DayPosition
+import com.kizitonwose.calendar.core.WeekDayPosition
+import com.kizitonwose.calendar.core.atStartOfMonth
+import com.kizitonwose.calendar.core.daysOfWeek
+import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
+import com.kizitonwose.calendar.core.yearMonth
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
-
-
-
+import java.time.LocalDate
+import java.time.YearMonth
 
 
 @Composable
@@ -58,9 +54,13 @@ fun ToggleableCalendar(
     isWeekMode: Boolean,
     onDateSelected: (LocalDate) -> Unit,
     onMonthChanged: (YearMonth) -> Unit,
+    onMonthSettled: (YearMonth) -> Unit,
     scrollToDate: LocalDate?
 ) {
+    val today = remember { LocalDate.now() }
+
     val currentMonth = remember(selectedDate) { selectedDate.yearMonth }
+
     val startMonth = currentMonth.minusMonths(24)
     val endMonth = currentMonth.plusMonths(24)
 
@@ -88,13 +88,15 @@ fun ToggleableCalendar(
 
     LaunchedEffect(monthState) {
         snapshotFlow {
-            monthState.isScrollInProgress to monthState.firstVisibleMonth
+            monthState.isScrollInProgress to monthState.firstVisibleMonth.yearMonth
         }
             .filter { (scrolling, _) -> !scrolling }
-            .map { (_, month) -> month.yearMonth }
+            .map { (_, month) -> month }
+
             .distinctUntilChanged()
-            .collect { yearMonth ->
-                onMonthChanged(yearMonth)
+            .collect { settledMonth ->
+                onMonthChanged(settledMonth)
+                onMonthSettled(settledMonth) // ⬅️ important
             }
     }
 
@@ -141,6 +143,7 @@ fun ToggleableCalendar(
                     dayContent = { day ->
                         DayCell(
                             date = day.date,
+                            today = today,
                             selected = day.date == selectedDate,
                             enabled = day.position == DayPosition.MonthDate,
                             onClick = onDateSelected,
@@ -154,6 +157,7 @@ fun ToggleableCalendar(
                     dayContent = { day ->
                         DayCell(
                             date = day.date,
+                            today = today,
                             selected = day.date == selectedDate,
                             enabled = day.position == WeekDayPosition.RangeDate,
                             onClick = onDateSelected,
@@ -165,7 +169,6 @@ fun ToggleableCalendar(
         }
 
 
-
     }
 }
 
@@ -174,6 +177,7 @@ fun ToggleableCalendar(
 @Composable
 private fun DayCell(
     date: LocalDate,
+    today: LocalDate,
     selected: Boolean,
     enabled: Boolean,
     onClick: (LocalDate) -> Unit,
@@ -201,9 +205,17 @@ private fun DayCell(
             style = MaterialTheme.typography.bodyMedium, // ↓ smaller
             color = textColor
         )
+        if (date == today) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .align(Alignment.BottomCenter)
+                    .offset(y = (-6).dp)
+                    .background(Color.Red, CircleShape)
+            )
+        }
     }
 }
-
 
 
 @Composable

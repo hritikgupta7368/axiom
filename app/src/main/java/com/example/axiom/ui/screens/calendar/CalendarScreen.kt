@@ -456,6 +456,8 @@ fun CalendarEventRow(
 fun CalendarScreen() {
     val haptic = LocalHapticFeedback.current
     val context = LocalContext.current
+    val today = remember { LocalDate.now() }
+
 
     val viewModel: CalendarViewModel = viewModel(
         factory = CalendarViewModelFactory(context)
@@ -578,7 +580,7 @@ fun CalendarScreen() {
                 }
             )
 
-            
+
 
             Column {
                 /* ---------- SEARCH MODE ---------- */
@@ -666,6 +668,21 @@ fun CalendarScreen() {
                                 selectDate(it)
                             },
                             onMonthChanged = { visibleMonth = it },
+                            onMonthSettled = { month ->
+
+                                val newSelectedDate =
+                                    if (month == today.yearMonth) {
+                                        today
+                                    } else {
+                                        month.atDay(1)
+                                    }
+
+                                // prevent redundant updates
+                                if (newSelectedDate != selectedDate) {
+                                    selectedDate = newSelectedDate
+                                    selectDate(newSelectedDate)
+                                }
+                            },
                             scrollToDate = scrollTarget
                         )
 
