@@ -54,7 +54,7 @@ import com.example.axiom.ui.screens.finances.purchase.CreatePurchaseScreen
 import com.example.axiom.ui.screens.finances.purchase.PurchasePreviewScreen
 import com.example.axiom.ui.screens.finances.purchase.PurchaseScreen
 import com.example.axiom.ui.screens.home.HomeScreen
-import com.example.axiom.ui.screens.notes.CreateNoteScreen
+import com.example.axiom.ui.screens.notes.NoteEditorScreen
 import com.example.axiom.ui.screens.notes.NotesScreen
 import com.example.axiom.ui.screens.profile.ProfileScreen
 import com.example.axiom.ui.screens.settings.SettingsScreen
@@ -100,7 +100,10 @@ sealed class Route(val route: String) {
     data object Vault : Route("vault")
 
     data object Notes : Route("notes")
-    data object CreateNote : Route("create_note")
+
+    data object NoteEditor : Route("note/{noteId}") {
+        fun createRoute(noteId: Long) = "note/$noteId"
+    }
 
 
 }
@@ -263,11 +266,29 @@ fun RootScaffold(navController: NavHostController) {
                     VaultScreen(onBack = { navController.popBackStack() })
                 }
                 composable(Route.Notes.route) {
-                    NotesScreen(onBack = { navController.popBackStack() })
+                    NotesScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenNote = { noteId ->
+                            navController.navigate(Route.NoteEditor.createRoute(noteId))
+
+                        }
+
+                    )
                 }
-                composable(Route.CreateNote.route) {
-                    CreateNoteScreen(onBack = { navController.popBackStack() })
+                composable(
+                    route = Route.NoteEditor.route,
+                    arguments = listOf(
+                        navArgument("noteId") { type = NavType.LongType }
+                    )
+                ) { backStackEntry ->
+                    val noteId = backStackEntry.arguments!!.getLong("noteId")
+
+                    NoteEditorScreen(
+                        noteId = noteId,
+                        onBack = { navController.popBackStack() }
+                    )
                 }
+
                 // Routes without bottom nav bar
                 composable(Route.Profile.route) { ProfileScreen(onBack = { navController.popBackStack() }) }
                 composable(Route.Invoices.route) {

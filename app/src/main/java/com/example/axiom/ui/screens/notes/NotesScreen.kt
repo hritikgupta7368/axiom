@@ -1,11 +1,22 @@
 package com.example.axiom.ui.screens.notes
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
@@ -13,26 +24,54 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.text.SimpleDateFormat
-import java.util.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.axiom.data.notes.NoteEntity
+import com.example.axiom.data.notes.NotesViewModel
+import com.example.axiom.data.notes.NotesViewModelFactory
+import kotlinx.coroutines.launch
 
 // Color Definitions
 private val NeonPink = Color(0xFFFF00CC)
@@ -46,9 +85,16 @@ private val CardGray = Color(0xFF1A1A1A)
 
 // Data Models
 sealed class NoteType {
-    data class Text(val content: String, val tags: List<String> = emptyList(), val category: String? = null) : NoteType()
+    data class Text(
+        val content: String,
+        val tags: List<String> = emptyList(),
+        val category: String? = null
+    ) : NoteType()
+
     data class Checklist(val title: String, val items: List<ChecklistItem>) : NoteType()
-    data class Design(val title: String, val description: String, val colors: List<Color>) : NoteType()
+    data class Design(val title: String, val description: String, val colors: List<Color>) :
+        NoteType()
+
     data class Secure(val title: String, val keys: List<String>) : NoteType()
     data class Event(val title: String, val time: String, val description: String) : NoteType()
 }
@@ -120,13 +166,104 @@ private fun getDummyNotes(): List<Note> = listOf(
 )
 
 @Composable
-fun NotesScreen(
-    onBack: () -> Unit
+private fun NoteListItem(
+    note: NoteEntity,
+    onClick: () -> Unit
 ) {
-    var notes by remember { mutableStateOf(getDummyNotes()) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF111111))
+            .clickable(onClick = onClick)
+            .padding(14.dp)
+    ) {
+        Text(
+            text = note.title,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Spacer(Modifier.height(6.dp))
+
+        Text(
+            text = note.content,
+            color = Color.Gray,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            fontSize = 13.sp
+        )
+    }
+}
+
+@Composable
+fun NoteCard(
+    note: NoteEntity,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF141414)
+        ),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+        ) {
+
+            // TITLE (optional height impact)
+            if (note.title.isNotBlank()) {
+                Text(
+                    text = note.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(Modifier.height(8.dp))
+            }
+
+            // CONTENT (this drives height)
+            Text(
+                text = note.content,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFFBDBDBD),
+                lineHeight = 16.sp,
+                maxLines = 10,              // KEY: variable but bounded
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+
+@Composable
+fun NotesScreen(
+    onBack: () -> Unit,
+    onOpenNote: (Long) -> Unit,
+) {
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val viewModel: NotesViewModel = viewModel(
+        factory = NotesViewModelFactory(context)
+    )
+
+    val notes by viewModel.notes.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
-    var showAddDialog by remember { mutableStateOf(false) }
-    var selectedNoteType by remember { mutableStateOf<String?>(null) }
+
+
+
+
 
     Box(
         modifier = Modifier
@@ -163,85 +300,145 @@ fun NotesScreen(
             )
 
             // Notes Grid
+//            LazyVerticalStaggeredGrid(
+//                columns = StaggeredGridCells.Fixed(2),
+//                contentPadding = PaddingValues(16.dp),
+//                horizontalArrangement = Arrangement.spacedBy(12.dp),
+//                verticalItemSpacing = 12.dp,
+//                modifier = Modifier
+//                    .fillMaxSize()
+//                    .padding(bottom = 16.dp)
+//            ) {
+//                items(notes.filter {
+//                    if (searchQuery.isEmpty()) true
+//                    else when (val type = it.type) {
+//                        is NoteType.Text -> type.content.contains(searchQuery, ignoreCase = true) ||
+//                                type.tags.any { tag ->
+//                                    tag.contains(
+//                                        searchQuery,
+//                                        ignoreCase = true
+//                                    )
+//                                }
+//
+//                        is NoteType.Checklist -> type.title.contains(
+//                            searchQuery,
+//                            ignoreCase = true
+//                        ) ||
+//                                type.items.any { item ->
+//                                    item.text.contains(
+//                                        searchQuery,
+//                                        ignoreCase = true
+//                                    )
+//                                }
+//
+//                        is NoteType.Design -> type.title.contains(searchQuery, ignoreCase = true)
+//                        is NoteType.Secure -> type.title.contains(searchQuery, ignoreCase = true)
+//                        is NoteType.Event -> type.title.contains(searchQuery, ignoreCase = true) ||
+//                                type.description.contains(searchQuery, ignoreCase = true)
+//                    }
+//                }) { note ->
+//                    NoteCard(
+//                        note = note,
+//                        onClick = { /* Handle note click */ },
+//                        onToggleChecklistItem = { itemIndex ->
+//                            notes = notes.map {
+//                                if (it.id == note.id && it.type is NoteType.Checklist) {
+//                                    val checklist = it.type
+//                                    val updatedItems = checklist.items.mapIndexed { index, item ->
+//                                        if (index == itemIndex) item.copy(isChecked = !item.isChecked)
+//                                        else item
+//                                    }
+//                                    it.copy(type = checklist.copy(items = updatedItems))
+//                                } else it
+//                            }
+//                        }
+//                    )
+//                }
+//            }
+//            LazyColumn(
+//                verticalArrangement = Arrangement.spacedBy(12.dp)
+//            ) {
+//                items(
+//                    items = notes,
+//                    key = { it.id }
+//                ) { note ->
+//                    NoteListItem(
+//                        note = note,
+//                        onClick = { onOpenNote(note.id) }
+//                    )
+//                }
+//            }
+
             LazyVerticalStaggeredGrid(
                 columns = StaggeredGridCells.Fixed(2),
                 contentPadding = PaddingValues(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalItemSpacing = 12.dp,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = 16.dp)
+                modifier = Modifier.fillMaxSize()
             ) {
-                items(notes.filter {
-                    if (searchQuery.isEmpty()) true
-                    else when (val type = it.type) {
-                        is NoteType.Text -> type.content.contains(searchQuery, ignoreCase = true) ||
-                                type.tags.any { tag -> tag.contains(searchQuery, ignoreCase = true) }
-                        is NoteType.Checklist -> type.title.contains(searchQuery, ignoreCase = true) ||
-                                type.items.any { item -> item.text.contains(searchQuery, ignoreCase = true) }
-                        is NoteType.Design -> type.title.contains(searchQuery, ignoreCase = true)
-                        is NoteType.Secure -> type.title.contains(searchQuery, ignoreCase = true)
-                        is NoteType.Event -> type.title.contains(searchQuery, ignoreCase = true) ||
-                                type.description.contains(searchQuery, ignoreCase = true)
-                    }
-                }) { note ->
+                items(
+                    items = notes,
+                    key = { it.id }
+                ) { note ->
                     NoteCard(
                         note = note,
-                        onClick = { /* Handle note click */ },
-                        onToggleChecklistItem = { itemIndex ->
-                            notes = notes.map {
-                                if (it.id == note.id && it.type is NoteType.Checklist) {
-                                    val checklist = it.type
-                                    val updatedItems = checklist.items.mapIndexed { index, item ->
-                                        if (index == itemIndex) item.copy(isChecked = !item.isChecked)
-                                        else item
-                                    }
-                                    it.copy(type = checklist.copy(items = updatedItems))
-                                } else it
-                            }
-                        }
+                        onClick = { onOpenNote(note.id) }
                     )
                 }
             }
-        }
 
-        // FAB
+
+        }
         FloatingActionButton(
-            onClick = { showAddDialog = true },
+            onClick = {
+                scope.launch {
+                    val noteId = viewModel.createNewNote()
+                    onOpenNote(noteId)
+                }
+            },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 24.dp, bottom = 24.dp)
-                .size(56.dp),
-            containerColor = Color.Transparent,
-            elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp)
+                .padding(24.dp)
         ) {
-
-            val rotation = 0f
-
-
-
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(NeonPink, NeonPurple)
-                        ),
-                        shape = CircleShape
-                    )
-                    .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add Note",
-                    tint = Color.White,
-                    modifier = Modifier
-                        .size(32.dp)
-                        .rotate(rotation)
-                )
-            }
+            Icon(Icons.Default.Add, contentDescription = null)
         }
+        // FAB
+//        FloatingActionButton(
+//            onClick = { showAddDialog = true },
+//            modifier = Modifier
+//                .align(Alignment.BottomEnd)
+//                .padding(end = 24.dp, bottom = 24.dp)
+//                .size(56.dp),
+//            containerColor = Color.Transparent,
+//            elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp)
+//        ) {
+//
+//            val rotation = 0f
+//
+//
+//
+//            Box(
+//                modifier = Modifier
+//                    .size(56.dp)
+//                    .background(
+//                        brush = Brush.linearGradient(
+//                            colors = listOf(NeonPink, NeonPurple)
+//                        ),
+//                        shape = CircleShape
+//                    )
+//                    .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                Icon(
+//                    imageVector = Icons.Default.Add,
+//                    contentDescription = "Add Note",
+//                    tint = Color.White,
+//                    modifier = Modifier
+//                        .size(32.dp)
+//                        .rotate(rotation)
+//                )
+//            }
+//        }
 
         // Add Note Dialog
 //        if (showAddDialog) {
@@ -265,15 +462,15 @@ fun NotesScreen(
 //                }
 //            )
 //        }
-        if (showAddDialog) {
-            AddNoteDialog(
-                onDismiss = { showAddDialog = false },
-                onAddNote = { newNote -> // The lambda now directly receives the fully constructed 'newNote'
-                    notes = listOf(newNote) + notes
-                    showAddDialog = false
-                }
-            )
-        }
+//        if (showAddDialog) {
+//            AddNoteDialog(
+//                onDismiss = { showAddDialog = false },
+//                onAddNote = { newNote -> // The lambda now directly receives the fully constructed 'newNote'
+//                    notes = listOf(newNote) + notes
+//                    showAddDialog = false
+//                }
+//            )
+//        }
 
 
     }
@@ -729,7 +926,11 @@ private fun AddNoteDialog(
                     NoteTypeButton("Text", Icons.Default.Create, selectedType == "Text") {
                         selectedType = "Text"
                     }
-                    NoteTypeButton("Checklist", Icons.Default.CheckCircle, selectedType == "Checklist") {
+                    NoteTypeButton(
+                        "Checklist",
+                        Icons.Default.CheckCircle,
+                        selectedType == "Checklist"
+                    ) {
                         selectedType = "Checklist"
                     }
                 }
@@ -751,6 +952,7 @@ private fun AddNoteDialog(
                             minLines = 4
                         )
                     }
+
                     "Checklist" -> {
                         OutlinedTextField(
                             value = checklistTitle,
@@ -830,6 +1032,7 @@ private fun AddNoteDialog(
                         "Text" -> if (textContent.isNotEmpty()) {
                             NoteType.Text(content = textContent)
                         } else null
+
                         "Checklist" -> if (checklistTitle.isNotEmpty() && checklistItems.any { it.isNotEmpty() }) {
                             NoteType.Checklist(
                                 title = checklistTitle,
@@ -838,13 +1041,15 @@ private fun AddNoteDialog(
                                     .map { ChecklistItem(it, false) }
                             )
                         } else null
+
                         else -> null
                     }
 
                     noteType?.let {
                         // Create a full Note object before passing it
                         val newNote = Note(
-                            id = System.currentTimeMillis().toString(), // A simple way to generate a unique ID
+                            id = System.currentTimeMillis()
+                                .toString(), // A simple way to generate a unique ID
                             type = it,
                             borderColor = Color.Gray, // Provide a default color,
                             timestamp = System.currentTimeMillis()

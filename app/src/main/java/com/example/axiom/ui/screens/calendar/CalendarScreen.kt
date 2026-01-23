@@ -146,9 +146,9 @@ private fun priorityColor(priority: Priority, completed: Boolean): Color {
     if (completed) return MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f)
 
     return when (priority) {
-        Priority.HIGH -> MaterialTheme.colorScheme.errorContainer
+        Priority.HIGH -> Color(0xFF00FFFF)
         Priority.MEDIUM -> MaterialTheme.colorScheme.primary
-        Priority.LOW -> Color(0xFF49454F)
+        Priority.LOW -> Color(0xFFFF9800)
         Priority.CRITICAL -> MaterialTheme.colorScheme.error
 
     }
@@ -470,6 +470,9 @@ fun CalendarScreen() {
 
     val tasks by viewModel.tasks.collectAsState()
     val events by viewModel.events.collectAsState()
+    val searchedTasks by viewModel.searchedTasks.collectAsState()
+    val searchedEvents by viewModel.searchedEvents.collectAsState()
+    val searchQuery by viewModel.searchQueryState.collectAsState()
 
 
     var actionItem by remember { mutableStateOf<ActionItem?>(null) }
@@ -497,25 +500,6 @@ fun CalendarScreen() {
 
 
     var searchMode by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-
-    val searchedTasks = remember(searchQuery, tasks) {
-        if (searchQuery.isBlank()) emptyList()
-        else tasks.filter {
-            it.title.contains(searchQuery, ignoreCase = true) ||
-                    (it.note?.contains(searchQuery, ignoreCase = true) == true)
-        }
-    }
-
-    val searchedEvents = remember(searchQuery, events) {
-        if (searchQuery.isBlank()) emptyList()
-        else events.filter {
-            it.title.contains(searchQuery, ignoreCase = true) ||
-                    (it.description?.contains(searchQuery, ignoreCase = true) == true)
-        }
-    }
-
-
 
 
     Scaffold(
@@ -550,12 +534,11 @@ fun CalendarScreen() {
             CalendarTopHeader(
                 searchMode = searchMode,
                 searchQuery = searchQuery,
-                onSearchQueryChange = { searchQuery = it },
+                onSearchQueryChange = viewModel::updateSearchQuery,
                 onSearchCancel = {
-                    searchQuery = ""
+                    viewModel.updateSearchQuery("")
                     searchMode = false
                 },
-
                 actionItem = actionItem,
                 visibleMonth = visibleMonth,
                 selectedDate = selectedDate,
@@ -707,30 +690,33 @@ fun CalendarScreen() {
                                             .padding(horizontal = 0.dp, vertical = 0.dp)
                                     ) {
                                         Text(
-                                            text = "Today",
+                                            text = if (selectedDate == today) "Today" else "Upcoming",
                                             style = MaterialTheme.typography.headlineMedium,
                                             color = MaterialTheme.colorScheme.onBackground
                                         )
 
                                         Spacer(Modifier.height(4.dp))
 
-                                        Text(
-                                            text = "$eventCount Events, $taskCount Tasks",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+
                                     }
                                 }
                             }
 
                             if (tasks.isEmpty() && events.isEmpty()) {
                                 item {
-                                    Text(
-                                        "Nothing scheduled",
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Box(
+                                        modifier = Modifier.fillParentMaxWidth(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Nothing scheduled",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(top = 32.dp) // Adjust padding value as needed
+                                        )
+                                    }
                                 }
                             }
+
 
                             /* ---------- EVENTS ---------- */
 
