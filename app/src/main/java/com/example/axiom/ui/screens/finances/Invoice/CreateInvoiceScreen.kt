@@ -4,8 +4,21 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -16,16 +29,45 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.AccountBox
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.ShoppingCart
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,30 +80,27 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
-import com.example.axiom.data.finances.domain.*
+import com.example.axiom.data.finances.CreateInvoiceViewModel
+import com.example.axiom.data.finances.CreateInvoiceViewModelFactory
+import com.example.axiom.data.finances.CustomerFirm
+import com.example.axiom.data.finances.GstBreakdown
+import com.example.axiom.data.finances.Invoice
+import com.example.axiom.data.finances.InvoiceItem
+import com.example.axiom.data.finances.InvoiceStatus
+import com.example.axiom.data.finances.Product
+import com.example.axiom.data.finances.SupplyType
 import com.example.axiom.data.finances.dataStore.FinancePreferences
-import com.example.axiom.ui.screens.finances.FinancesViewModel
-import com.example.axiom.ui.screens.finances.FinancesViewModelFactory
-import kotlinx.coroutines.launch
+import com.example.axiom.data.finances.dataStore.SelectedSellerPref
+import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
+import com.example.axiom.ui.utils.numberToWords
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material3.ListItem
-import androidx.compose.ui.text.style.TextAlign
-import com.example.axiom.MainActivity
-import com.example.axiom.data.finances.dataStore.SelectedSellerPref
-
-import com.example.axiom.ui.utils.NetworkMonitor
-import com.example.axiom.ui.utils.numberToWords
-import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 // --- Colors from your React Native Design ---
@@ -126,20 +165,19 @@ fun resolveSupplyType(
 @Composable
 fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) {
     val context = LocalContext.current
-    val viewModel: FinancesViewModel = viewModel(factory = FinancesViewModelFactory())
 
+    val viewModel: CreateInvoiceViewModel = viewModel(
+        factory = CreateInvoiceViewModelFactory(context)
+    )
+    val customers by viewModel.customers.collectAsState(initial = emptyList())
+    val products by viewModel.products.collectAsState(initial = emptyList())
 
-    val networkMonitor = remember { NetworkMonitor(context) }
-    val isOnline by networkMonitor.isOnline.collectAsState()
     val invoiceId = remember { UUID.randomUUID().toString() }
-
-    val isCreating by viewModel.isCreatingInvoice.collectAsState()
 
 
     // DataStore Integration
     val financePreferences = remember { FinancePreferences(context) }
     val lastInvoiceNo by financePreferences.lastInvoiceNumber.collectAsState(initial = 0L)
-
 
 
     var invoiceNo by remember { mutableStateOf("") }
@@ -165,16 +203,12 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
 
 
     val scope = rememberCoroutineScope()
-    
-    // Fetched Data
-    val customers by viewModel.customerFirms.collectAsStateWithLifecycle()
-    val products by viewModel.products.collectAsStateWithLifecycle()
+
 
     // State
 
     var isInvoiceNoEditable by remember { mutableStateOf(false) }
     var isRoundOffEnabled by remember { mutableStateOf(true) }
-
 
 
     // Date Picker State
@@ -189,9 +223,9 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
 
 
     var selectedCustomer by remember { mutableStateOf<CustomerFirm?>(null) }
-    
+
     // Placeholder logic for supplyType until seller stateCode is fully integrated
-    val supplyType = resolveSupplyType(sellerStateCode , selectedCustomer?.stateCode)
+    val supplyType = resolveSupplyType(sellerStateCode, selectedCustomer?.stateCode)
 
 
     var shippingCharges by remember { mutableStateOf(0.0) }
@@ -215,13 +249,13 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
 
     val totalBeforeTax = taxableAmount
     val totalWithTax = totalBeforeTax + gst.totalTax
-    
+
     val totalAmount = if (isRoundOffEnabled) {
         totalWithTax.roundToInt().toDouble()
     } else {
         totalWithTax
     }
-    
+
     val roundOffDifference = totalAmount - totalWithTax
 
     val invoiceStatus = InvoiceStatus.FINAL
@@ -249,40 +283,33 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
             amountInWords = numberToWords(totalAmount),
             status = invoiceStatus
         )
+        viewModel.insertInvoice(invoice)
 
-        // OFFLINE CASE
-        if (!isOnline) {
-            Toast.makeText(
-                context,
-                "Offline. Invoice will sync when internet is available.",
-                Toast.LENGTH_LONG
-            ).show()
-        }
 
         // SINGLE SOURCE OF TRUTH: always create
-        viewModel.addInvoice(invoice) {
-            scope.launch {
-                // increment ONLY if auto-suggested invoice number was used
-                val autoNumberUsed =
-                    !userEditedInvoiceNo && invoiceNo == (lastInvoiceNo + 1).toString()
-
-                if (autoNumberUsed) {
-                    financePreferences.saveLastInvoiceNumber(lastInvoiceNo + 1)
-                }
-
-                Toast.makeText(
-                    context,
-                    "Invoice generated successfully",
-                    Toast.LENGTH_LONG
-                ).show()
-
-                delay(400) // UX stability
-                invoiceNo = ""
-                suggestedInvoiceNo = ""
-                userEditedInvoiceNo = false
-                onInvoicePreview(invoiceId)
-            }
-        }
+//         {
+//            scope.launch {
+//                // increment ONLY if auto-suggested invoice number was used
+//                val autoNumberUsed =
+//                    !userEditedInvoiceNo && invoiceNo == (lastInvoiceNo + 1).toString()
+//
+//                if (autoNumberUsed) {
+//                    financePreferences.saveLastInvoiceNumber(lastInvoiceNo + 1)
+//                }
+//
+//                Toast.makeText(
+//                    context,
+//                    "Invoice generated successfully",
+//                    Toast.LENGTH_LONG
+//                ).show()
+//
+//                delay(400) // UX stability
+//                invoiceNo = ""
+//                suggestedInvoiceNo = ""
+//                userEditedInvoiceNo = false
+//                onInvoicePreview(invoiceId)
+//            }
+//        }
 
     }
 
@@ -291,10 +318,20 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
         containerColor = BgDark,
         topBar = {
             TopAppBar(
-                title = { Text("New GST Invoice", color = TextWhite, fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        "New GST Invoice",
+                        color = TextWhite,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextWhite)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = TextWhite
+                        )
                     }
                 },
                 actions = {
@@ -308,8 +345,7 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
         bottomBar = {
             BottomActionSection(
                 totalAmount = "₹ ${String.format("%.2f", totalAmount)}",
-                enabled = !isCreating,
-                onGenerate = {generateInvoice()}
+                onGenerate = { generateInvoice() }
             )
         }
     ) { paddingValues ->
@@ -336,7 +372,12 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                         enabled = isInvoiceNoEditable,
                         trailingIcon = {
                             IconButton(onClick = { isInvoiceNoEditable = !isInvoiceNoEditable }) {
-                                Icon(Icons.Outlined.Edit, contentDescription = null, tint = TextGray, modifier = Modifier.size(20.dp))
+                                Icon(
+                                    Icons.Outlined.Edit,
+                                    contentDescription = null,
+                                    tint = TextGray,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
                     )
@@ -345,26 +386,56 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                 // --- Date & Customer Row ---
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     // Date
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Date", color = TextGray, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "Date",
+                            color = TextGray,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                         CustomTextField(
                             value = formattedDate,
                             onValueChange = {},
                             enabled = false, // Read only, click triggers picker
-                            trailingIcon = { Icon(Icons.Default.DateRange, null, tint = TextGray, modifier = Modifier.size(18.dp)) },
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.DateRange,
+                                    null,
+                                    tint = TextGray,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
                             onClick = { showDatePicker = true }
                         )
                     }
 
                     // Customer
-                    Column(modifier = Modifier.weight(1.2f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Customer", color = TextGray, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Column(
+                        modifier = Modifier.weight(1.2f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            "Customer",
+                            color = TextGray,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                         CustomTextField(
                             value = selectedCustomer?.name ?: "",
                             onValueChange = {},
                             placeholder = "Select Customer",
                             enabled = false,
-                            trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, null, tint = TextGray, modifier = Modifier.size(22.dp)) },
+                            trailingIcon = {
+                                Icon(
+                                    Icons.Default.KeyboardArrowDown,
+                                    null,
+                                    tint = TextGray,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            },
                             onClick = { activeSheet = SheetType.CUSTOMER }
                         )
                     }
@@ -379,8 +450,16 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Products", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-                        Badge(containerColor = PrimaryBlue.copy(alpha = 0.2f), contentColor = PrimaryBlue) {
+                        Text(
+                            "Products",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextWhite
+                        )
+                        Badge(
+                            containerColor = PrimaryBlue.copy(alpha = 0.2f),
+                            contentColor = PrimaryBlue
+                        ) {
                             Text("${invoiceItems.size} Items", modifier = Modifier.padding(4.dp))
                         }
                     }
@@ -388,7 +467,7 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                     // Product List
                     invoiceItems.forEachIndexed { index, item ->
                         ProductItemCard(
-                            item = item, 
+                            item = item,
                             onDelete = { invoiceItems.remove(item) },
 //                            onQtyChange = { newQty ->
 //                                if (newQty > 0) {
@@ -420,15 +499,31 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, Color(0xFF475569), RoundedCornerShape(12.dp)) // Dashed border simulated
+                            .border(
+                                1.dp,
+                                Color(0xFF475569),
+                                RoundedCornerShape(12.dp)
+                            ) // Dashed border simulated
                             .clip(RoundedCornerShape(12.dp))
                             .clickable { activeSheet = SheetType.PRODUCT }
                             .padding(12.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.Add, null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
-                            Text("Add Product", color = PrimaryBlue, fontWeight = FontWeight.SemiBold)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                null,
+                                tint = PrimaryBlue,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                "Add Product",
+                                color = PrimaryBlue,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
@@ -437,30 +532,47 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                 SectionGroup(title = "Additional Charges") {
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         // Delivery
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             Text("Delivery", color = TextGray, fontSize = 12.sp)
                             CustomTextField(
-                                value =if (shippingCharges == 0.0) "" else shippingCharges.toString(),
+                                value = if (shippingCharges == 0.0) "" else shippingCharges.toString(),
                                 onValueChange = { shippingCharges = it.toDoubleOrNull() ?: 0.0 },
                                 placeholder = "0.00",
-                                prefix = { Text("₹ ", color = Color(0xFF64748B), fontSize = 14.sp) },
+                                prefix = {
+                                    Text(
+                                        "₹ ",
+                                        color = Color(0xFF64748B),
+                                        fontSize = 14.sp
+                                    )
+                                },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                             )
                         }
                         // Extra Charges
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             Text("Extra Charges", color = TextGray, fontSize = 12.sp)
                             CustomTextField(
                                 value = "",
                                 onValueChange = {},
                                 placeholder = "0.00",
-                                prefix = { Text("Rs ", color = Color(0xFF64748B), fontSize = 14.sp) },
+                                prefix = {
+                                    Text(
+                                        "Rs ",
+                                        color = Color(0xFF64748B),
+                                        fontSize = 14.sp
+                                    )
+                                },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                             )
                         }
                     }
                 }
-
 
 
                 // --- Tax Breakdown ---
@@ -527,7 +639,7 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                         }
 
                         HorizontalDivider(color = BorderDark)
-                        
+
                         // Round Off Toggle
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -541,8 +653,12 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 if (isRoundOffEnabled && roundOffDifference != 0.0) {
-                                     Text(
-                                        text = "${if (roundOffDifference > 0) "+" else ""}${"%.2f".format(roundOffDifference)}",
+                                    Text(
+                                        text = "${if (roundOffDifference > 0) "+" else ""}${
+                                            "%.2f".format(
+                                                roundOffDifference
+                                            )
+                                        }",
                                         color = if (roundOffDifference != 0.0) PrimaryBlue else TextGray,
                                         fontSize = 12.sp,
                                         modifier = Modifier.padding(end = 8.dp)
@@ -582,7 +698,11 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                 ) {
                     SettingItem(icon = Icons.Outlined.AccountBox, title = "Bank Details")
                     HorizontalDivider(color = BorderDark)
-                    SettingItem(icon = Icons.Outlined.Edit, title = "Select Signature", badge = "Selected")
+                    SettingItem(
+                        icon = Icons.Outlined.Edit,
+                        title = "Select Signature",
+                        badge = "Selected"
+                    )
                     HorizontalDivider(color = BorderDark)
                     SettingItem(icon = Icons.Outlined.Info, title = "Notes & Terms")
                     HorizontalDivider(color = BorderDark)
@@ -612,7 +732,7 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
         showSheet = activeSheet != SheetType.NONE,
         onDismiss = { activeSheet = SheetType.NONE }
     ) {
-        when(activeSheet) {
+        when (activeSheet) {
             SheetType.CUSTOMER -> {
                 SelectionSheetContent(
                     title = "Select Customer",
@@ -628,6 +748,7 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                 )
 
             }
+
             SheetType.PRODUCT -> {
                 SelectionSheetContent(
                     title = "Select Product",
@@ -654,6 +775,7 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                 )
 
             }
+
             else -> {}
         }
     }
@@ -798,13 +920,16 @@ fun ProductCard(product: Product) {
 }
 
 
-
-
-
 @Composable
 fun SectionGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, color = TextGray, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 4.dp))
+        Text(
+            title,
+            color = TextGray,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(start = 4.dp)
+        )
         content()
     }
 }
@@ -843,7 +968,11 @@ fun CustomTextField(
             value = value,
             onValueChange = onValueChange,
             enabled = enabled && onClick == null, // Disable editing if it's a click-action field
-            textStyle = TextStyle(color = TextWhite, fontSize = 16.sp, fontWeight = FontWeight.Medium),
+            textStyle = TextStyle(
+                color = TextWhite,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium
+            ),
             singleLine = true,
             keyboardOptions = keyboardOptions,
             modifier = Modifier.weight(1f),
@@ -863,7 +992,12 @@ fun CustomTextField(
 }
 
 @Composable
-fun ProductItemCard(item: InvoiceItem, onDelete: () -> Unit, onQtyChange: (Double) -> Unit , onPriceChange: (Double) -> Unit) {
+fun ProductItemCard(
+    item: InvoiceItem,
+    onDelete: () -> Unit,
+    onQtyChange: (Double) -> Unit,
+    onPriceChange: (Double) -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -908,8 +1042,16 @@ fun ProductItemCard(item: InvoiceItem, onDelete: () -> Unit, onQtyChange: (Doubl
         }
 
         // Price & Qty
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("₹${"%.2f".format(item.total)}", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                "₹${"%.2f".format(item.total)}",
+                color = TextWhite,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
 
 
             QuantityEditor(
@@ -960,15 +1102,15 @@ fun TaxRow(label: String, value: String, isTotal: Boolean = false) {
     ) {
         Text(
             text = label,
-            color = if(isTotal) Color(0xFFCBD5E1) else TextGray,
+            color = if (isTotal) Color(0xFFCBD5E1) else TextGray,
             fontSize = 14.sp,
-            fontWeight = if(isTotal) FontWeight.Bold else FontWeight.Normal
+            fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal
         )
         Text(
             text = value,
-            color = if(isTotal) TextWhite else TextGray,
+            color = if (isTotal) TextWhite else TextGray,
             fontSize = 14.sp,
-            fontWeight = if(isTotal) FontWeight.Bold else FontWeight.Normal
+            fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal
         )
     }
 }
@@ -983,20 +1125,28 @@ fun SettingItem(icon: ImageVector, title: String, badge: String? = null) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Icon(icon, null, tint = TextGray, modifier = Modifier.size(20.dp))
             Text(title, color = TextWhite, fontSize = 14.sp)
         }
         if (badge != null) {
             Text(badge, color = PrimaryBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         } else {
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = TextGray, modifier = Modifier.size(20.dp))
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                null,
+                tint = TextGray,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
 
 @Composable
-fun BottomActionSection(totalAmount: String, enabled: Boolean, onGenerate: () -> Unit) {
+fun BottomActionSection(totalAmount: String, onGenerate: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1015,14 +1165,13 @@ fun BottomActionSection(totalAmount: String, enabled: Boolean, onGenerate: () ->
             }
 
 
-                Button(
-                    onClick = onGenerate,
-                    enabled = enabled,
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Generate", color = TextWhite)
-                }
+            Button(
+                onClick = onGenerate,
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Generate", color = TextWhite)
+            }
 
         }
     }

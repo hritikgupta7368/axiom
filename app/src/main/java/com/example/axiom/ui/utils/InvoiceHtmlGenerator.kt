@@ -1,6 +1,6 @@
 package com.example.axiom.ui.utils
 
-import com.example.axiom.data.finances.domain.*
+import com.example.axiom.data.finances.Invoice
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

@@ -1,39 +1,57 @@
 package com.example.axiom.ui.screens.finances.analytics
 
-import android.widget.TableRow
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.data.finances.domain.*
-import com.example.axiom.ui.screens.finances.FinancesViewModel
-import com.example.axiom.ui.screens.finances.FinancesViewModelFactory
-import java.time.YearMonth
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
+import com.example.axiom.data.finances.CreateInvoiceViewModel
+import com.example.axiom.data.finances.CreateInvoiceViewModelFactory
+import com.example.axiom.data.finances.CustomerFirm
+import com.example.axiom.data.finances.Invoice
+import com.example.axiom.data.finances.InvoiceStatus
 import java.time.Instant
+import java.time.YearMonth
 import java.time.ZoneId
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.HorizontalDivider
+import java.time.format.DateTimeFormatter
 
 
 private val DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+
 @Composable
 fun GSTSummaryScreen(
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
 
-    val vm: FinancesViewModel =
-        viewModel(factory = FinancesViewModelFactory())
+    val viewModel: CreateInvoiceViewModel = viewModel(
+        factory = CreateInvoiceViewModelFactory(context)
+    )
+    val customers by viewModel.customers.collectAsState(initial = emptyList())
+    val invoices by viewModel.invoices.collectAsState(initial = emptyList())
 
-    val invoices by vm.invoices.collectAsState()
-    val customers by vm.customerFirms.collectAsState()
 
     val customerMap = remember(customers) {
         customers.associateBy { it.id }
@@ -94,7 +112,9 @@ fun GSTSummaryScreen(
     /* ---------------- UI ---------------- */
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
 
@@ -145,6 +165,7 @@ fun GSTSummaryScreen(
         }
     }
 }
+
 @Composable
 private fun TableRow(
     cells: List<String>,
@@ -168,8 +189,6 @@ private fun TableRow(
         }
     }
 }
-
-
 
 
 @Composable
@@ -358,10 +377,6 @@ private data class HsnRow(
 )
 
 
-
-
-
-
 @Composable
 private fun DocumentsIssuedSummary(invoices: List<Invoice>) {
 
@@ -371,8 +386,10 @@ private fun DocumentsIssuedSummary(invoices: List<Invoice>) {
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            val seriesStart = invoices.filter { it.status == InvoiceStatus.FINAL && !it.deleted }.minOfOrNull { it.invoiceNo.toLongOrNull() ?: Long.MAX_VALUE } ?: 0
-            val seriesEnd = invoices.filter { it.status == InvoiceStatus.FINAL && !it.deleted }.maxOfOrNull { it.invoiceNo.toLongOrNull() ?: 0 } ?: 0
+            val seriesStart = invoices.filter { it.status == InvoiceStatus.FINAL && !it.deleted }
+                .minOfOrNull { it.invoiceNo.toLongOrNull() ?: Long.MAX_VALUE } ?: 0
+            val seriesEnd = invoices.filter { it.status == InvoiceStatus.FINAL && !it.deleted }
+                .maxOfOrNull { it.invoiceNo.toLongOrNull() ?: 0 } ?: 0
 
             Text("From Serial No: $seriesStart")
             Text("To Serial No: $seriesEnd")

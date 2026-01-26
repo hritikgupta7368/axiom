@@ -1,6 +1,8 @@
 package com.example.axiom.data.notes
 
 import android.content.Context
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -51,6 +53,7 @@ data class NoteEntity(
     val title: String,
 
     val content: String, // multiline plain text
+    val color: Int,
 
     val createdAt: Long,
 
@@ -105,14 +108,16 @@ class NotesRepository(
     fun searchNotes(query: String): Flow<List<NoteEntity>> =
         dao.searchNotes(query)
 
-    suspend fun createNote(title: String, content: String): Long {
+    suspend fun createNote(title: String, content: String, color: Int): Long {
         return dao.insertNote(
             NoteEntity(
                 title = title,
                 content = content,
+                color = color,
                 createdAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
-            )
+                updatedAt = System.currentTimeMillis(),
+
+                )
         )
     }
 
@@ -159,7 +164,7 @@ class NotesViewModel(
     }
 
     suspend fun createNewNote(): Long {
-        return repo.createNote("", "")
+        return repo.createNote("", "", Color.Transparent.toArgb())
     }
 }
 
@@ -171,9 +176,11 @@ class NoteEditorViewModel(
 
     private val titleFlow = MutableStateFlow("")
     private val contentFlow = MutableStateFlow("")
+    private val colorFlow = MutableStateFlow<Int?>(null)
 
     val title: StateFlow<String> = titleFlow
     val content: StateFlow<String> = contentFlow
+    val color: StateFlow<Int?> = colorFlow
 
     private val _saveState = MutableStateFlow(SaveState.LOADING)
     val saveState: StateFlow<SaveState> = _saveState
@@ -192,28 +199,31 @@ class NoteEditorViewModel(
 
             titleFlow.value = note.title
             contentFlow.value = note.content
+            colorFlow.value = note.color
 
             _saveState.value = SaveState.READY
         }
 
         // 2️⃣ AUTOSAVE PIPELINE (ONLY AFTER READY)
-        combine(titleFlow, contentFlow) { title, content ->
-            title to content
+        combine(titleFlow, contentFlow, colorFlow) { title, content, color ->
+//            title to content
+            Triple(title, content, color)
         }
             .debounce(1200)
             .distinctUntilChanged()
-            .onEach { (title, content) ->
+            .onEach { (title, content, color) ->
                 if (_saveState.value != SaveState.READY) return@onEach
 
                 val current = noteFlow.value ?: return@onEach
-                if (title == current.title && content == current.content) return@onEach
+                if (title == current.title && content == current.content && color == current.color) return@onEach
 
                 _saveState.value = SaveState.SAVING
 
                 repo.updateNote(
                     current.copy(
                         title = title,
-                        content = content
+                        content = content,
+                        color = color ?: current.color
                     )
                 )
 
@@ -231,6 +241,17 @@ class NoteEditorViewModel(
 
     fun onContentChange(value: String) {
         contentFlow.value = value
+        if (_saveState.value == SaveState.SAVED) {
+            _saveState.value = SaveState.READY
+        }
+    }
+
+    fun onColorChange(value: Int) {
+        colorFlow.value = value
+        resetSavedState()
+    }
+
+    private fun resetSavedState() {
         if (_saveState.value == SaveState.SAVED) {
             _saveState.value = SaveState.READY
         }

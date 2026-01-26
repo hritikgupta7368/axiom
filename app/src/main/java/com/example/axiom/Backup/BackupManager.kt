@@ -2,38 +2,44 @@
 package com.example.axiom.Backup
 
 
+import android.content.Context
+import android.net.Uri
 import androidx.room.withTransaction
 import com.example.axiom.DB.AppDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import android.content.Context
-import android.net.Uri
+
+
+data class BackupScope(
+    val vault: Boolean = true,
+    val tasks: Boolean = true,
+    val events: Boolean = true
+)
 
 class BackupManager(
     private val db: AppDatabase
 ) {
 
-    suspend fun exportVault(): AppBackup =
-        withContext(Dispatchers.IO) {
+    suspend fun export(scope: BackupScope): AppBackup = withContext(Dispatchers.IO) {
 
-            val vault = db.vaultDao().exportAll().map { it.toBackup() }
-            val tasks = db.calendarDao().exportTasks().map { it.toBackup() }
-            val events = db.calendarDao().exportEvents().map { it.toBackup() }
+        val vault = db.vaultDao().exportAll().map { it.toBackup() }
+        val tasks = db.calendarDao().exportTasks().map { it.toBackup() }
+        val events = db.calendarDao().exportEvents().map { it.toBackup() }
 
-            AppBackup(
-                meta = BackupMeta(
-                    appVersion = 1,
-                    dbVersion = AppDatabase.VERSION,
-                    createdAt = System.currentTimeMillis()
-                ),
-                vaultEntries = vault,
-                tasks = tasks,
-                events = events
-            )
-        }
+        AppBackup(
+            meta = BackupMeta(
+                appVersion = 1,
+                dbVersion = AppDatabase.VERSION,
+                createdAt = System.currentTimeMillis()
+            ),
+            vaultEntries = if (scope.vault) vault else emptyList(),
+            tasks = if (scope.tasks) tasks else emptyList(),
+            events = if (scope.events) events else emptyList()
+        )
+    }
 
-    suspend fun restoreVault(backup: AppBackup) =
+    suspend fun restore(backup: AppBackup) =
         withContext(Dispatchers.IO) {
 
             db.withTransaction {

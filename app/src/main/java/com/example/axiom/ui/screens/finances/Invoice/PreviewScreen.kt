@@ -1,34 +1,49 @@
 package com.example.axiom.ui.screens.finances.Invoice
 
-import android.R
-import android.app.Activity
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,14 +51,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.data.finances.domain.Invoice
-import com.example.axiom.data.finances.domain.InvoiceItem
-import com.example.axiom.ui.components.shared.button.AppIcon
+import com.example.axiom.data.finances.Invoice
+import com.example.axiom.data.finances.InvoiceItem
+import com.example.axiom.data.finances.InvoiceViewModel
+import com.example.axiom.data.finances.InvoiceViewModelFactory
 import com.example.axiom.ui.components.shared.button.AppIconButton
 import com.example.axiom.ui.components.shared.button.AppIcons
-import com.example.axiom.ui.screens.finances.FinancesViewModel
-import com.example.axiom.ui.screens.finances.FinancesViewModelFactory
-import com.example.axiom.ui.screens.finances.InvoiceViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -66,53 +79,54 @@ fun InvoicePreviewScreen(
     onBack: () -> Unit,
     onNavigateToPdfViewer: (Uri) -> Unit
 ) {
-    val viewModel: FinancesViewModel = viewModel(factory = FinancesViewModelFactory())
-    val invoiceViewModel: InvoiceViewModel = viewModel()
+    val context = LocalContext.current
+    val invoiceViewModel: InvoiceViewModel = viewModel(
+        factory = InvoiceViewModelFactory(context)
+    )
 
-    val currentInvoice by viewModel.currentInvoice.collectAsStateWithLifecycle()
+
+    val currentInvoice by invoiceViewModel.invoiceById.collectAsStateWithLifecycle()
     val pdfUri by invoiceViewModel.pdfUri.collectAsStateWithLifecycle()
-    val isGenerating by invoiceViewModel.loading.collectAsStateWithLifecycle()
 
     LaunchedEffect(pdfUri) {
         pdfUri?.let {
             onNavigateToPdfViewer(it)
-            invoiceViewModel.clear()
+            invoiceViewModel.clearPdf()
         }
     }
 
     LaunchedEffect(invoiceId) {
         if (invoiceId != null) {
-            viewModel.fetchInvoiceDetails(invoiceId)
+            invoiceViewModel.getInvoiceById(invoiceId)
         }
     }
 
-    fun deleteInvoice(id: String){
-        // a dialog modal for confirmation
-        viewModel.deleteInvoice(id)
+    fun deleteInvoice(id: String) {
+        invoiceViewModel.deleteById(id)
         onBack()
     }
 
 
-    val currentCustomer by viewModel.currentInvoiceCustomer.collectAsStateWithLifecycle()
     val invoiceNo = currentInvoice?.invoiceNo ?: "---"
     val dateMillis = currentInvoice?.date?.toLongOrNull() ?: System.currentTimeMillis()
     val date = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(dateMillis))
-    val customerName = currentCustomer?.name ?: "Unknown Customer"
+    val customerName = currentInvoice?.customerDetails?.name ?: "Unknown Customer"
     val grandTotal = "₹${String.format("%.2f", currentInvoice?.totalAmount ?: 0.0)}"
     val status = currentInvoice?.status?.name ?: "DRAFT"
 
     Scaffold(
         containerColor = Color(0xFF000000),
         topBar = {
-            PreviewTopBar(onBack = onBack , onDelete = { deleteInvoice(invoiceId ?: "") })
+            PreviewTopBar(onBack = onBack, onDelete = { deleteInvoice(invoiceId ?: "") })
         },
         bottomBar = {
             currentInvoice?.let { nonNullInvoice ->
                 PreviewBottomBar(
                     invoice = nonNullInvoice,
                     logoUri = "",
-                    isGenerating = isGenerating,
-                    onGetPdfClick = { invoiceViewModel.generatePdf(nonNullInvoice, "")
+
+                    onGetPdfClick = {
+                        invoiceViewModel.generatePdf(nonNullInvoice, "")
                     }
                 )
             }
@@ -126,7 +140,10 @@ fun InvoicePreviewScreen(
             }
         } else {
             val date = remember(invoice.date) {
-                SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(invoice.date.toLongOrNull() ?: 0L))
+                SimpleDateFormat(
+                    "MMM dd, yyyy",
+                    Locale.getDefault()
+                ).format(Date(invoice.date.toLongOrNull() ?: 0L))
             }
             Column(
                 modifier = Modifier
@@ -161,7 +178,7 @@ fun InvoicePreviewScreen(
 // -----------------------------------------------------------------------------
 
 @Composable
-fun PreviewTopBar(onBack: () -> Unit , onDelete: () -> Unit) {
+fun PreviewTopBar(onBack: () -> Unit, onDelete: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -262,17 +279,45 @@ fun HeaderCard(invoiceNo: String, date: String, customer: String, status: String
                 // Date
                 Column(modifier = Modifier.weight(1f)) {
                     LabelText("DATE")
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Default.DateRange, null, tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
-                        Text(date, color = Color(0xFFFFFFFF), fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.DateRange,
+                            null,
+                            tint = Color(0xFF94A3B8),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            date,
+                            color = Color(0xFFFFFFFF),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp
+                        )
                     }
                 }
                 // Customer
                 Column(modifier = Modifier.weight(1f)) {
                     LabelText("CUSTOMER")
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Default.AccountBox, null, tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
-                        Text(customer, color = Color(0xFFFFFFFF), fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.AccountBox,
+                            null,
+                            tint = Color(0xFF94A3B8),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            customer,
+                            color = Color(0xFFFFFFFF),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
@@ -282,9 +327,11 @@ fun HeaderCard(invoiceNo: String, date: String, customer: String, status: String
 
 @Composable
 fun ProductDetailsSection(items: List<InvoiceItem>) {
-    Column(modifier = Modifier
-        .padding(horizontal = 16.dp)
-        .padding(bottom = 16.dp)) {
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 16.dp)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -292,8 +339,18 @@ fun ProductDetailsSection(items: List<InvoiceItem>) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Product Details", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFFFFF))
-            Text("${items.size} Items", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Color(0xFF94A3B8))
+            Text(
+                "Product Details",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFFFFFFF)
+            )
+            Text(
+                "${items.size} Items",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF94A3B8)
+            )
         }
 
         Column(
@@ -305,12 +362,24 @@ fun ProductDetailsSection(items: List<InvoiceItem>) {
                 .padding(16.dp)
         ) {
             // Header
-            Row(modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            ) {
                 Text("ITEM", modifier = Modifier.weight(6f), style = headerStyle())
-                Text("QTY", modifier = Modifier.weight(2f), style = headerStyle(), textAlign = TextAlign.Center)
-                Text("TOTAL", modifier = Modifier.weight(4f), style = headerStyle(), textAlign = TextAlign.End)
+                Text(
+                    "QTY",
+                    modifier = Modifier.weight(2f),
+                    style = headerStyle(),
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    "TOTAL",
+                    modifier = Modifier.weight(4f),
+                    style = headerStyle(),
+                    textAlign = TextAlign.End
+                )
             }
             HorizontalDivider(color = Color(0xFF1F2937)) // Dark gray border
 
@@ -323,7 +392,10 @@ fun ProductDetailsSection(items: List<InvoiceItem>) {
                 )
 
                 if (index < items.size - 1) {
-                    HorizontalDivider(color = Color(0xFF1F2937), modifier = Modifier.padding(vertical = 12.dp))
+                    HorizontalDivider(
+                        color = Color(0xFF1F2937),
+                        modifier = Modifier.padding(vertical = 12.dp)
+                    )
                 }
             }
         }
@@ -353,7 +425,13 @@ fun PaymentBreakdownCard(invoice: Invoice) {
             .border(1.dp, Color(0xFF334155), RoundedCornerShape(12.dp))
             .padding(16.dp)
     ) {
-        Text("Payment Breakdown", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFFFFF), modifier = Modifier.padding(bottom = 8.dp))
+        Text(
+            "Payment Breakdown",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFFFFFFF),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
         HorizontalDivider(color = Color(0xFF1F2937))
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -373,17 +451,42 @@ fun PaymentBreakdownCard(invoice: Invoice) {
         ) {
             val gst = invoice.gst
             if (gst.igstAmount > 0) {
-                BreakdownRowSmall("IGST (${gst.igstRate.toInt()}%)", "₹${String.format("%.2f", gst.igstAmount)}")
+                BreakdownRowSmall(
+                    "IGST (${gst.igstRate.toInt()}%)",
+                    "₹${String.format("%.2f", gst.igstAmount)}"
+                )
             } else {
-                BreakdownRowSmall("CGST (${gst.cgstRate.toInt()}%)", "₹${String.format("%.2f", gst.cgstAmount)}")
-                BreakdownRowSmall("SGST (${gst.sgstRate.toInt()}%)", "₹${String.format("%.2f", gst.sgstAmount)}")
+                BreakdownRowSmall(
+                    "CGST (${gst.cgstRate.toInt()}%)",
+                    "₹${String.format("%.2f", gst.cgstAmount)}"
+                )
+                BreakdownRowSmall(
+                    "SGST (${gst.sgstRate.toInt()}%)",
+                    "₹${String.format("%.2f", gst.sgstAmount)}"
+                )
             }
 
-            HorizontalDivider(color = Color(0xFF334155), modifier = Modifier.padding(vertical = 4.dp))
+            HorizontalDivider(
+                color = Color(0xFF334155),
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Total Taxes", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF94A3B8))
-                Text("₹${String.format("%.2f", gst.totalTax)}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF3B82F6))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "Total Taxes",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF94A3B8)
+                )
+                Text(
+                    "₹${String.format("%.2f", gst.totalTax)}",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF3B82F6)
+                )
             }
         }
 
@@ -394,8 +497,18 @@ fun PaymentBreakdownCard(invoice: Invoice) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
-            Text("Grand Total", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFFFFF))
-            Text("₹${String.format("%.2f", invoice.totalAmount)}", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF3B82F6))
+            Text(
+                "Grand Total",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFFFFFFF)
+            )
+            Text(
+                "₹${String.format("%.2f", invoice.totalAmount)}",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF3B82F6)
+            )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -416,7 +529,13 @@ fun AdditionalInfoSection() {
             .padding(top = 4.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Additional Information", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFFFFF), modifier = Modifier.padding(start = 4.dp))
+        Text(
+            "Additional Information",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFFFFFFF),
+            modifier = Modifier.padding(start = 4.dp)
+        )
 
         // Bank Details
         InfoCard(
@@ -437,7 +556,11 @@ fun AdditionalInfoSection() {
             title = "Notes & Terms"
         ) {
             Text("Payment due within 15 days.", fontSize = 12.sp, color = Color(0xFF94A3B8))
-            Text("Please include invoice number on your check.", fontSize = 12.sp, color = Color(0xFF94A3B8))
+            Text(
+                "Please include invoice number on your check.",
+                fontSize = 12.sp,
+                color = Color(0xFF94A3B8)
+            )
         }
 
         // Signature
@@ -451,30 +574,52 @@ fun AdditionalInfoSection() {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 Box(
                     modifier = Modifier
                         .background(GreenBg.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
                         .padding(8.dp)
                 ) {
                     // Use a generic pen icon as ink_pen isn't in default set
-                    Icon(Icons.Default.Edit, contentDescription = null, tint = GreenText, modifier = Modifier.size(20.dp))
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = null,
+                        tint = GreenText,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
                 Column {
-                    Text("Authorized Signature", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFFFFF))
-                    Text("Attached", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = GreenText)
+                    Text(
+                        "Authorized Signature",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFFFFFF)
+                    )
+                    Text(
+                        "Attached",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = GreenText
+                    )
                 }
             }
-            Icon(Icons.Default.CheckCircle, null, tint = TextDarkGray, modifier = Modifier.size(28.dp))
+            Icon(
+                Icons.Default.CheckCircle,
+                null,
+                tint = TextDarkGray,
+                modifier = Modifier.size(28.dp)
+            )
         }
     }
 }
 
 @Composable
 fun PreviewBottomBar(
-    invoice : Invoice,
-    logoUri : String,
-    isGenerating: Boolean, // Accept the loading state
+    invoice: Invoice,
+    logoUri: String,
     onGetPdfClick: () -> Unit
 ) {
 
@@ -508,7 +653,7 @@ fun PreviewBottomBar(
 
             // Export PDF Button
             Button(
-                enabled = !isGenerating,
+
                 onClick = onGetPdfClick,
                 modifier = Modifier
                     .weight(1.5f)
@@ -518,7 +663,10 @@ fun PreviewBottomBar(
             ) {
                 Icon(Icons.Default.Edit, null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = if (isGenerating) "Generating..." else "Get PDF", fontWeight = FontWeight.Bold)
+                Text(
+                    text = "Get PDF",
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
@@ -558,7 +706,14 @@ fun ProductRow(name: String, sub: String, qty: String, total: String) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(6f)) {
-            Text(name, color = Color(0xFFFFFFFF), fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                name,
+                color = Color(0xFFFFFFFF),
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             Text(sub, color = Color(0xFF94A3B8), fontSize = 12.sp)
         }
         Box(
@@ -573,7 +728,14 @@ fun ProductRow(name: String, sub: String, qty: String, total: String) {
                 Text(qty, color = Color(0xFFCBD5E1), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
-        Text(total, modifier = Modifier.weight(4f), textAlign = TextAlign.End, color = Color(0xFFFFFFFF), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text(
+            total,
+            modifier = Modifier.weight(4f),
+            textAlign = TextAlign.End,
+            color = Color(0xFFFFFFFF),
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp
+        )
     }
 }
 
@@ -602,7 +764,13 @@ fun BreakdownRowSmall(label: String, value: String) {
 }
 
 @Composable
-fun InfoCard(icon: androidx.compose.ui.graphics.vector.ImageVector, iconColor: Color, iconBg: Color, title: String, content: @Composable ColumnScope.() -> Unit) {
+fun InfoCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconColor: Color,
+    iconBg: Color,
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

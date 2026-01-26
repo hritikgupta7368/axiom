@@ -3,7 +3,7 @@ package com.example.axiom.ui.utils
 import android.content.Context
 import android.net.Uri
 import androidx.core.content.FileProvider
-import com.example.axiom.data.finances.domain.Invoice
+import com.example.axiom.data.finances.Invoice
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File

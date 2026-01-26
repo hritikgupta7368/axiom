@@ -1,30 +1,64 @@
 package com.example.axiom.ui.screens.space
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.axiom.ui.components.shared.button.AppIconButton
+import com.example.axiom.ui.components.shared.button.AppIcons
 
 
 // Data classes
@@ -33,9 +67,10 @@ data class Goal(
     val progress: Float,
     val color: Color
 )
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkspaceScreen(onVaultPreview: () -> Unit , onNotesPreview:() -> Unit) {
+fun WorkspaceScreen(onVaultPreview: () -> Unit, onNotesPreview: () -> Unit) {
     var hydrationLevel by remember { mutableStateOf(1.2f) }
 
     val goals = remember {
@@ -221,7 +256,7 @@ fun GymActivityCard(pulseAlpha: Float) {
             containerColor = Color(0xFF171717)
         )
     ) {
-        Box{
+        Box {
             // Gradient overlay
             Box(
                 modifier = Modifier
@@ -236,9 +271,9 @@ fun GymActivityCard(pulseAlpha: Float) {
                     )
             )
 
-            Column (
+            Column(
                 modifier = Modifier.padding(24.dp)
-            ){
+            ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -256,7 +291,11 @@ fun GymActivityCard(pulseAlpha: Float) {
                                     )
                                 )
                             )
-                            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
+                            .border(
+                                1.dp,
+                                Color.White.copy(alpha = 0.1f),
+                                RoundedCornerShape(16.dp)
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -370,12 +409,12 @@ fun VaultCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .clickable {onVaultPreview()},
+            .clickable { onVaultPreview() },
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF171717)
         )
     ) {
-        Box{
+        Box {
             // Cyan glow
             Box(
 
@@ -412,14 +451,19 @@ fun VaultCard(
                                     )
                                 )
                             )
-                            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
+                            .border(
+                                1.dp,
+                                Color.White.copy(alpha = 0.1f),
+                                RoundedCornerShape(12.dp)
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Lock,
+                        AppIconButton(
+                            icon = AppIcons.shield,
                             contentDescription = null,
                             tint = Color(0xFF00FFFF),
-                            modifier = Modifier.size(24.dp)
+                            iconSize = 24.dp,
+                            onClick = {},
                         )
                     }
 
@@ -476,7 +520,7 @@ fun MonthlyGoalsCard(goals: List<Goal>) {
                     )
             )
 
-            Column (
+            Column(
                 modifier = Modifier.padding(24.dp)
             ) {
                 Row(
@@ -592,7 +636,7 @@ fun QuickNotesCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
-            .clickable { onNotesPreview()},
+            .clickable { onNotesPreview() },
         colors = CardDefaults.cardColors(
             containerColor = Color(0xFF171717)
         )
@@ -606,9 +650,9 @@ fun QuickNotesCard(
                     .background(Color(0xFF3B82F6).copy(alpha = 0.2f))
             )
 
-            Column (
+            Column(
                 modifier = Modifier.padding(24.dp)
-            ){
+            ) {
                 Box(
                     modifier = Modifier
                         .size(40.dp)
@@ -840,11 +884,12 @@ fun SleepScoreCard() {
                         strokeWidth = 5.dp,
                         trackColor = Color.White.copy(alpha = 0.05f)
                     )
-                    Icon(
-                        imageVector = Icons.Outlined.AccountBox,
+                    AppIconButton(
+                        icon = AppIcons.Moon,
                         contentDescription = null,
                         tint = Color(0xFFC7D2FE),
-                        modifier = Modifier.size(18.dp)
+                        iconSize = 18.dp,
+                        onClick = {},
                     )
                 }
             }

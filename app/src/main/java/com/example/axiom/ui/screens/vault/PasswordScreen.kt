@@ -1,12 +1,6 @@
 package com.example.axiom.ui.screens.vault
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,26 +21,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.DateRange
-import androidx.compose.material.icons.outlined.Favorite
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -77,6 +69,8 @@ import com.example.axiom.data.vault.VaultEntryEntity
 import com.example.axiom.data.vault.VaultViewModel
 import com.example.axiom.data.vault.VaultViewModelFactory
 import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
+import com.example.axiom.ui.components.shared.button.AppIconButton
+import com.example.axiom.ui.components.shared.button.AppIcons
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -88,6 +82,269 @@ data class SavedLogin(
     val icon: ImageVector,
     val password: String = "••••••••••"
 )
+
+data class PasswordRequirements(
+    val wordCount: Int = 3,
+    val minWordLength: Int = 4,
+    val maxWordLength: Int = 7,
+    val capitalize: Boolean = true,
+    val includeNumber: Boolean = true,
+    val includeSymbol: Boolean = true,
+    val separator: Char? = '-'
+)
+
+data class PasswordOptions(
+    val capitalize: Boolean = true,
+    val includeNumbers: Boolean = true,
+    val includeSymbols: Boolean = true,
+    val useSeparator: Boolean = true,
+    val length: Int = 16
+)
+
+private fun wordCountFromLength(length: Int): Int =
+    when {
+        length <= 14 -> 3
+        length <= 18 -> 4
+        else -> 5
+    }
+
+
+private val WORDS = listOf(
+    "river", "cloud", "stone", "forest", "silver",
+    "ember", "planet", "shadow", "crystal", "falcon",
+    "signal", "anchor", "matrix", "neuron", "orbit"
+)
+
+
+@Composable
+private fun OptionCheckbox(
+    label: String,
+    checked: Boolean,
+    modifier: Modifier = Modifier,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color.Black.copy(alpha = 0.25f))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = CheckboxDefaults.colors(
+                checkedColor = Color(0xFF14B3AB),
+                uncheckedColor = Color(0xFF9CA3AF),
+                checkmarkColor = Color.Black
+            )
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+
+@Composable
+fun PasswordGeneratorCard() {
+
+    var options by remember { mutableStateOf(PasswordOptions()) }
+    var copiedMessage by remember { mutableStateOf(false) }
+
+    var generatedPassword by remember {
+        mutableStateOf(
+            generateMemorableSecurePassword(
+                PasswordRequirements(
+                    wordCount = wordCountFromLength(options.length),
+                    capitalize = options.capitalize,
+                    includeNumber = options.includeNumbers,
+                    includeSymbol = options.includeSymbols,
+                    separator = if (options.useSeparator) '-' else null
+                )
+            )
+        )
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.03f))
+            .padding(24.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(128.dp)
+                .align(Alignment.TopEnd)
+                .blur(50.dp)
+                .background(Color(0xFF14B3AB).copy(alpha = 0.1f), CircleShape)
+        )
+
+        Column(
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+
+            // Password display
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = generatedPassword,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.weight(1f)
+                )
+
+
+                AppIconButton(
+                    icon = if (copiedMessage) AppIcons.copy else AppIcons.copy,
+                    contentDescription = "content copy",
+                    tint = Color(0xFF9CA3AF),
+                    onClick = { copiedMessage = true },
+                )
+            }
+
+            // Length slider
+            Column {
+                Text(
+                    text = "Password Length: ${options.length}",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Slider(
+                    value = options.length.toFloat(),
+                    onValueChange = {
+                        options = options.copy(length = it.toInt())
+                    },
+                    valueRange = 12f..24f,
+                    steps = 11,
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color(0xFF14B3AB),
+                        activeTrackColor = Color(0xFF14B3AB)
+                    )
+                )
+            }
+
+            // Options — 2 rows × 2 columns
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OptionCheckbox(
+                        label = "Capitalize",
+                        checked = options.capitalize,
+                        modifier = Modifier.weight(1f)
+                    ) { options = options.copy(capitalize = it) }
+
+                    OptionCheckbox(
+                        label = "Numbers",
+                        checked = options.includeNumbers,
+                        modifier = Modifier.weight(1f)
+                    ) { options = options.copy(includeNumbers = it) }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OptionCheckbox(
+                        label = "Symbols",
+                        checked = options.includeSymbols,
+                        modifier = Modifier.weight(1f)
+                    ) { options = options.copy(includeSymbols = it) }
+
+                    OptionCheckbox(
+                        label = "Separator",
+                        checked = options.useSeparator,
+                        modifier = Modifier.weight(1f)
+                    ) { options = options.copy(useSeparator = it) }
+                }
+            }
+
+            // Regenerate
+            Button(
+                onClick = {
+                    generatedPassword =
+                        generateMemorableSecurePassword(
+                            PasswordRequirements(
+                                wordCount = wordCountFromLength(options.length),
+                                capitalize = options.capitalize,
+                                includeNumber = options.includeNumbers,
+                                includeSymbol = options.includeSymbols,
+                                separator = if (options.useSeparator) '-' else null
+                            )
+                        )
+                    copiedMessage = false
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF14B3AB)
+                )
+            ) {
+                Icon(Icons.Outlined.Refresh, null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Regenerate",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                )
+            }
+        }
+    }
+}
+
+
+@Composable
+fun Header() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+
+            AppIconButton(
+                icon = AppIcons.shield,
+                contentDescription = null,
+                tint = Color(0xFF14B3AB),
+                iconSize = 28.dp,
+                onClick = {},
+            )
+            Text(
+                text = "VAULT",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                letterSpacing = 0.5.sp
+            )
+        }
+        AppIconButton(
+            icon = AppIcons.NotificationBell,
+            contentDescription = "Notifications",
+            tint = Color(0xFF9CA3AF),
+            onClick = {},
+        )
+
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,24 +365,13 @@ fun VaultScreen(
     var deleteTarget by remember { mutableStateOf<VaultEntryEntity?>(null) }
 
 
-    // Password generator state
-    var generatedPassword by remember { mutableStateOf(generateSecurePassword()) }
     var copiedMessage by remember { mutableStateOf(false) }
 
 
     var visiblePasswords by remember { mutableStateOf(setOf<Int>()) }
 
-    // Animation for pulsing effect
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
+
+
 
     LaunchedEffect(copiedMessage) {
         if (copiedMessage) {
@@ -177,45 +423,7 @@ fun VaultScreen(
                     .verticalScroll(rememberScrollState())
             ) {
                 // Top App Bar
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.DateRange,
-                            contentDescription = null,
-                            tint = Color(0xFF14B3AB),
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Text(
-                            text = "VAULT",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            letterSpacing = 0.5.sp
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { /* Handle notifications */ },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Notifications,
-                            contentDescription = "Notifications",
-                            tint = Color(0xFF9CA3AF)
-                        )
-                    }
-                }
+                Header()
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -231,154 +439,8 @@ fun VaultScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Password Generator Card
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(
-                            Color.White.copy(alpha = 0.03f)
-                        )
-                        .padding(24.dp)
-                ) {
-                    // Subtle glow effect
-                    Box(
-                        modifier = Modifier
-                            .size(128.dp)
-                            .align(Alignment.TopEnd)
-                            .blur(50.dp)
-                            .background(Color(0xFF14B3AB).copy(alpha = 0.1f), CircleShape)
-                    )
+                PasswordGeneratorCard()
 
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
-                        // Password Display
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color.Black.copy(alpha = 0.4f))
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = generatedPassword,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.weight(1f)
-                            )
-
-                            IconButton(
-                                onClick = {
-//                                clipboardManager.setText(AnnotatedString(generatedPassword))
-
-                                    copiedMessage = true
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = if (copiedMessage) Icons.Outlined.Check else Icons.Outlined.Notifications,
-                                    contentDescription = "Copy",
-                                    tint = if (copiedMessage) Color(0xFF14B3AB) else Color(
-                                        0xFF9CA3AF
-                                    )
-                                )
-                            }
-                        }
-
-                        // Regenerate Button
-                        Button(
-                            onClick = {
-                                generatedPassword = generateSecurePassword()
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF14B3AB)
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Refresh,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Regenerate",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
-                        }
-
-                        // Security Meter
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "WEAK",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color(0xFF9CA3AF),
-                                    letterSpacing = 1.5.sp
-                                )
-                                Text(
-                                    text = "HIGH SECURITY",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color(0xFF00FF00),
-                                    letterSpacing = 1.5.sp
-                                )
-                            }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                // Low strength bar
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(8.dp)
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(Color(0xFF14B3AB).copy(alpha = 0.2f))
-                                )
-                                // Medium strength bar
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(8.dp)
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(Color(0xFF14B3AB).copy(alpha = 0.2f))
-                                )
-                                // High strength bar with pulse
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(8.dp)
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(Color(0xFF00FF00))
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(Color.White.copy(alpha = pulseAlpha))
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
 
                 Spacer(modifier = Modifier.height(40.dp))
 
@@ -706,12 +768,14 @@ fun LoginItem(
                         .background(Color.White.copy(alpha = 0.05f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = login.icon,
-                        contentDescription = null,
+                    AppIconButton(
+                        icon = AppIcons.key,
+                        contentDescription = "list item",
                         tint = Color.White,
-                        modifier = Modifier.size(24.dp)
+                        iconSize = 24.dp,
+                        onClick = { },
                     )
+
                 }
 
                 // Name and email
@@ -757,41 +821,50 @@ fun LoginItem(
                     )
                 }
 
+
                 // Visibility toggle
-                IconButton(
+                AppIconButton(
+                    icon = if (isVisible) AppIcons.visibilityOn else AppIcons.visibilityOff,
+                    contentDescription = "list item visibility",
+                    tint = Color(0xFF6B7280),
                     onClick = onVisibilityToggle,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isVisible) Icons.Outlined.Favorite else Icons.Filled.Favorite,
-                        contentDescription = if (isVisible) "Hide" else "Show",
-                        tint = Color(0xFF6B7280),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
+                )
+
             }
         }
     }
 }
 
-// Password generator function
-fun generateSecurePassword(length: Int = 12): String {
-    val uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    val lowercase = "abcdefghijklmnopqrstuvwxyz"
-    val numbers = "0123456789"
-    val special = "@#$%&*!?"
-    val allChars = uppercase + lowercase + numbers + special
+fun generateMemorableSecurePassword(
+    requirements: PasswordRequirements = PasswordRequirements()
+): String {
 
-    return buildString {
-        // Ensure at least one of each type
-        append(uppercase.random())
-        append(lowercase.random())
-        append(numbers.random())
-        append(special.random())
+    val random = kotlin.random.Random.Default
 
-        // Fill the rest randomly
-        repeat(length - 4) {
-            append(allChars.random())
-        }
-    }.toList().shuffled().joinToString("")
+    val words = (1..requirements.wordCount).map {
+        WORDS
+            .filter {
+                it.length in requirements.minWordLength..requirements.maxWordLength
+            }
+            .random(random)
+            .let { word ->
+                if (requirements.capitalize && random.nextBoolean())
+                    word.replaceFirstChar { it.uppercase() }
+                else word
+            }
+    }.toMutableList()
+
+    if (requirements.includeNumber) {
+        val index = random.nextInt(words.size)
+        words[index] += random.nextInt(10).toString()
+    }
+
+    if (requirements.includeSymbol) {
+        val symbols = "@#\$%&*!?"
+        val index = random.nextInt(words.size)
+        words[index] += symbols.random(random)
+    }
+
+    return words.joinToString(requirements.separator.toString())
 }
+

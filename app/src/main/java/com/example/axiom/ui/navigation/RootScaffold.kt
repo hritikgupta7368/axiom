@@ -57,6 +57,8 @@ import com.example.axiom.ui.screens.home.HomeScreen
 import com.example.axiom.ui.screens.notes.NoteEditorScreen
 import com.example.axiom.ui.screens.notes.NotesScreen
 import com.example.axiom.ui.screens.profile.ProfileScreen
+import com.example.axiom.ui.screens.settings.BackupScreen
+import com.example.axiom.ui.screens.settings.RestoreScreen
 import com.example.axiom.ui.screens.settings.SettingsScreen
 import com.example.axiom.ui.screens.space.WorkspaceScreen
 import com.example.axiom.ui.screens.vault.VaultScreen
@@ -105,7 +107,8 @@ sealed class Route(val route: String) {
         fun createRoute(noteId: Long) = "note/$noteId"
     }
 
-
+    data object Backup : Route("backup")
+    data object Restore : Route("restore")
 }
 
 data class BillsActions(
@@ -239,7 +242,12 @@ fun RootScaffold(navController: NavHostController) {
                             }
                         )
                     }
-                    composable(Route.Settings.route) { SettingsScreen() }
+                    composable(Route.Settings.route) {
+                        SettingsScreen(
+                            onOpenBackup = { navController.navigate(Route.Backup.route) },
+                            onOpenRestore = { navController.navigate(Route.Restore.route) }
+                        )
+                    }
                     composable(Route.Bills.route) {
                         val actions = remember(navController) {
                             BillsActions(
@@ -262,6 +270,12 @@ fun RootScaffold(navController: NavHostController) {
                     }
                 }
 
+                composable(Route.Backup.route) {
+                    BackupScreen(onBack = { navController.popBackStack() })
+                }
+                composable(Route.Restore.route) {
+                    RestoreScreen(onBack = { navController.popBackStack() })
+                }
                 composable(Route.Vault.route) {
                     VaultScreen(onBack = { navController.popBackStack() })
                 }

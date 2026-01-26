@@ -5,7 +5,6 @@ plugins {
 
     alias(libs.plugins.ksp)
     id("com.google.dagger.hilt.android")
-    id("com.google.gms.google-services")
     alias(libs.plugins.kotlin.serialization) // aded for json
 }
 
@@ -95,9 +94,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-    //firebase sdk
-    implementation(platform("com.google.firebase:firebase-bom:34.7.0"))
-    implementation("com.google.firebase:firebase-firestore")
+
 
     // Room
     implementation(libs.androidx.room.runtime)

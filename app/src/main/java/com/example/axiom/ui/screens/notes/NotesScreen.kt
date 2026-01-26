@@ -1,9 +1,11 @@
 package com.example.axiom.ui.screens.notes
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +27,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
@@ -45,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
@@ -60,56 +65,57 @@ import kotlinx.coroutines.launch
 
 // Color Definitions
 private val NeonPink = Color(0xFFFF00CC)
-private val NeonPurple = Color(0xFFAA00FF)
 private val NeonCyan = Color(0xFF00FFFF)
-private val NeonLime = Color(0xFFCCFF00)
-private val NeonOrange = Color(0xFFFF6600)
 private val BackgroundDark = Color(0xFF000000)
-private val CardDark = Color(0xFF111111)
 private val CardGray = Color(0xFF1A1A1A)
-
-
-private val NoteAccentColors = listOf(
-    NeonPink,
-    NeonPurple,
-    NeonCyan,
-    NeonLime,
-    NeonOrange
-)
 
 
 @Composable
 fun NoteCard(
     note: NoteEntity,
-    onClick: () -> Unit
+    selected: Boolean,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit
 ) {
-    val accentColor = remember(note.id) {
-        NoteAccentColors[(note.id % NoteAccentColors.size).toInt()]
-    }
+    val backgroundColor = Color(note.color)
+
 
     val maxLines = remember(note.id) {
         listOf(4, 6, 8, 12).random()
     }
+    val borderWidth by animateDpAsState(
+        targetValue = if (selected) 2.dp else 0.dp,
+        label = "SelectionBorderWidth"
+    )
+
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) NeonPink else Color.Transparent,
+        label = "SelectionBorderColor"
+    )
+
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-//            .clip(RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongPress
+            )
+            .shadow(
+                elevation = if (selected) 8.dp else 0.dp,
+                shape = RoundedCornerShape(24.dp),
+                ambientColor = NeonPink.copy(alpha = 0.4f),
+                spotColor = NeonPink.copy(alpha = 0.6f)
+            ),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = CardGray.copy(alpha = 0.6f)
-        ),
-        border = BorderStroke(
-            1.dp,
-            accentColor.copy(alpha = 0.4f)
-        ),
+        border = BorderStroke(borderWidth, borderColor),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
         elevation = CardDefaults.cardElevation(0.dp)
-    ) {
+    )
+    {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, accentColor.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
         ) {
             Column(
                 modifier = Modifier
@@ -134,7 +140,7 @@ fun NoteCard(
                 Text(
                     text = note.content,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFFBDBDBD),
+                    color = Color.White,
                     lineHeight = 16.sp,
                     maxLines = maxLines,              // KEY: variable but bounded
                     overflow = TextOverflow.Ellipsis
@@ -160,6 +166,9 @@ fun NotesScreen(
 
     val notes by viewModel.notes.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    var selectedNote by remember { mutableStateOf<NoteEntity?>(null) }
+    val inDeleteMode = selectedNote != null
+
 
 
 
@@ -196,9 +205,21 @@ fun NotesScreen(
             NotesHeader(
                 searchQuery = searchQuery,
                 onSearchChange = { searchQuery = it },
-                onBack = onBack
+                onBack = {
+                    if (inDeleteMode) selectedNote = null
+                    else onBack()
+                },
+                inDeleteMode = inDeleteMode,
+                onCancelDelete = {
+                    selectedNote = null
+                },
+                onConfirmDelete = {
+                    selectedNote?.let {
+                        viewModel.deleteNote(it)
+                    }
+                    selectedNote = null
+                }
             )
-
 
 
 
@@ -215,7 +236,17 @@ fun NotesScreen(
                 ) { note ->
                     NoteCard(
                         note = note,
-                        onClick = { onOpenNote(note.id) }
+                        selected = selectedNote?.id == note.id,
+                        onClick = {
+                            if (selectedNote != null) {
+                                selectedNote = null
+                            } else {
+                                onOpenNote(note.id)
+                            }
+                        },
+                        onLongPress = {
+                            selectedNote = note
+                        }
                     )
                 }
             }
@@ -245,7 +276,10 @@ fun NotesScreen(
 private fun NotesHeader(
     searchQuery: String,
     onSearchChange: (String) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    inDeleteMode: Boolean,
+    onCancelDelete: () -> Unit,
+    onConfirmDelete: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -258,71 +292,112 @@ private fun NotesHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+
             Text(
-                text = "Quick Notes",
+                text = if (inDeleteMode) "Delete note?" else "Quick Notes",
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
 
-            IconButton(
-                onClick = { /* Settings */ },
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(CardGray, CircleShape)
-                    .border(1.dp, Color.White.copy(alpha = 0.1f), CircleShape)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = Color.Gray
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+
+                if (inDeleteMode) {
+                    IconButton(
+                        onClick = onConfirmDelete,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(Color.Red.copy(alpha = 0.15f), CircleShape)
+                            .border(1.dp, Color.Red, CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Confirm delete",
+                            tint = Color.Red
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onCancelDelete,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(CardGray, CircleShape)
+                            .border(1.dp, Color.White.copy(alpha = 0.1f), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Cancel",
+                            tint = Color.Gray
+                        )
+                    }
+                } else {
+                    IconButton(
+                        onClick = { /* Settings */ },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(CardGray, CircleShape)
+                            .border(1.dp, Color.White.copy(alpha = 0.1f), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = Color.Gray
+                        )
+                    }
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Search Bar
-        BasicTextField(
-            value = searchQuery,
-            onValueChange = onSearchChange,
-            textStyle = TextStyle(
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
-            ),
-            decorationBox = { innerTextField ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            color = Color.White.copy(alpha = 0.05f),
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                        .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Search",
-                        tint = if (searchQuery.isEmpty()) Color.Gray else NeonPink,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Box(modifier = Modifier.weight(1f)) {
-                        if (searchQuery.isEmpty()) {
-                            Text(
-                                text = "Search ideas, lists, tags...",
-                                color = Color.Gray,
-                                fontSize = 14.sp
+        if (!inDeleteMode) {
+            BasicTextField(
+                value = searchQuery,
+                maxLines = 1,
+                onValueChange = onSearchChange,
+                textStyle = TextStyle(
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                ),
+                decorationBox = { innerTextField ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Color.White.copy(alpha = 0.05f),
+                                RoundedCornerShape(16.dp)
                             )
+                            .border(
+                                1.dp,
+                                Color.White.copy(alpha = 0.1f),
+                                RoundedCornerShape(16.dp)
+                            )
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Box(Modifier.weight(1f)) {
+                            if (searchQuery.isEmpty()) {
+                                Text(
+                                    "Search ideas, lists, tags...",
+                                    color = Color.Gray,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            innerTextField()
                         }
-                        innerTextField()
                     }
                 }
-            }
-        )
+            )
+        }
     }
 }
+
 

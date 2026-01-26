@@ -10,7 +10,20 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -19,9 +32,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -30,41 +40,65 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.data.finances.domain.CustomerFirm
+import com.example.axiom.data.finances.CustomerFirm
+import com.example.axiom.data.finances.CustomerFirmViewModel
+import com.example.axiom.data.finances.CustomerFirmViewModelFactory
 import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
 import com.example.axiom.ui.components.shared.button.AppIconButton
 import com.example.axiom.ui.components.shared.button.AppIcons
-import com.example.axiom.ui.screens.finances.FinancesViewModel
-import com.example.axiom.ui.screens.finances.FinancesViewModelFactory
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerScreen(onBack: () -> Unit) {
     // --- ViewModel Integration ---
-    val viewModel: FinancesViewModel = viewModel(factory = FinancesViewModelFactory())
-    val customers by viewModel.customerFirms.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+
+    val context = LocalContext.current
+    val customerViewModel: CustomerFirmViewModel = viewModel(
+        factory = CustomerFirmViewModelFactory(context)
+    )
+    val customers by customerViewModel.customers.collectAsState(initial = emptyList())
 
     // Selection State
     var selectedCustomerId by remember { mutableStateOf<String?>(null) }
-    
+
     // Animation State
     val deletedItemIds = remember { mutableStateListOf<String>() }
 
@@ -77,7 +111,7 @@ fun CustomerScreen(onBack: () -> Unit) {
 
     // --- Helpers ---
     fun openCreateSheet() {
-        formData = CustomerFirm(id = UUID.randomUUID().toString()) // Reset form with new ID
+        formData = CustomerFirm() // Reset form with new ID
         isEditing = false
         selectedCustomerId = null
         showSheet = true
@@ -97,17 +131,17 @@ fun CustomerScreen(onBack: () -> Unit) {
         if (idToDelete != null) {
             // Clear selection immediately for UI feedback (TopBar reverts)
             selectedCustomerId = null
-            
+
             scope.launch {
                 // Trigger animation
                 deletedItemIds.add(idToDelete)
-                
+
                 // Wait for animation to complete
-                delay(500) 
-                
+                delay(500)
+
                 // Perform actual soft delete in DB
-                viewModel.deleteCustomerFirm(idToDelete)
-                
+                customerViewModel.deleteById(idToDelete)
+
                 // Cleanup ID from tracking (optional as item will leave list)
                 deletedItemIds.remove(idToDelete)
             }
@@ -116,9 +150,9 @@ fun CustomerScreen(onBack: () -> Unit) {
 
     fun saveCustomer(updatedData: CustomerFirm) {
         if (isEditing) {
-            viewModel.updateCustomerFirm(updatedData)
+            customerViewModel.update(updatedData)
         } else {
-            viewModel.addCustomerFirm(updatedData)
+            customerViewModel.insert(updatedData)
         }
         showSheet = false
         selectedCustomerId = null
@@ -166,7 +200,11 @@ fun CustomerScreen(onBack: () -> Unit) {
                             Icon(Icons.Default.Edit, contentDescription = "Edit")
                         }
                         IconButton(onClick = { deleteSelected() }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.error
+                            )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -207,14 +245,19 @@ fun CustomerScreen(onBack: () -> Unit) {
                     val isVisible = !deletedItemIds.contains(customer.id)
                     AnimatedVisibility(
                         visible = isVisible,
-                        exit = shrinkVertically(animationSpec = tween(500)) + fadeOut(animationSpec = tween(500)),
+                        exit = shrinkVertically(animationSpec = tween(500)) + fadeOut(
+                            animationSpec = tween(
+                                500
+                            )
+                        ),
                         enter = expandVertically() + fadeIn()
                     ) {
                         CustomerCard(
                             customer = customer,
                             isSelected = customer.id == selectedCustomerId,
                             onSelect = {
-                                selectedCustomerId = if (selectedCustomerId == customer.id) null else customer.id
+                                selectedCustomerId =
+                                    if (selectedCustomerId == customer.id) null else customer.id
                             }
                         )
                     }
@@ -245,8 +288,12 @@ fun CustomerCard(
     isSelected: Boolean,
     onSelect: () -> Unit
 ) {
-    val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-    val containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
+    val borderColor =
+        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(
+            alpha = 0.5f
+        )
+    val containerColor =
+        if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -275,7 +322,8 @@ fun CustomerCard(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
-                        text = if (customer.name.isNotEmpty()) customer.name.take(1).uppercase() else "?",
+                        text = if (customer.name.isNotEmpty()) customer.name.take(1)
+                            .uppercase() else "?",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
@@ -325,8 +373,11 @@ fun CustomerForm(
     onCancel: () -> Unit
 ) {
     // Local state for form fields to handle validation updates immediately
-    var currentData by remember { mutableStateOf(formData) }
-    
+    var currentData by remember(formData.id) {
+        mutableStateOf(formData)
+    }
+
+
     // Validation Errors
     var nameError by remember { mutableStateOf<String?>(null) }
     var gstinError by remember { mutableStateOf<String?>(null) }
@@ -337,7 +388,7 @@ fun CustomerForm(
 
     fun validate(): Boolean {
         var isValid = true
-        
+
         // Name Validation
         if (currentData.name.isBlank()) {
             nameError = "Name is required"
@@ -348,11 +399,11 @@ fun CustomerForm(
 
         // GSTIN Validation (Mandatory)
         if (currentData.gstin.isNullOrBlank()) {
-             gstinError = "GSTIN is required"
-             isValid = false
+            gstinError = "GSTIN is required"
+            isValid = false
         } else if (!currentData.gstin!!.matches(Regex("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$"))) {
-             gstinError = "Invalid GSTIN format"
-             isValid = false
+            gstinError = "Invalid GSTIN format"
+            isValid = false
         } else {
             gstinError = null
         }
@@ -373,8 +424,8 @@ fun CustomerForm(
             stateCodeError = "State code is required"
             isValid = false
         } else if (currentData.stateCode!!.length != 2 || !currentData.stateCode!!.all { it.isDigit() }) {
-             stateCodeError = "Invalid Code (2 digits)"
-             isValid = false
+            stateCodeError = "Invalid Code (2 digits)"
+            isValid = false
         } else {
             stateCodeError = null
         }
@@ -388,7 +439,10 @@ fun CustomerForm(
         }
 
         // Email Validation (Optional)
-        if (!currentData.email.isNullOrBlank() && !android.util.Patterns.EMAIL_ADDRESS.matcher(currentData.email!!).matches()) {
+        if (!currentData.email.isNullOrBlank() && !android.util.Patterns.EMAIL_ADDRESS.matcher(
+                currentData.email!!
+            ).matches()
+        ) {
             emailError = "Invalid email format"
             isValid = false
         } else {
@@ -419,11 +473,12 @@ fun CustomerForm(
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
 
-
         // Name
         CustomerInput(
             value = currentData.name,
-            onValueChange = { currentData = currentData.copy(name = it); if (nameError != null) nameError = null },
+            onValueChange = {
+                currentData = currentData.copy(name = it); if (nameError != null) nameError = null
+            },
             label = "Firm / Customer Name *",
             icon = Icons.Default.Person,
             isError = nameError != null,
@@ -433,7 +488,10 @@ fun CustomerForm(
         // GSTIN
         CustomerInput(
             value = currentData.gstin ?: "",
-            onValueChange = { currentData = currentData.copy(gstin = it); if (gstinError != null) gstinError = null },
+            onValueChange = {
+                currentData = currentData.copy(gstin = it); if (gstinError != null) gstinError =
+                null
+            },
             label = "GSTIN *",
             placeholder = "29ABCDE1234F1Z5",
             allCaps = true,
@@ -444,7 +502,7 @@ fun CustomerForm(
         // Contact
         CustomerInput(
             value = currentData.contactNumber ?: "",
-            onValueChange = { 
+            onValueChange = {
                 // Only allow numeric input
                 if (it.all { char -> char.isDigit() } && it.length <= 10) {
                     currentData = currentData.copy(contactNumber = it)
@@ -462,7 +520,10 @@ fun CustomerForm(
         // Email
         CustomerInput(
             value = currentData.email ?: "",
-            onValueChange = { currentData = currentData.copy(email = it); if (emailError != null) emailError = null },
+            onValueChange = {
+                currentData = currentData.copy(email = it); if (emailError != null) emailError =
+                null
+            },
             label = "Email Address",
             icon = Icons.Default.Email,
             keyboardType = KeyboardType.Email,
@@ -473,10 +534,10 @@ fun CustomerForm(
         // State Code
         CustomerInput(
             value = currentData.stateCode ?: "",
-            onValueChange = { 
+            onValueChange = {
                 if (it.length <= 2 && it.all { char -> char.isDigit() }) {
                     currentData = currentData.copy(stateCode = it)
-                    if (stateCodeError != null) stateCodeError = null 
+                    if (stateCodeError != null) stateCodeError = null
                 }
             },
             label = "State Code *",
@@ -489,7 +550,10 @@ fun CustomerForm(
         // Address
         CustomerInput(
             value = currentData.address,
-            onValueChange = { currentData = currentData.copy(address = it); if (addressError != null) addressError = null },
+            onValueChange = {
+                currentData =
+                    currentData.copy(address = it); if (addressError != null) addressError = null
+            },
             label = "Address *",
             singleLine = false,
             minLines = 3,
@@ -521,7 +585,11 @@ fun CustomerForm(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(if (isEditing) "Update" else "Save")
             }
@@ -548,15 +616,33 @@ fun CustomerInput(
             value = value,
             onValueChange = { if (allCaps) onValueChange(it.uppercase()) else onValueChange(it) },
             label = { Text(label) },
-            placeholder = if (placeholder != null) { { Text(placeholder) } } else null,
-            leadingIcon = if (icon != null) { { Icon(icon, contentDescription = null, tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) } } else null,
+            placeholder = if (placeholder != null) {
+                { Text(placeholder) }
+            } else null,
+            leadingIcon = if (icon != null) {
+                {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else null,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             singleLine = singleLine,
             minLines = minLines,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             isError = isError,
-            trailingIcon = if (isError) { { Icon(Icons.Default.Warning, contentDescription = "Error", tint = MaterialTheme.colorScheme.error) } } else null,
+            trailingIcon = if (isError) {
+                {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = "Error",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            } else null,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,

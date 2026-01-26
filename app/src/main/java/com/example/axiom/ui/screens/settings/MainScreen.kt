@@ -1,71 +1,45 @@
 package com.example.axiom.ui.screens.settings
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.example.axiom.ui.components.shared.ThemeToggle
 import com.example.axiom.ui.components.shared.button.AppIconButton
 import com.example.axiom.ui.components.shared.button.AppIcons
-import com.example.axiom.ui.components.shared.ThemeToggle
-
-import android.app.Activity
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.Backup.*
-import com.example.axiom.DB.AppDatabase
-import kotlinx.coroutines.launch
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen() {
-
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-
-    val db = remember { AppDatabase.get(context) }
-    val backupManager = remember { BackupManager(db) }
-
-
-    // CREATE backup file
-    val exportLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.CreateDocument("application/json")
-        ) { uri: Uri? ->
-            if (uri != null) {
-                scope.launch {
-                    val backup = backupManager.exportVault()
-                    writeBackupToUri(context, uri, backup)
-                }
-            }
-        }
-
-    // PICK backup file
-    val importLauncher =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.OpenDocument()
-        ) { uri: Uri? ->
-            if (uri != null) {
-                scope.launch {
-                    val backup = readBackupFromUri(context, uri)
-                    backupManager.restoreVault(backup)
-                }
-            }
-        }
-
-
+fun SettingsScreen(
+    onOpenBackup: () -> Unit,
+    onOpenRestore: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -107,35 +81,39 @@ fun SettingsScreen() {
                     // BACKUP
                     SettingsRow(
                         icon = Icons.Default.Check,
-                        title = "Backup Vault",
-                        subtitle = "Export vault data to file"
-                    ) {
-                        exportLauncher.launch("axiom_backup_vault.json")
-                    }
+                        title = "Backup",
+                        subtitle = "Export vault data to file",
+                        onClick = onOpenBackup
+                    )
+//                    {
+//                        exportLauncher.launch("axiom_backup_vault.json")
+//                    }
                     // RESTORE
                     SettingsRow(
                         icon = Icons.Default.Build,
-                        title = "Restore Vault",
-                        subtitle = "Import vault data from file"
-                    ) {
-                        importLauncher.launch(arrayOf("application/json"))
-                    }
+                        title = "Restore",
+                        subtitle = "Import vault data from file",
+                        onClick = onOpenRestore
+                    )
+//                    {
+//                        importLauncher.launch(arrayOf("application/json"))
+//                    }
                 }
             }
             item {
-            SettingsSection(title = "About") {
-                SettingsRow(
-                    icon = Icons.Default.Info,
-                    title = "App Version",
-                    subtitle = "1.0.0"
-                )
-                SettingsRow(
-                    icon = Icons.Default.Info,
-                    title = "Terms & Privacy",
-                    subtitle = "Legal information"
-                )
-            }
+                SettingsSection(title = "About") {
+                    SettingsRow(
+                        icon = Icons.Default.Info,
+                        title = "App Version",
+                        subtitle = "1.0.0"
+                    )
+                    SettingsRow(
+                        icon = Icons.Default.Info,
+                        title = "Terms & Privacy",
+                        subtitle = "Legal information"
+                    )
                 }
+            }
         }
     }
 }
@@ -183,11 +161,7 @@ private fun SettingsRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
 
-//        when (icon) {
-//            is ImageVector -> Icon(icon, null)
-//            is AppIcons -> AppIconButton(icon = icon, contentDescription = null)
-//        }
-        AppIconButton(AppIcons.ArrowForward , contentDescription = "settings item" , onClick = {})
+        AppIconButton(AppIcons.ArrowForward, contentDescription = "settings item", onClick = {})
 
         Spacer(Modifier.width(16.dp))
 

@@ -55,24 +55,29 @@ package com.example.axiom.ui.components.shared.button
 //    }
 //}
 
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.ui.res.painterResource
-import com.example.axiom.R
-import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.axiom.R
 
 sealed interface AppIcon {
     data class Vector(val imageVector: ImageVector) : AppIcon
@@ -94,6 +99,12 @@ object AppIcons {
     val NotificationBell = AppIcon.Vector(Icons.Outlined.Notifications)
     val Sun = AppIcon.PainterRes(R.drawable.sun)
     val Moon = AppIcon.PainterRes(R.drawable.moon)
+    val copy = AppIcon.PainterRes(R.drawable.copy)
+    val shield = AppIcon.PainterRes(R.drawable.shield)
+    val key = AppIcon.PainterRes(R.drawable.key)
+    val visibilityOn = AppIcon.PainterRes(R.drawable.visibilityon)
+    val visibilityOff = AppIcon.PainterRes(R.drawable.visibilityoff)
+
 }
 
 

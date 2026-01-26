@@ -27,21 +27,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import android.content.res.Configuration
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.data.finances.domain.Invoice
-import com.example.axiom.ui.screens.finances.FinancesViewModel
-import com.example.axiom.ui.screens.finances.FinancesViewModelFactory
+import com.example.axiom.data.finances.Invoice
+import com.example.axiom.data.finances.InvoiceViewModel
+import com.example.axiom.data.finances.InvoiceViewModelFactory
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -53,7 +51,10 @@ fun InvoicesScreen(
     onCreateInvoice: () -> Unit,
     onInvoiceClick: (String) -> Unit
 ) {
-    val viewModel: FinancesViewModel = viewModel(factory = FinancesViewModelFactory())
+    val context = LocalContext.current
+    val viewModel: InvoiceViewModel = viewModel(
+        factory = InvoiceViewModelFactory(context)
+    )
     val invoices by viewModel.invoices.collectAsStateWithLifecycle()
 
     val isLoading = invoices.isEmpty() && viewModel.invoices.replayCache.isEmpty()
@@ -95,15 +96,13 @@ fun InvoicesScreen(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
-        }
-        else if (invoices.isEmpty()) {
+        } else if (invoices.isEmpty()) {
 
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("No invoices found.", style = MaterialTheme.typography.bodyLarge)
             }
 
-        }
-        else {
+        } else {
             LazyColumn(
                 modifier = Modifier.padding(paddingValues),
                 contentPadding = PaddingValues(16.dp),
@@ -154,7 +153,9 @@ fun HeaderMonth(monthYear: String) {
 @Composable
 fun InvoiceCard(invoice: Invoice, customerName: String, onClick: () -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
         ),
@@ -176,7 +177,12 @@ fun InvoiceCard(invoice: Invoice, customerName: String, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "$customerName • ${SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(invoice.date.toLongOrNull() ?: 0L))}",
+                    text = "$customerName • ${
+                        SimpleDateFormat(
+                            "dd MMM yyyy",
+                            Locale.getDefault()
+                        ).format(Date(invoice.date.toLongOrNull() ?: 0L))
+                    }",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
@@ -197,17 +203,3 @@ fun InvoiceCard(invoice: Invoice, customerName: String, onClick: () -> Unit) {
     }
 }
 
-// -- PREVIEWS --
-
-@Preview(
-    name = "Dark Mode",
-    showBackground = true,
-    uiMode = Configuration.UI_MODE_NIGHT_YES
-)
-@Composable
-fun InvoicesScreenPreviewDark() {
-    // Explicitly wrapping in a dark theme for preview purposes
-    MaterialTheme(colorScheme = darkColorScheme()) {
-        InvoicesScreen(onBack = {}, onCreateInvoice = {}, onInvoiceClick = {})
-    }
-}

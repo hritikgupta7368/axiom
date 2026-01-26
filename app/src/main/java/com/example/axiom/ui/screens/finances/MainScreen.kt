@@ -77,8 +77,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.axiom.data.finances.SellerFirm
+import com.example.axiom.data.finances.SellerFirmViewModel
+import com.example.axiom.data.finances.SellerFirmViewModelFactory
 import com.example.axiom.data.finances.dataStore.FinancePreferences
-import com.example.axiom.data.finances.domain.SellerFirm
 import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
 import com.example.axiom.ui.navigation.BillsActions
 import kotlinx.coroutines.launch
@@ -96,8 +98,11 @@ fun MainScreen(navActions: BillsActions) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    val viewModel: FinancesViewModel = viewModel(factory = FinancesViewModelFactory())
-    val sellerFirms by viewModel.sellerFirms.collectAsStateWithLifecycle()
+    val viewModel: SellerFirmViewModel = viewModel(
+        factory = SellerFirmViewModelFactory(context)
+    )
+
+    val sellerFirms by viewModel.sellers.collectAsStateWithLifecycle()
 
     // DataStore Integration
     val financePreferences = remember { FinancePreferences(context) }
@@ -291,7 +296,7 @@ fun MainScreen(navActions: BillsActions) {
                         showSheet = false // Close after selection
                     },
                     onAddFirm = { firm ->
-                        viewModel.addSellerFirm(firm)
+                        viewModel.insert(firm)
                         // Optionally auto-select the new firm
                         scope.launch {
                             financePreferences.saveSelectedSellerFirm(

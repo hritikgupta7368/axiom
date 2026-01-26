@@ -11,7 +11,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -23,38 +37,59 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
-
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
-
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.data.finances.domain.Product
+import com.example.axiom.data.finances.Product
+import com.example.axiom.data.finances.ProductViewModel
+import com.example.axiom.data.finances.ProductViewModelFactory
 import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
-import com.example.axiom.ui.screens.finances.FinancesViewModel
-import com.example.axiom.ui.screens.finances.FinancesViewModelFactory
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 // Standard GST Unit List
 val GST_UNITS = listOf(
@@ -108,14 +143,19 @@ val GST_UNITS = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductScreen(onBack: () -> Unit) {
-    // --- ViewModel Integration ---
-    val viewModel: FinancesViewModel = viewModel(factory = FinancesViewModelFactory())
-    val products by viewModel.products.collectAsStateWithLifecycle()
+
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val viewModel: ProductViewModel = viewModel(
+        factory = ProductViewModelFactory(context)
+    )
+
+    val products by viewModel.products.collectAsState(initial = emptyList())
+
 
     // Selection State
     var selectedProductId by remember { mutableStateOf<String?>(null) }
-    
+
     // Animation State
     val deletedItemIds = remember { mutableStateListOf<String>() }
 
@@ -128,7 +168,7 @@ fun ProductScreen(onBack: () -> Unit) {
 
     // --- Helpers ---
     fun openCreateSheet() {
-        formData = Product(id = UUID.randomUUID().toString()) // Reset form
+        formData = Product() // Reset form
         isEditing = false
         selectedProductId = null
         showSheet = true
@@ -148,17 +188,17 @@ fun ProductScreen(onBack: () -> Unit) {
         if (idToDelete != null) {
             // Clear selection immediately for UI feedback
             selectedProductId = null
-            
+
             scope.launch {
                 // Trigger animation
                 deletedItemIds.add(idToDelete)
-                
+
                 // Wait for animation to complete
-                delay(500) 
-                
+                delay(500)
+
                 // Perform actual soft delete in DB
-                viewModel.deleteProduct(idToDelete)
-                
+                viewModel.deleteById(idToDelete)
+
                 // Cleanup ID from tracking
                 deletedItemIds.remove(idToDelete)
             }
@@ -167,9 +207,9 @@ fun ProductScreen(onBack: () -> Unit) {
 
     fun saveProduct(updatedData: Product) {
         if (isEditing) {
-            viewModel.updateProduct(updatedData)
+            viewModel.update(updatedData)
         } else {
-            viewModel.addProduct(updatedData)
+            viewModel.insert(updatedData)
         }
         showSheet = false
         selectedProductId = null
@@ -189,7 +229,11 @@ fun ProductScreen(onBack: () -> Unit) {
                     },
                     actions = {
                         IconButton(onClick = { openCreateSheet() }) {
-                            Icon(Icons.Default.Add, contentDescription = "Add Product", tint = MaterialTheme.colorScheme.primary)
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Add Product",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -212,7 +256,11 @@ fun ProductScreen(onBack: () -> Unit) {
                             Icon(Icons.Default.Edit, contentDescription = "Edit")
                         }
                         IconButton(onClick = { deleteSelected() }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = MaterialTheme.colorScheme.error
+                            )
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -228,7 +276,7 @@ fun ProductScreen(onBack: () -> Unit) {
 
         // --- Content ---
         if (products.isEmpty()) {
-             Box(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
@@ -253,14 +301,19 @@ fun ProductScreen(onBack: () -> Unit) {
                     val isVisible = !deletedItemIds.contains(product.id)
                     AnimatedVisibility(
                         visible = isVisible,
-                        exit = shrinkVertically(animationSpec = tween(500)) + fadeOut(animationSpec = tween(500)),
+                        exit = shrinkVertically(animationSpec = tween(500)) + fadeOut(
+                            animationSpec = tween(
+                                500
+                            )
+                        ),
                         enter = expandVertically() + fadeIn()
                     ) {
                         ProductCard(
                             product = product,
                             isSelected = product.id == selectedProductId,
                             onSelect = {
-                                selectedProductId = if (selectedProductId == product.id) null else product.id
+                                selectedProductId =
+                                    if (selectedProductId == product.id) null else product.id
                             }
                         )
                     }
@@ -293,8 +346,12 @@ fun ProductCard(
     onSelect: () -> Unit
 ) {
     // Dynamic colors based on selection
-    val borderColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-    val containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
+    val borderColor =
+        if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(
+            alpha = 0.5f
+        )
+    val containerColor =
+        if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surface
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -394,7 +451,7 @@ fun ProductForm(
 ) {
     // Local state for form fields to handle validation updates immediately
     var currentData by remember { mutableStateOf(formData) }
-    
+
     // Temp state for price text field to handle string/double conversion smoothly
     var priceText by remember(formData.sellingPrice) {
         mutableStateOf(if (formData.sellingPrice == 0.0 && !isEditing) "" else formData.sellingPrice.toString())
@@ -411,7 +468,7 @@ fun ProductForm(
 
     fun validate(): Boolean {
         var isValid = true
-        
+
         // Name Validation
         if (currentData.name.isBlank()) {
             nameError = "Name is required"
@@ -435,8 +492,8 @@ fun ProductForm(
         } else {
             val price = priceText.toDoubleOrNull()
             if (price == null || price < 0) {
-                 priceError = "Invalid Price"
-                 isValid = false
+                priceError = "Invalid Price"
+                isValid = false
             } else {
                 priceError = null
                 currentData = currentData.copy(sellingPrice = price)
@@ -490,7 +547,9 @@ fun ProductForm(
         // Name
         ProductInput(
             value = currentData.name,
-            onValueChange = { currentData = currentData.copy(name = it); if (nameError != null) nameError = null },
+            onValueChange = {
+                currentData = currentData.copy(name = it); if (nameError != null) nameError = null
+            },
             label = "Product Name *",
             icon = Icons.Default.Info,
             isError = nameError != null,
@@ -500,7 +559,9 @@ fun ProductForm(
         // HSN Code
         ProductInput(
             value = currentData.hsn,
-            onValueChange = { currentData = currentData.copy(hsn = it); if (hsnError != null) hsnError = null },
+            onValueChange = {
+                currentData = currentData.copy(hsn = it); if (hsnError != null) hsnError = null
+            },
             label = "HSN Code *",
             icon = Icons.Default.Info,
             keyboardType = KeyboardType.Number,
@@ -511,10 +572,10 @@ fun ProductForm(
         // Selling Price
         ProductInput(
             value = priceText,
-            onValueChange = { 
+            onValueChange = {
                 if (it.all { char -> char.isDigit() || char == '.' }) {
-                     priceText = it
-                     if (priceError != null) priceError = null
+                    priceText = it
+                    if (priceError != null) priceError = null
                 }
             },
             label = "Selling Price *",
@@ -595,7 +656,11 @@ fun ProductForm(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(if (isEditing) "Update" else "Save")
             }
@@ -607,9 +672,9 @@ fun ProductForm(
 fun UnitSelectionDialog(onDismiss: () -> Unit, onUnitSelected: (String) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
     val filteredUnits = remember(searchQuery) {
-        GST_UNITS.filter { 
-            it.first.contains(searchQuery, ignoreCase = true) || 
-            it.second.contains(searchQuery, ignoreCase = true) 
+        GST_UNITS.filter {
+            it.first.contains(searchQuery, ignoreCase = true) ||
+                    it.second.contains(searchQuery, ignoreCase = true)
         }
     }
 
@@ -623,7 +688,11 @@ fun UnitSelectionDialog(onDismiss: () -> Unit, onUnitSelected: (String) -> Unit)
                 .heightIn(max = 600.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text("Select Unit", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(
+                    "Select Unit",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = searchQuery,
@@ -635,29 +704,43 @@ fun UnitSelectionDialog(onDismiss: () -> Unit, onUnitSelected: (String) -> Unit)
                     shape = RoundedCornerShape(12.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 if (filteredUnits.isEmpty()) {
-                     Box(modifier = Modifier
-                         .fillMaxWidth()
-                         .weight(1f, fill = false)
-                         .padding(24.dp), contentAlignment = Alignment.Center) {
-                         Text("No matching units found", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                     }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                            .padding(24.dp), contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "No matching units found",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 } else {
                     LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
                         items(filteredUnits) { (code, name) ->
                             ListItem(
                                 headlineContent = { Text(name, fontWeight = FontWeight.Medium) },
-                                supportingContent = { Text("Code: $code", style = MaterialTheme.typography.bodySmall) },
+                                supportingContent = {
+                                    Text(
+                                        "Code: $code",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                },
                                 modifier = Modifier
                                     .clickable { onUnitSelected(code) }
                                     .fillMaxWidth()
                             )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(
+                                    alpha = 0.5f
+                                )
+                            )
                         }
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
                 TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
                     Text("Cancel")
@@ -686,15 +769,33 @@ fun ProductInput(
             value = value,
             onValueChange = { if (allCaps) onValueChange(it.uppercase()) else onValueChange(it) },
             label = { Text(label) },
-            placeholder = if (placeholder != null) { { Text(placeholder) } } else null,
-            leadingIcon = if (icon != null) { { Icon(icon, contentDescription = null, tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) } } else null,
+            placeholder = if (placeholder != null) {
+                { Text(placeholder) }
+            } else null,
+            leadingIcon = if (icon != null) {
+                {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else null,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             singleLine = singleLine,
             minLines = minLines,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             isError = isError,
-            trailingIcon = if (isError) { { Icon(Icons.Default.Warning, contentDescription = "Error", tint = MaterialTheme.colorScheme.error) } } else null,
+            trailingIcon = if (isError) {
+                {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = "Error",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            } else null,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
