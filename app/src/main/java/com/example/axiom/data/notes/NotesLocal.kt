@@ -11,6 +11,7 @@ import androidx.room.Delete
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Update
@@ -90,6 +91,12 @@ interface NotesDao {
     """
     )
     fun searchNotes(query: String): Flow<List<NoteEntity>>
+
+    @Query("SELECT * FROM notes")
+    suspend fun exportAll(): List<NoteEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restore(entries: List<NoteEntity>)
 }
 
 

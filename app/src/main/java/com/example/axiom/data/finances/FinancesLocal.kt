@@ -617,9 +617,14 @@ interface ProductDao {
     @Update
     suspend fun update(product: ProductEntity)
 
-
     @Query("DELETE FROM products WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("SELECT * FROM products")
+    suspend fun exportAll(): List<ProductEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restore(entries: List<ProductEntity>)
 }
 
 @Dao
@@ -644,6 +649,12 @@ interface SupplierFirmDao {
 
     @Delete
     suspend fun delete(supplier: SupplierFirmEntity)
+
+    @Query("SELECT * FROM supplier_firms")
+    suspend fun exportAll(): List<SupplierFirmEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restore(entries: List<SupplierFirmEntity>)
 }
 
 @Dao
@@ -668,6 +679,12 @@ interface PurchaseRecordDao {
 
     @Delete
     suspend fun delete(purchase: PurchaseRecordEntity)
+
+    @Query("SELECT * FROM purchase_records")
+    suspend fun exportAll(): List<PurchaseRecordEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restore(entries: List<PurchaseRecordEntity>)
 }
 
 @Dao
@@ -693,6 +710,12 @@ interface SellerFirmDao {
 
     @Query("DELETE FROM seller_firms WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("SELECT * FROM seller_firms")
+    suspend fun exportAll(): List<SellerFirmEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restore(entries: List<SellerFirmEntity>)
 }
 
 @Dao
@@ -717,6 +740,12 @@ interface CustomerFirmDao {
 
     @Query("DELETE FROM customer_firms WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("SELECT * FROM customer_firms")
+    suspend fun exportAll(): List<CustomerFirmEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restore(entries: List<CustomerFirmEntity>)
 
 }
 
@@ -752,6 +781,12 @@ interface InvoiceDao {
 
     @Query("DELETE FROM invoices WHERE id = :id")
     suspend fun deleteById(id: String)
+
+    @Query("SELECT * FROM invoices")
+    suspend fun exportAll(): List<InvoiceEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restore(entries: List<InvoiceEntity>)
 }
 
 /* ---------- REPOSITORIES ---------- */

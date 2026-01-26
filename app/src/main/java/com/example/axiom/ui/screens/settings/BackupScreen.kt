@@ -49,6 +49,8 @@ fun BackupScreen(
     var vault by remember { mutableStateOf(true) }
     var tasks by remember { mutableStateOf(true) }
     var events by remember { mutableStateOf(true) }
+    var notes by remember { mutableStateOf(true) }
+    var finances by remember { mutableStateOf(true) }
 
 
     // CREATE backup file
@@ -64,7 +66,8 @@ fun BackupScreen(
                         BackupScope(
                             vault = vault,
                             tasks = tasks,
-                            events = events
+                            events = events,
+                            notes = notes
                         )
                     )
                     writeBackupToUri(context, uri, backup)
@@ -106,6 +109,10 @@ fun BackupScreen(
             BackupToggle("Vault Entries", vault) { vault = it }
             BackupToggle("Tasks", tasks) { tasks = it }
             BackupToggle("Events", events) { events = it }
+            BackupToggle("Notes", notes) { notes = it }
+            BackupToggle("Finances", finances) { finances = it }
+
+
 
             Button(
                 onClick = {

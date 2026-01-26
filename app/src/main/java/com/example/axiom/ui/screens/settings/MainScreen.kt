@@ -85,9 +85,7 @@ fun SettingsScreen(
                         subtitle = "Export vault data to file",
                         onClick = onOpenBackup
                     )
-//                    {
-//                        exportLauncher.launch("axiom_backup_vault.json")
-//                    }
+
                     // RESTORE
                     SettingsRow(
                         icon = Icons.Default.Build,
@@ -95,9 +93,7 @@ fun SettingsScreen(
                         subtitle = "Import vault data from file",
                         onClick = onOpenRestore
                     )
-//                    {
-//                        importLauncher.launch(arrayOf("application/json"))
-//                    }
+
                 }
             }
             item {
