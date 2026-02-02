@@ -56,12 +56,32 @@ fun RestoreScreen(
             scope.launch {
                 try {
                     val loaded = readBackupFromUri(context, uri)
-                    backupManager.restore(loaded)
+                    val success = backupManager.restore(loaded)
+
+                    if (success) {
+                        Toast.makeText(
+                            context,
+                            "Restore completed successfully",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        onBack()
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Restore failed",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 } catch (e: Exception) {
-                    Toast.makeText(context, "Invalid backup file", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        "Invalid backup file",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
+
 
     Scaffold(
         topBar = {

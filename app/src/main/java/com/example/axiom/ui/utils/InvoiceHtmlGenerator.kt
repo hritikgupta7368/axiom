@@ -24,41 +24,6 @@ object InvoiceHtmlGenerator {
         val hasShipping = invoice.shippingCharge != null && invoice.shippingCharge > 0
         val itemLimit = if (hasShipping) MAX_ROWS - 1 else MAX_ROWS
 
-//        val itemRows = buildString {
-//            for (i in 0 until MAX_ROWS) {
-//                val item = invoice.items.getOrNull(i)
-//
-//                if (item != null) {
-//                    append(
-//                        """
-//                        <tr class="item-row">
-//                            <td>${i + 1}</td>
-//                            <td>${item.name}</td>
-//                            <td>${item.hsn}</td>
-//                            <td class="right">${item.quantity.toInt()}</td>
-//                            <td>${item.unit}</td>
-//                            <td class="right">${"%.2f".format(item.price)}</td>
-//                            <td class="right">${"%.2f".format(item.total)}</td>
-//                        </tr>
-//                        """.trimIndent()
-//                    )
-//                } else {
-//                    append(
-//                        """
-//                        <tr class="item-row">
-//                            <td>&nbsp;</td>
-//                            <td>&nbsp;</td>
-//                            <td>&nbsp;</td>
-//                            <td>&nbsp;</td>
-//                            <td>&nbsp;</td>
-//                            <td>&nbsp;</td>
-//                            <td>&nbsp;</td>
-//                        </tr>
-//                        """.trimIndent()
-//                    )
-//                }
-//            }
-//        }
 
         val itemRows = buildString {
 
@@ -141,12 +106,13 @@ object InvoiceHtmlGenerator {
                   margin: 0;
               }
 
-              .page {
-                  box-sizing: border-box;
-                  font-family: Arial, sans-serif;
-                  color: #000;
-                  border: 0.4mm solid #000;
-              }
+               .page {
+                    box-sizing: border-box;
+                    font-family: Arial, sans-serif;
+                    color: #000;
+                    border: 0.4mm solid #000;
+                }
+
               /* ===== TEXT AlIGN ===== */
 
               .text-center {

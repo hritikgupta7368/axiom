@@ -8,7 +8,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.Insert
@@ -26,6 +25,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -138,8 +138,8 @@ data class Invoice(
     val sellerId: String = "",
     val customerDetails: CustomerFirm? = null,
     val supplyType: SupplyType = SupplyType.INTRA_STATE,
-    val vehicleNumber: String? = null,
-    val shippedTo: String? = null,
+    val vehicleNumber: String? = "",
+    val shippedTo: String? = "",
     val items: List<InvoiceItem> = emptyList(),
     val totalBeforeTax: Double = 0.0,
     val gst: GstBreakdown = GstBreakdown(),
@@ -150,7 +150,7 @@ data class Invoice(
     val createdAt: Long = 0L,
     val updatedAt: Long? = null,
     val cancelledAt: Long? = null,
-    val cancelReason: String? = null,
+    val cancelReason: String? = "",
     val deleted: Boolean = false,
     val deletedAt: Long? = null,
     val version: Int = 1
@@ -647,8 +647,8 @@ interface SupplierFirmDao {
     @Update
     suspend fun update(supplier: SupplierFirmEntity)
 
-    @Delete
-    suspend fun delete(supplier: SupplierFirmEntity)
+    @Query("DELETE FROM supplier_firms WHERE id = :id")
+    suspend fun deleteById(id: String)
 
     @Query("SELECT * FROM supplier_firms")
     suspend fun exportAll(): List<SupplierFirmEntity>
@@ -677,8 +677,8 @@ interface PurchaseRecordDao {
     @Update
     suspend fun update(purchase: PurchaseRecordEntity)
 
-    @Delete
-    suspend fun delete(purchase: PurchaseRecordEntity)
+    @Query("DELETE FROM purchase_records WHERE id = :id")
+    suspend fun deleteById(id: String)
 
     @Query("SELECT * FROM purchase_records")
     suspend fun exportAll(): List<PurchaseRecordEntity>
@@ -843,15 +843,21 @@ class SupplierFirmRepository(
     suspend fun getById(id: String): SupplierFirm? =
         dao.getById(id)?.toDomain()
 
-    suspend fun insert(supplier: SupplierFirm) =
-        dao.insert(supplier.toEntity())
+
+    suspend fun insert(supplier: SupplierFirm) {
+        val entity = supplier
+            .ensureId()
+            .toEntity()
+
+        dao.insert(entity)
+    }
 
 
     suspend fun update(supplier: SupplierFirm) =
         dao.update(supplier.toEntity())
 
-    suspend fun delete(supplier: SupplierFirm) =
-        dao.delete(supplier.toEntity())
+    suspend fun deleteById(id: String) =
+        dao.deleteById(id)
 }
 
 
@@ -872,14 +878,20 @@ class PurchaseRecordRepository(
     suspend fun getById(id: String): PurchaseRecord? =
         dao.getById(id)?.toDomain()
 
-    suspend fun insert(record: PurchaseRecord) =
-        dao.insert(record.toEntity())
+
+    suspend fun insert(record: PurchaseRecord) {
+        val entity = record
+            .ensureId()
+            .toEntity()
+
+        dao.insert(entity)
+    }
 
     suspend fun update(record: PurchaseRecord) =
         dao.update(record.toEntity())
 
-    suspend fun delete(record: PurchaseRecord) =
-        dao.delete(record.toEntity())
+    suspend fun deleteById(id: String) =
+        dao.deleteById(id)
 }
 
 class SellerFirmRepository(
@@ -975,8 +987,14 @@ class InvoiceRepository(
     suspend fun getByInvoiceNo(no: String): Invoice? =
         dao.getByInvoiceNo(no)?.toDomain()
 
-    suspend fun insert(invoice: Invoice) =
-        dao.insert(invoice.toEntity())
+
+    suspend fun insert(invoice: Invoice) {
+        val entity = invoice
+            .ensureId()
+            .toEntity()
+
+        dao.insert(entity)
+    }
 
     suspend fun update(invoice: Invoice) =
         dao.update(invoice.toEntity())
@@ -1068,32 +1086,58 @@ class SupplierFirmViewModel(
     fun update(supplier: SupplierFirm) =
         viewModelScope.launch { repo.update(supplier) }
 
-    fun delete(supplier: SupplierFirm) =
-        viewModelScope.launch { repo.delete(supplier) }
+    fun deleteById(id: String) =
+        viewModelScope.launch {
+            repo.deleteById(id)
+        }
 }
 
 class PurchaseRecordViewModel(
-    private val repo: PurchaseRecordRepository
+    private val productRepo: ProductRepository,
+    private val purchaseRepo: PurchaseRecordRepository,
+    private val supplierRepo: SupplierFirmRepository
 ) : ViewModel() {
 
+
+    private val productSearchQuery = MutableStateFlow("")
+    private val supplierSearchQuery = MutableStateFlow("")
+    private val purhcaseSearchQuery = MutableStateFlow("")
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val products: StateFlow<List<Product>> =
+        productSearchQuery
+            .flatMapLatest { productRepo.search(it) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val suppliers: StateFlow<List<SupplierFirm>> =
+        supplierSearchQuery
+            .flatMapLatest { supplierRepo.search(it) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     val purchases: StateFlow<List<PurchaseRecord>> =
-        repo.purchases
+        purchaseRepo.purchases
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun getBySupplier(supplierId: String): Flow<List<PurchaseRecord>> =
-        repo.getBySupplier(supplierId)
+        purchaseRepo.getBySupplier(supplierId)
 
     fun getByDateRange(start: Long, end: Long): Flow<List<PurchaseRecord>> =
-        repo.getByDateRange(start, end)
+        purchaseRepo.getByDateRange(start, end)
 
     fun insert(record: PurchaseRecord) =
-        viewModelScope.launch { repo.insert(record) }
+        viewModelScope.launch { purchaseRepo.insert(record) }
 
     fun update(record: PurchaseRecord) =
-        viewModelScope.launch { repo.update(record) }
+        viewModelScope.launch { purchaseRepo.update(record) }
 
-    fun delete(record: PurchaseRecord) =
-        viewModelScope.launch { repo.delete(record) }
+    fun insertProduct(product: Product) =
+        viewModelScope.launch { productRepo.insert(product) }
+
+    fun deleteById(id: String) =
+        viewModelScope.launch {
+            purchaseRepo.deleteById(id)
+        }
 }
 
 class SellerFirmViewModel(
@@ -1318,7 +1362,105 @@ class CreateInvoiceViewModel(
 
 }
 
+class BusinessAnalyticsViewModel(
+    private val invoiceRepo: InvoiceRepository,
+    private val purchaseRepo: PurchaseRecordRepository
+) : ViewModel() {
+
+    // ---------- RAW STREAMS ----------
+
+    private val invoiceSearchQuery = MutableStateFlow("")
+
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val invoices: StateFlow<List<Invoice>> =
+        invoiceSearchQuery
+            .flatMapLatest { invoiceRepo.search(it) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+
+    val purchases: StateFlow<List<PurchaseRecord>> =
+        purchaseRepo.purchases
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+
+    // ---------- DERIVED METRICS ----------
+
+    val totalSales: StateFlow<Double> =
+        invoices
+            .map { list ->
+                list
+                    .filter { it.status != InvoiceStatus.CANCELLED && !it.deleted }
+                    .sumOf { it.totalAmount }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0.0)
+
+    val totalPurchases: StateFlow<Double> =
+        purchases
+            .map { list ->
+                list.sumOf { record ->
+                    record.items.sumOf { it.total }
+                }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0.0)
+
+    val invoiceCount: StateFlow<Int> =
+        invoices
+            .map { it.count { inv -> inv.status != InvoiceStatus.CANCELLED && !inv.deleted } }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val purchaseCount: StateFlow<Int> =
+        purchases
+            .map { it.size }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val averageInvoiceValue: StateFlow<Double> =
+        combine(totalSales, invoiceCount) { sales, count ->
+            if (count == 0) 0.0 else sales / count
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0.0)
+
+    val netCashFlow: StateFlow<Double> =
+        combine(totalSales, totalPurchases) { sales, purchases ->
+            sales - purchases
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0.0)
+
+    // ---------- MONTHLY (FOR DASHBOARD / GST SCREEN) ----------
+
+    fun monthlySales(monthStart: Long, monthEnd: Long): Flow<Double> =
+        invoices.map { list ->
+            list
+                .filter {
+                    it.createdAt in monthStart..monthEnd &&
+                            it.status != InvoiceStatus.CANCELLED &&
+                            !it.deleted
+                }
+                .sumOf { it.totalAmount }
+        }
+
+    fun monthlyPurchases(monthStart: Long, monthEnd: Long): Flow<Double> =
+        purchases.map { list ->
+            list
+                .filter { it.purchaseDate in monthStart..monthEnd }
+                .sumOf { record -> record.items.sumOf { it.total } }
+        }
+}
+
+
 /* ---------- VIEWMODEL FACTORIES ---------- */
+
+
+class BusinessAnalyticsViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(BusinessAnalyticsViewModel::class.java)) {
+            val db = AppDatabase.get(context)
+            val purchaseRepo = PurchaseRecordRepository(db.purchaseRecordDao())
+            val invoiceRepo = InvoiceRepository(db.invoiceDao())
+            return BusinessAnalyticsViewModel(invoiceRepo, purchaseRepo) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel")
+    }
+}
+
 
 class CreateInvoiceViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -1367,9 +1509,12 @@ class PurchaseRecordViewModelFactory(
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(PurchaseRecordViewModel::class.java)) {
             val db = AppDatabase.get(context)
-            val dao = db.purchaseRecordDao()
-            val repo = PurchaseRecordRepository(dao)
-            return PurchaseRecordViewModel(repo) as T
+            val productRepo = ProductRepository(db.productDao())
+            val supplierRepo = SupplierFirmRepository(db.supplierFirmDao())
+            val purchaseRepo = PurchaseRecordRepository(db.purchaseRecordDao())
+
+
+            return PurchaseRecordViewModel(productRepo, purchaseRepo, supplierRepo) as T
         }
         throw IllegalArgumentException("Unknown ViewModel")
     }
@@ -1446,3 +1591,28 @@ fun SellerFirm.ensureId(): SellerFirm {
         this
     }
 }
+
+fun SupplierFirm.ensureId(): SupplierFirm {
+    return if (id.isBlank()) {
+        copy(id = IdGenerator.newId())
+    } else {
+        this
+    }
+}
+
+fun PurchaseRecord.ensureId(): PurchaseRecord {
+    return if (id.isBlank()) {
+        copy(id = IdGenerator.newId())
+    } else {
+        this
+    }
+}
+
+fun Invoice.ensureId(): Invoice {
+    return if (id.isBlank()) {
+        copy(id = IdGenerator.newId())
+    } else {
+        this
+    }
+}
+

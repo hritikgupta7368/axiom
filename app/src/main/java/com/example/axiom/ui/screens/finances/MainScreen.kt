@@ -77,6 +77,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.axiom.data.finances.BusinessAnalyticsViewModel
+import com.example.axiom.data.finances.BusinessAnalyticsViewModelFactory
 import com.example.axiom.data.finances.SellerFirm
 import com.example.axiom.data.finances.SellerFirmViewModel
 import com.example.axiom.data.finances.SellerFirmViewModelFactory
@@ -121,6 +123,13 @@ fun MainScreen(navActions: BillsActions) {
     }
 
 
+    val analyticsViewModel: BusinessAnalyticsViewModel = viewModel(
+        factory = BusinessAnalyticsViewModelFactory(context)
+    )
+    val totalSales by analyticsViewModel.totalSales.collectAsState()
+    val totalPurchases by analyticsViewModel.totalPurchases.collectAsState()
+
+
     val actions = listOf(
         QuickAction("Invoices", Icons.Default.List, Color(0xFF3B82F6)),
         QuickAction("Customers", Icons.Default.Person, Color(0xFF10B981)),
@@ -128,7 +137,7 @@ fun MainScreen(navActions: BillsActions) {
         QuickAction("Analytics", Icons.Default.AccountBox, Color(0xFFA855F7)),
         QuickAction("Purchase", Icons.Default.Add, Color(0xFFEC4899)),
         QuickAction("Summary", Icons.Default.Person, Color(0xFF22D3EE)),
-        QuickAction("Challans", Icons.Default.Add, Color(0xFF6366F1)),
+        QuickAction("Suppliers", Icons.Default.Add, Color(0xFF6366F1)),
         QuickAction("Quotations", Icons.Default.Add, Color(0xFF3B82F6)),
 
         )
@@ -264,7 +273,10 @@ fun MainScreen(navActions: BillsActions) {
             Spacer(modifier = Modifier.height(32.dp))
 
             // Stats Cards
-            StatsCardsSection()
+            StatsCardsSection(
+                totalSales = totalSales,
+                totalPurchases = totalPurchases
+            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -874,7 +886,12 @@ fun OverviewSection() {
 }
 
 @Composable
-fun StatsCardsSection() {
+fun StatsCardsSection(
+    totalSales: Double,
+    totalPurchases: Double
+) {
+
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -882,16 +899,16 @@ fun StatsCardsSection() {
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         StatsCard(
-            title = "Total Revenue",
-            value = "$142.8k",
+            title = "Total Sales",
+            value = "₹%.2f".format(totalSales),
             change = "+18.4%",
             iconColor = Color(0xFF3B82F6),
             modifier = Modifier.weight(1f)
         )
 
         StatsCard(
-            title = "Active Users",
-            value = "2,842",
+            title = "Total Purchases",
+            value = "₹%.2f".format(totalPurchases),
             change = "+5.2%",
             iconColor = Color(0xFFA855F7),
             modifier = Modifier.weight(1f)

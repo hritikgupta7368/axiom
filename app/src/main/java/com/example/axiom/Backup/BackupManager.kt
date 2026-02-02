@@ -73,28 +73,34 @@ class BackupManager(
         )
     }
 
-    suspend fun restore(backup: AppBackup) =
+    suspend fun restore(backup: AppBackup): Boolean =
         withContext(Dispatchers.IO) {
+            try {
+                db.withTransaction {
+                    // Restore Vault
+                    db.vaultDao().restore(backup.vaultEntries.map { it.toEntity() })
 
-            db.withTransaction {
-                // Restore Vault
-                db.vaultDao().restore(backup.vaultEntries.map { it.toEntity() })
+                    // Restore Calendar
+                    db.calendarDao().restoreTasks(backup.tasks.map { it.toEntity() })
+                    db.calendarDao().restoreEvents(backup.events.map { it.toEntity() })
 
-                // Restore Calendar
-                db.calendarDao().restoreTasks(backup.tasks.map { it.toEntity() })
-                db.calendarDao().restoreEvents(backup.events.map { it.toEntity() })
+                    // Restore Notes
+                    db.noteDao().restore(backup.notes.map { it.toEntity() })
 
-                // Restore Notes
-                db.noteDao().restore(backup.notes.map { it.toEntity() })
-
-                // Restore Finances
-                db.productDao().restore(backup.products.map { it.toEntity() })
-                db.customerFirmDao().restore(backup.customers.map { it.toEntity() })
-                db.sellerFirmDao().restore(backup.sellers.map { it.toEntity() })
-                db.supplierFirmDao().restore(backup.suppliers.map { it.toEntity() })
-                db.purchaseRecordDao().restore(backup.purchases.map { it.toEntity() })
-                db.invoiceDao().restore(backup.invoices.map { it.toEntity() })
+                    // Restore Finances
+                    db.productDao().restore(backup.products.map { it.toEntity() })
+                    db.customerFirmDao().restore(backup.customers.map { it.toEntity() })
+                    db.sellerFirmDao().restore(backup.sellers.map { it.toEntity() })
+                    db.supplierFirmDao().restore(backup.suppliers.map { it.toEntity() })
+                    db.purchaseRecordDao().restore(backup.purchases.map { it.toEntity() })
+                    db.invoiceDao().restore(backup.invoices.map { it.toEntity() })
+                }
+                true
+            } catch (e: Exception) {
+                false
             }
+
+
         }
 }
 

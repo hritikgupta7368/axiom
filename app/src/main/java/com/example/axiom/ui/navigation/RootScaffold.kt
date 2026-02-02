@@ -53,6 +53,7 @@ import com.example.axiom.ui.screens.finances.product.ProductScreen
 import com.example.axiom.ui.screens.finances.purchase.CreatePurchaseScreen
 import com.example.axiom.ui.screens.finances.purchase.PurchasePreviewScreen
 import com.example.axiom.ui.screens.finances.purchase.PurchaseScreen
+import com.example.axiom.ui.screens.finances.suppliers.SupplierScreen
 import com.example.axiom.ui.screens.home.HomeScreen
 import com.example.axiom.ui.screens.notes.NoteEditorScreen
 import com.example.axiom.ui.screens.notes.NotesScreen
@@ -91,6 +92,9 @@ sealed class Route(val route: String) {
     data object Purchases : Route("purchases")
     data object CreatePurchase : Route("create_purchase")
     data object PurchasePreview : Route("purchase_preview")
+
+    data object Suppliers : Route("suppliers")
+
 
     data object Profile : Route("profile")
 
@@ -261,6 +265,7 @@ fun RootScaffold(navController: NavHostController) {
                                         "Purchase" -> navController.navigate(Route.Purchases.route)
                                         "Analytics" -> navController.navigate(Route.GSTAnalytics.route)
                                         "Summary" -> navController.navigate(Route.GSTSummary.route)
+                                        "Suppliers" -> navController.navigate(Route.Suppliers.route)
                                         else -> println("No route defined for $label")
                                     }
                                 },
@@ -377,6 +382,11 @@ fun RootScaffold(navController: NavHostController) {
                 }
                 composable(Route.Purchases.route) {
                     PurchaseScreen(
+                        onBack = { navController.popBackStack() },
+                    )
+                }
+                composable(Route.Suppliers.route) {
+                    SupplierScreen(
                         onBack = { navController.popBackStack() },
                     )
                 }

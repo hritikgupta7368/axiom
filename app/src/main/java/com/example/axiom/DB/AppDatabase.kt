@@ -62,7 +62,7 @@ abstract class AppDatabase : RoomDatabase() {
     // and daos here
 
     companion object {
-        const val VERSION = 1
+        const val VERSION = 2
 
         @Volatile
         private var INSTANCE: AppDatabase? = null
@@ -73,7 +73,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "axiom_db"
-                ).build().also {
+                ).fallbackToDestructiveMigration().build().also {
                     INSTANCE = it
                 }
             }

@@ -1,6 +1,12 @@
 package com.example.axiom.ui.screens.finances.Invoice
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,8 +34,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccountBox
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
@@ -48,8 +58,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -72,15 +82,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -96,7 +109,10 @@ import com.example.axiom.data.finances.SupplyType
 import com.example.axiom.data.finances.dataStore.FinancePreferences
 import com.example.axiom.data.finances.dataStore.SelectedSellerPref
 import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
+import com.example.axiom.ui.screens.finances.product.UnitSelectionDialog
 import com.example.axiom.ui.utils.numberToWords
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -160,6 +176,10 @@ fun resolveSupplyType(
     }
 }
 
+enum class ProductSheetMode {
+    LIST,
+    CREATE
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -209,6 +229,7 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
 
     var isInvoiceNoEditable by remember { mutableStateOf(false) }
     var isRoundOffEnabled by remember { mutableStateOf(true) }
+    var vehicleNumber by remember { mutableStateOf("") }
 
 
     // Date Picker State
@@ -234,6 +255,7 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
 
     // Bottom Sheet State
     var activeSheet by remember { mutableStateOf(SheetType.NONE) }
+    var productSheetMode by remember { mutableStateOf(ProductSheetMode.LIST) }
 
     // Items
     val invoiceItems = remember { mutableStateListOf<InvoiceItem>() }
@@ -274,6 +296,7 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
             sellerId = selectedSeller.id.toString(),
             customerDetails = selectedCustomer,
             supplyType = supplyType,
+            vehicleNumber = vehicleNumber,
             items = invoiceItems.toList(),
             shippingCharge = shippingCharges,
             shippedTo = shippedTo,
@@ -283,35 +306,36 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
             amountInWords = numberToWords(totalAmount),
             status = invoiceStatus
         )
-        viewModel.insertInvoice(invoice)
 
 
         // SINGLE SOURCE OF TRUTH: always create
-//         {
-//            scope.launch {
-//                // increment ONLY if auto-suggested invoice number was used
-//                val autoNumberUsed =
-//                    !userEditedInvoiceNo && invoiceNo == (lastInvoiceNo + 1).toString()
-//
-//                if (autoNumberUsed) {
-//                    financePreferences.saveLastInvoiceNumber(lastInvoiceNo + 1)
-//                }
-//
-//                Toast.makeText(
-//                    context,
-//                    "Invoice generated successfully",
-//                    Toast.LENGTH_LONG
-//                ).show()
-//
-//                delay(400) // UX stability
-//                invoiceNo = ""
-//                suggestedInvoiceNo = ""
-//                userEditedInvoiceNo = false
-//                onInvoicePreview(invoiceId)
-//            }
-//        }
+
+        scope.launch {
+            viewModel.insertInvoice(invoice)
+            // increment ONLY if auto-suggested invoice number was used
+            val autoNumberUsed =
+                !userEditedInvoiceNo && invoiceNo == (lastInvoiceNo + 1).toString()
+
+            if (autoNumberUsed) {
+                financePreferences.saveLastInvoiceNumber(lastInvoiceNo + 1)
+            }
+
+            Toast.makeText(
+                context,
+                "Invoice generated successfully",
+                Toast.LENGTH_LONG
+            ).show()
+
+            delay(400) // UX stability
+            invoiceNo = ""
+            suggestedInvoiceNo = ""
+            userEditedInvoiceNo = false
+            onInvoicePreview(invoiceId)
+        }
+
 
     }
+
 
 
     Scaffold(
@@ -370,12 +394,15 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                         },
                         placeholder = "001",
                         enabled = isInvoiceNoEditable,
+                        highlightWhenEditable = true,
                         trailingIcon = {
-                            IconButton(onClick = { isInvoiceNoEditable = !isInvoiceNoEditable }) {
+                            IconButton(onClick = {
+                                isInvoiceNoEditable = !isInvoiceNoEditable
+                            }) {
                                 Icon(
                                     Icons.Outlined.Edit,
                                     contentDescription = null,
-                                    tint = TextGray,
+                                    tint = if (isInvoiceNoEditable) PrimaryBlue else TextGray,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -469,15 +496,7 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                         ProductItemCard(
                             item = item,
                             onDelete = { invoiceItems.remove(item) },
-//                            onQtyChange = { newQty ->
-//                                if (newQty > 0) {
-//                                    val updatedItem = item.copy(
-//                                        quantity = newQty,
-//                                        total = newQty * item.price
-//                                    )
-//                                    invoiceItems[index] = updatedItem
-//                                }
-//                            }
+
                             onQtyChange = { newQty ->
                                 val updated = item.copy(
                                     quantity = newQty,
@@ -730,7 +749,10 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
     // --- Bottom Sheets ---
     AppBottomSheet(
         showSheet = activeSheet != SheetType.NONE,
-        onDismiss = { activeSheet = SheetType.NONE }
+        onDismiss = {
+            activeSheet = SheetType.NONE
+            productSheetMode = ProductSheetMode.LIST
+        }
     ) {
         when (activeSheet) {
             SheetType.CUSTOMER -> {
@@ -750,36 +772,272 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
             }
 
             SheetType.PRODUCT -> {
-                SelectionSheetContent(
-                    title = "Select Product",
-                    items = products,
-                    searchPredicate = { p, q ->
-                        p.name.contains(q, true) || p.hsn.contains(q, true)
+                AnimatedContent(
+                    targetState = productSheetMode,
+                    transitionSpec = {
+                        slideInHorizontally { it } + fadeIn() togetherWith
+                                slideOutHorizontally { -it } + fadeOut()
                     },
-                    rowContent = { ProductCard(it) },
-                    onSelect = { product ->
-                        invoiceItems.add(
-                            InvoiceItem(
-                                id = UUID.randomUUID().toString(),
-                                productId = product.id,
-                                name = product.name,
-                                unit = product.unit,
-                                price = product.sellingPrice,
-                                quantity = 1.0,
-                                hsn = product.hsn,
-                                total = product.sellingPrice
-                            )
-                        )
-                        activeSheet = SheetType.NONE
-                    }
-                )
+                    label = "ProductSheetAnimation"
+                ) { mode ->
+                    when (mode) {
 
+                        ProductSheetMode.LIST -> {
+                            ProductListSheet(
+                                products = products,
+                                onAddClick = {
+                                    productSheetMode = ProductSheetMode.CREATE
+                                },
+                                onSelect = { product ->
+                                    invoiceItems.add(
+                                        InvoiceItem(
+                                            id = UUID.randomUUID().toString(),
+                                            productId = product.id,
+                                            name = product.name,
+                                            unit = product.unit,
+                                            price = product.sellingPrice,
+                                            quantity = 1.0,
+                                            hsn = product.hsn,
+                                            total = product.sellingPrice
+                                        )
+                                    )
+                                    activeSheet = SheetType.NONE
+                                }
+                            )
+                        }
+
+                        ProductSheetMode.CREATE -> {
+                            CreateProductSheet(
+                                onCreate = { newProduct ->
+                                    viewModel.insertProduct(newProduct)
+                                    productSheetMode = ProductSheetMode.LIST
+                                },
+                                onBack = {
+                                    productSheetMode = ProductSheetMode.LIST
+                                }
+                            )
+                        }
+                    }
+                }
             }
 
             else -> {}
         }
     }
 }
+
+@Composable
+fun ProductListSheet(
+    products: List<Product>,
+    onAddClick: () -> Unit,
+    onSelect: (Product) -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+
+    val filteredProducts = remember(query, products) {
+        if (query.isBlank()) products
+        else products.filter {
+            it.name.contains(query, ignoreCase = true) ||
+                    it.hsn.contains(query, ignoreCase = true)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 300.dp, max = 600.dp)
+            .padding(16.dp)
+    ) {
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Select Product", fontWeight = FontWeight.Bold)
+
+            IconButton(onClick = onAddClick) {
+                Icon(Icons.Default.Add, contentDescription = null)
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Search product or HSN") },
+            singleLine = true,
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = null
+                )
+            }
+        )
+
+        LazyColumn {
+            items(filteredProducts) { product ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(product) }
+                        .padding(vertical = 8.dp)
+                ) {
+                    ProductCard(product)
+                }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun CreateProductSheet(
+    onCreate: (Product) -> Unit,
+    onBack: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var hsn by remember { mutableStateOf("") }
+    var price by remember { mutableStateOf("") }
+    var unit by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("") }
+
+    var showUnitDialog by remember { mutableStateOf(false) }
+
+    if (showUnitDialog) {
+        UnitSelectionDialog(
+            onDismiss = { showUnitDialog = false },
+            onUnitSelected = {
+                unit = it
+                showUnitDialog = false
+            }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.85f)
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+
+        // Header
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
+            }
+            Text(
+                "Add New Product",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        HorizontalDivider()
+
+        // Name
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Product Name") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        // HSN
+        OutlinedTextField(
+            value = hsn,
+            onValueChange = { hsn = it },
+            label = { Text("HSN Code") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        // Price
+        OutlinedTextField(
+            value = price,
+            onValueChange = { price = it },
+            label = { Text("Selling Price") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        // Unit (clickable)
+        Box {
+            OutlinedTextField(
+                value = unit,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Unit") },
+                placeholder = { Text("Select Unit") },
+                leadingIcon = { Icon(Icons.Default.Info, null) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clickable { showUnitDialog = true }
+            )
+        }
+
+        // Category (optional)
+        OutlinedTextField(
+            value = category,
+            onValueChange = { category = it },
+            label = { Text("Category (Optional)") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        // Actions
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = onBack,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Cancel")
+            }
+
+            Button(
+                onClick = {
+                    onCreate(
+                        Product(
+                            id = UUID.randomUUID().toString(),
+                            name = name,
+                            hsn = hsn,
+                            sellingPrice = price.toDoubleOrNull() ?: 0.0,
+                            unit = unit,
+                            category = category,
+                            active = true,
+                            createdAt = System.currentTimeMillis()
+                        )
+                    )
+                },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Save")
+            }
+        }
+    }
+}
+
 
 // --- Components ---
 
@@ -944,16 +1202,25 @@ fun CustomTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     prefix: @Composable (() -> Unit)? = null,
     trailingIcon: @Composable (() -> Unit)? = null,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    highlightWhenEditable: Boolean = false
 ) {
+
+    val borderColor = if (highlightWhenEditable && enabled) PrimaryBlue else BorderDark
+
+    val backgroundColor =
+        if (highlightWhenEditable && enabled)
+            PrimaryBlue.copy(alpha = 0.08f)
+        else
+            SurfaceDark
 
 
     val containerModifier = modifier
         .fillMaxWidth()
         .height(56.dp)
         .clip(RoundedCornerShape(12.dp))
-        .background(SurfaceDark)
-        .border(1.dp, BorderDark, RoundedCornerShape(12.dp))
+        .background(backgroundColor)
+        .border(1.dp, borderColor, RoundedCornerShape(12.dp))
         .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
         .padding(horizontal = 16.dp)
 
@@ -991,106 +1258,239 @@ fun CustomTextField(
     }
 }
 
+
 @Composable
 fun ProductItemCard(
     item: InvoiceItem,
     onDelete: () -> Unit,
     onQtyChange: (Double) -> Unit,
-    onPriceChange: (Double) -> Unit
+    onPriceChange: (Double) -> Unit,
+    isDark: Boolean = true
 ) {
-    Row(
+    val TextSlate400 = Color(0xFF94A3B8)
+    val TextSlate500 = Color(0xFF64748B)
+    val TextSlate900 = Color(0xFF0F172A)
+    val PrimaryBlue = Color(0xFF3B82F6)
+    val BlueBg = Color(0xFF1E3A8A).copy(alpha = 0.1f)
+    val BlueRing = Color(0xFF3B82F6).copy(alpha = 0.2f)
+    val InputBg = Color(0xFF15161E)
+    val InputBorder = Color.White.copy(alpha = 0.05f)
+    val GrayBg = Color(0xFFF9FAFB)
+    val GrayBorder = Color(0xFFF3F4F6)
+
+    val surfaceColor = if (isDark) SurfaceDark else Color.White
+    val borderColor = if (isDark) BorderDark else GrayBorder
+    val textPrimary = if (isDark) TextWhite else TextSlate900
+    val textSecondary = if (isDark) TextSlate500 else TextSlate400
+    val inputBackground = if (isDark) InputBg else GrayBg
+    val inputBorderColor = if (isDark) InputBorder else GrayBorder
+    val iconBg = if (isDark) BlueBg else Color(0xFFDEEBFF)
+    val iconRing = if (isDark) BlueRing else Color(0xFFBFDBFE)
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(SurfaceDark)
-            .border(1.dp, BorderDark, RoundedCornerShape(12.dp))
+            .background(surfaceColor)
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
             .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Icon Box
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.Yellow.copy(alpha = 0.2f)), // Dummy color
-            contentAlignment = Alignment.Center
+        // Header Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Outlined.ShoppingCart, null, tint = Color.Yellow)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                // Icon
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(iconBg)
+                        .border(1.dp, iconRing, RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.ShoppingCart, // Replace with web icon
+                        contentDescription = null,
+                        tint = PrimaryBlue,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                // Title and Subtitle
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = item.name,
+                        color = textPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = item.hsn,
+                        color = textSecondary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            // Delete Button
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = "Delete",
+                    tint = TextSlate400,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
 
-        // Info
-        Column(modifier = Modifier.weight(1f)) {
-            Text(item.name, color = TextWhite, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-//            Text("Rate: ${item.price}", color = TextGray, fontSize = 12.sp)
+        // Input Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Quantity Input
+            Row(
+                modifier = Modifier
+                    .weight(1.3f)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(inputBackground)
+                    .border(1.dp, inputBorderColor, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Qty",
+                    color = TextSlate400,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
 
-            OutlinedTextField(
-                value = if (item.price == 0.0) "" else item.price.toString(),
-                onValueChange = {
-                    val newPrice = it.toDoubleOrNull()
-                    if (newPrice != null && newPrice >= 0) {
-                        onPriceChange(newPrice)
+                var qtyText by remember { mutableStateOf(item.quantity.toInt().toString()) }
+
+                BasicTextField(
+                    value = qtyText,
+                    onValueChange = {
+                        qtyText = it
+                        it.toDoubleOrNull()?.takeIf { q -> q > 0 }?.let(onQtyChange)
+                    },
+                    textStyle = TextStyle(
+                        color = textPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Start
+                    ),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clipToBounds()
+
+                )
+
+
+            }
+
+            // Rate Input
+            Row(
+                modifier = Modifier
+                    .weight(1.5f)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(inputBackground)
+                    .border(1.dp, inputBorderColor, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Rate",
+                    color = TextSlate400,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(end = 0.dp)
+                )
+
+                var priceText by remember {
+                    mutableStateOf(
+                        if (item.price == 0.0) "" else "%.2f".format(
+                            item.price
+                        )
+                    )
+                }
+
+                BasicTextField(
+                    value = priceText,
+                    onValueChange = {
+                        priceText = it
+                        it.toDoubleOrNull()?.takeIf { p -> p >= 0 }?.let(onPriceChange)
+                    },
+                    textStyle = TextStyle(
+                        color = textPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    ),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clipToBounds(),
+                    decorationBox = { inner ->
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            inner()
+                        }
                     }
-                },
-                label = { Text("Rate", fontSize = 10.sp) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.width(90.dp),
-                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp)
-            )
+                )
+            }
 
-        }
+            // Total Display
+            Column(
+                modifier = Modifier
+                    .weight(1.2f)
 
-        // Price & Qty
-        Column(
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                "₹${"%.2f".format(item.total)}",
-                color = TextWhite,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
-            )
-
-
-            QuantityEditor(
-                quantity = item.quantity,
-                onQuantityChange = onQtyChange
-            )
-
-        }
-
-        // Delete
-        IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-            Icon(Icons.Outlined.Delete, null, tint = TextGray, modifier = Modifier.size(20.dp))
+                    .padding(horizontal = 8.dp),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "TOTAL",
+                    color = TextSlate400,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = "${"Rs %.2f".format(item.total)}",
+                    color = PrimaryBlue,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
-}
-
-@Composable
-private fun QuantityEditor(
-    quantity: Double,
-    onQuantityChange: (Double) -> Unit
-) {
-    var text by remember { mutableStateOf(quantity.toInt().toString()) }
-
-    OutlinedTextField(
-        value = text,
-        onValueChange = {
-            text = it
-            it.toDoubleOrNull()?.takeIf { q -> q > 0 }?.let(onQuantityChange)
-        },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Number
-        ),
-        modifier = Modifier.width(64.dp),
-        textStyle = LocalTextStyle.current.copy(
-            textAlign = TextAlign.Center,
-            fontSize = 12.sp
-        )
-    )
 }
 
 
