@@ -48,11 +48,13 @@ import com.example.axiom.ui.screens.finances.Invoice.PdfPreviewScreen
 import com.example.axiom.ui.screens.finances.MainScreen
 import com.example.axiom.ui.screens.finances.analytics.GSTAnalyticsScreen
 import com.example.axiom.ui.screens.finances.analytics.GSTSummaryScreen
+import com.example.axiom.ui.screens.finances.challan.ChallansScreen
 import com.example.axiom.ui.screens.finances.customer.CustomerScreen
 import com.example.axiom.ui.screens.finances.product.ProductScreen
 import com.example.axiom.ui.screens.finances.purchase.CreatePurchaseScreen
 import com.example.axiom.ui.screens.finances.purchase.PurchasePreviewScreen
 import com.example.axiom.ui.screens.finances.purchase.PurchaseScreen
+import com.example.axiom.ui.screens.finances.quotation.QuotationRoute
 import com.example.axiom.ui.screens.finances.suppliers.SupplierScreen
 import com.example.axiom.ui.screens.home.HomeScreen
 import com.example.axiom.ui.screens.notes.NoteEditorScreen
@@ -113,6 +115,13 @@ sealed class Route(val route: String) {
 
     data object Backup : Route("backup")
     data object Restore : Route("restore")
+
+    data object Quotations : Route("quotations")
+
+    data object Challans : Route("challans")
+    data object CreateChallan : Route("create_challan")
+
+
 }
 
 data class BillsActions(
@@ -266,6 +275,8 @@ fun RootScaffold(navController: NavHostController) {
                                         "Analytics" -> navController.navigate(Route.GSTAnalytics.route)
                                         "Summary" -> navController.navigate(Route.GSTSummary.route)
                                         "Suppliers" -> navController.navigate(Route.Suppliers.route)
+                                        "Quotations" -> navController.navigate(Route.Quotations.route)
+                                        "Challans" -> navController.navigate(Route.Challans.route)
                                         else -> println("No route defined for $label")
                                     }
                                 },
@@ -283,6 +294,9 @@ fun RootScaffold(navController: NavHostController) {
                 }
                 composable(Route.Vault.route) {
                     VaultScreen(onBack = { navController.popBackStack() })
+                }
+                composable(Route.Quotations.route) {
+                    QuotationRoute(onBack = { navController.popBackStack() })
                 }
                 composable(Route.Notes.route) {
                     NotesScreen(
@@ -310,6 +324,7 @@ fun RootScaffold(navController: NavHostController) {
 
                 // Routes without bottom nav bar
                 composable(Route.Profile.route) { ProfileScreen(onBack = { navController.popBackStack() }) }
+                composable(Route.Challans.route) { ChallansScreen(onBack = { navController.popBackStack() }) }
                 composable(Route.Invoices.route) {
                     InvoicesScreen(
                         onBack = { navController.popBackStack() },

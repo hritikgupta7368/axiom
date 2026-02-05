@@ -139,8 +139,8 @@ fun MainScreen(navActions: BillsActions) {
         QuickAction("Summary", Icons.Default.Person, Color(0xFF22D3EE)),
         QuickAction("Suppliers", Icons.Default.Add, Color(0xFF6366F1)),
         QuickAction("Quotations", Icons.Default.Add, Color(0xFF3B82F6)),
-
-        )
+        QuickAction("Challans", Icons.Default.Add, Color(0xFF3B82F6)),
+    )
 
     val DarkBackgroundGradient = Brush.radialGradient(
         0f to Color(0x662563EB),   // electric blue core
