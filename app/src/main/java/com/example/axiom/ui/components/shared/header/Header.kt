@@ -1,6 +1,5 @@
 package com.example.axiom.ui.components.shared.header
 
-
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
@@ -13,6 +12,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -59,11 +59,7 @@ data class HeaderActionSpec(
 
 sealed interface SearchSpec {
     data object Hidden : SearchSpec
-
-    data class IconOnly(
-        val action: HeaderActionSpec
-    ) : SearchSpec
-
+    data class IconOnly(val action: HeaderActionSpec) : SearchSpec
     data class Inline(
         val expanded: Boolean,
         val onExpandedChange: (Boolean) -> Unit,
@@ -97,8 +93,8 @@ object ListHeaderDefaults {
         contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         titleStyle: TextStyle = MaterialTheme.typography.titleLarge,
         iconTint: Color = MaterialTheme.colorScheme.onSurface,
-        iconSize: Dp = 22.dp,
-        spacing: Dp = 8.dp,
+        iconSize: Dp = 24.dp,
+        spacing: Dp = 12.dp,
         searchFieldShape: CornerBasedShape = RoundedCornerShape(14.dp),
         animationMillis: Int = 220
     ): ListHeaderStyle = ListHeaderStyle(
@@ -113,27 +109,22 @@ object ListHeaderDefaults {
     )
 }
 
-
 @Composable
 fun ListHeader(
     title: String,
     modifier: Modifier = Modifier,
     style: ListHeaderStyle = ListHeaderDefaults.style(),
-
-    // Normal mode actions
+    // Normal mode
     back: HeaderActionSpec? = null,
-    add: HeaderActionSpec? = null,           // ← new: the + button
-
+    add: HeaderActionSpec? = null,
     // Selection mode
     isSelectionMode: Boolean = false,
     selectedCount: Int = 0,
     onCancelSelection: () -> Unit = {},
-    edit: HeaderActionSpec? = null,          // only shown when selectedCount == 1
-    delete: HeaderActionSpec? = null,        // shown when selectedCount >= 1
-
+    edit: HeaderActionSpec? = null,
+    delete: HeaderActionSpec? = null,
     // Search
     search: SearchSpec = SearchSpec.Hidden,
-
     leadingSlot: (@Composable RowScope.() -> Unit)? = null,
     trailingSlot: (@Composable RowScope.() -> Unit)? = null,
 ) {
@@ -145,15 +136,16 @@ fun ListHeader(
             .background(style.backgroundColor)
             .padding(style.contentPadding)
     ) {
-        // ── Top row ───────────────────────────────────────────────────────
+        // ── Top Row ─────────────────────────────────────────────────────────────
         Row(
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            horizontalArrangement = Arrangement.spacedBy(style.spacing)
         ) {
-            // Left side: Back OR Cancel
+            // 1. LEFT: Back / Cancel
             if (isSelectionMode) {
                 AppIconButton(
-                    icon = AppIcons.Close,           // or ArrowBack / Cancel icon
+                    icon = AppIcons.Close,
                     contentDescription = "Cancel selection",
                     onClick = onCancelSelection,
                     tint = style.iconTint,
@@ -162,12 +154,12 @@ fun ListHeader(
             } else if (leadingSlot != null) {
                 leadingSlot()
             } else {
-                AnimatedVisibility(
-                    visible = back?.visible != false,
-                    enter = fadeIn(tween(animMs)) + scaleIn(tween(animMs), 0.92f),
-                    exit = fadeOut(tween(animMs)) + scaleOut(tween(animMs), 0.92f)
-                ) {
-                    back?.let {
+                back?.takeIf { it.visible }?.let {
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(tween(animMs)) + scaleIn(tween(animMs), 0.92f),
+                        exit = fadeOut(tween(animMs)) + scaleOut(tween(animMs), 0.92f)
+                    ) {
                         AppIconButton(
                             icon = it.icon,
                             contentDescription = it.contentDescription,
@@ -181,74 +173,63 @@ fun ListHeader(
 
             Spacer(Modifier.width(style.spacing))
 
-            // Center: Title OR Selected count
+            // 2. CENTER: Title or Selected count
             AnimatedContent(
                 targetState = isSelectionMode,
                 transitionSpec = { titleTransform(animMs) },
-                label = "title-or-selection"
-            ) { selecting ->
-                if (selecting) {
-                    Text(
-                        text = "$selectedCount selected",
-                        style = style.titleStyle,
-                        color = MaterialTheme.colorScheme.primary, // optional: highlight
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = style.spacing)
-                    )
-                } else {
-                    Text(
-                        text = title,
-                        style = style.titleStyle,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = style.spacing)
-                    )
-                }
+                label = "title-selection"
+            ) { inSelection ->
+                Text(
+                    text = if (inSelection) "$selectedCount selected" else title,
+                    style = style.titleStyle,
+                    color = if (inSelection) MaterialTheme.colorScheme.primary else style.titleStyle.color,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = style.spacing)
+                )
             }
 
-            // Right side: actions
-            if (trailingSlot != null) {
-                trailingSlot()
-            } else {
-                // ── Selection mode actions ──
-                if (isSelectionMode) {
+            // 3. RIGHT: Actions (properly aligned to end)
+            Row(
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (trailingSlot != null) {
+                    trailingSlot()
+                } else if (isSelectionMode) {
+                    // Selection mode actions
                     if (selectedCount == 1) {
-                        AnimatedHeaderAction(edit, style)
+                        edit?.let { AnimatedHeaderAction(it, style) }
                     }
-                    AnimatedHeaderAction(delete, style)
-                }
-                // ── Normal mode actions ──
-                else {
-                    // Search toggle (icon always visible unless inline expanded)
+                    delete?.let { AnimatedHeaderAction(it, style) }
+                } else {
+                    // Normal mode actions
                     when (search) {
                         is SearchSpec.Hidden -> Unit
-                        is SearchSpec.IconOnly -> {
-                            AnimatedHeaderAction(search.action, style)
-                        }
-
+                        is SearchSpec.IconOnly -> AnimatedHeaderAction(search.action, style)
                         is SearchSpec.Inline -> {
+                            val searchIcon =
+                                if (search.expanded) AppIcons.Close else AppIcons.Search
+                            val desc = if (search.expanded) "Close search" else "Search"
+
                             AnimatedHeaderAction(
                                 action = HeaderActionSpec(
-                                    icon = if (search.expanded) AppIcons.Close else AppIcons.Search,
-                                    contentDescription = if (search.expanded) "Close search" else "Search",
+                                    icon = searchIcon,
+                                    contentDescription = desc,
                                     onClick = { search.onExpandedChange(!search.expanded) }
                                 ),
                                 style = style
                             )
                         }
                     }
-
-                    // Add button (only in normal mode)
-                    AnimatedHeaderAction(add, style)
+                    add?.let { AnimatedHeaderAction(it, style) }
                 }
             }
         }
 
-        // ── Search bar (only for Inline mode) ──────────────────────────────
-// ── Search bar (only for Inline mode) ──────────────────────────────
+        // ── Search Bar ──────────────────────────────────────────────────────────
         if (search is SearchSpec.Inline) {
-            Spacer(Modifier.height(8.dp))   // or 10.dp / whatever you had
+            Spacer(Modifier.height(8.dp))
 
             AnimatedVisibility(
                 visible = search.expanded,
@@ -256,64 +237,56 @@ fun ListHeader(
                 exit = fadeOut(tween(animMs)) + slideOutVertically(tween(animMs)) { it / 3 }
             ) {
                 val focusRequester = remember { FocusRequester() }
-                val keyboardController = LocalSoftwareKeyboardController.current  // optional
+                val keyboardController = LocalSoftwareKeyboardController.current
 
                 OutlinedTextField(
                     value = search.query,
                     onValueChange = search.onQueryChange,
-                    enabled = search.enabled,
                     singleLine = true,
                     placeholder = { Text(search.placeholder) },
                     leadingIcon = {
                         AppIconButton(
                             icon = AppIcons.Search,
                             tint = style.iconTint,
+                            iconSize = 20.dp,
+                            onClick = {},
                             contentDescription = "Search",
-                            onClick = {}
                         )
                     },
-                    trailingIcon = if (search.showClearButton) {
+                    trailingIcon = if (search.showClearButton && search.query.isNotBlank()) {
                         {
-                            AnimatedVisibility(
-                                visible = search.query.isNotBlank(),
-                                enter = fadeIn(tween(animMs)) + scaleIn(
-                                    tween(animMs),
-                                    initialScale = 0.9f
-                                ),
-                                exit = fadeOut(tween(animMs)) + scaleOut(
-                                    tween(animMs),
-                                    targetScale = 0.9f
-                                )
-                            ) {
-                                AppIconButton(
-                                    icon = search.clearButtonIcon,
-                                    contentDescription = "Clear search",
-                                    onClick = {
-                                        search.onClear?.invoke() ?: search.onQueryChange("")
-                                        focusRequester.requestFocus()  // keep focus after clear (nice UX)
-                                    },
-                                    tint = style.iconTint,
-                                    iconSize = 20.dp
-                                )
-                            }
+                            AppIconButton(
+                                icon = search.clearButtonIcon,
+                                contentDescription = "Clear",
+                                onClick = {
+                                    search.onClear?.invoke() ?: search.onQueryChange("")
+                                    focusRequester.requestFocus() // keep focus after clear
+                                },
+                                tint = style.iconTint,
+                                iconSize = 20.dp
+                            )
                         }
                     } else null,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(
-                        onSearch = { search.onSearchImeAction?.invoke() }
-                    ),
+                    keyboardActions = KeyboardActions(onSearch = { search.onSearchImeAction?.invoke() }),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .focusRequester(focusRequester)           // ← key line
+                        .focusRequester(focusRequester)
                         .clip(style.searchFieldShape)
                 )
 
-                // Auto-focus + show keyboard when the bar becomes visible
+                // Auto-focus + keyboard
                 LaunchedEffect(search.expanded) {
                     if (search.expanded) {
                         focusRequester.requestFocus()
-                        // Optional: force keyboard visibility (usually not needed, but helps in edge cases)
                         keyboardController?.show()
+                    }
+                }
+
+                // Optional: Clear query when collapsing search
+                LaunchedEffect(search.expanded) {
+                    if (!search.expanded) {
+                        search.onQueryChange("")
                     }
                 }
             }
@@ -321,23 +294,27 @@ fun ListHeader(
     }
 }
 
-
 @Composable
 private fun AnimatedHeaderAction(
     action: HeaderActionSpec?,
     style: ListHeaderStyle
 ) {
-    val animMs = style.animationMillis
-    AnimatedVisibility(
-        visible = action?.visible == true,
-        enter = fadeIn(tween(animMs)) + scaleIn(tween(animMs), initialScale = 0.9f),
-        exit = fadeOut(tween(animMs)) + scaleOut(tween(animMs), targetScale = 0.9f)
-    ) {
-        if (action != null) {
+    action?.takeIf { it.visible }?.let {
+        AnimatedVisibility(
+            visible = true,
+            enter = fadeIn(tween(style.animationMillis)) + scaleIn(
+                tween(style.animationMillis),
+                0.9f
+            ),
+            exit = fadeOut(tween(style.animationMillis)) + scaleOut(
+                tween(style.animationMillis),
+                0.9f
+            )
+        ) {
             AppIconButton(
-                icon = action.icon,
-                contentDescription = action.contentDescription,
-                onClick = action.onClick,
+                icon = it.icon,
+                contentDescription = it.contentDescription,
+                onClick = it.onClick,
                 tint = style.iconTint,
                 iconSize = style.iconSize,
                 modifier = Modifier.padding(start = 4.dp)
@@ -346,6 +323,5 @@ private fun AnimatedHeaderAction(
     }
 }
 
-private fun titleTransform(animMs: Int): ContentTransform {
-    return fadeIn(tween(animMs)) togetherWith fadeOut(tween(animMs))
-}
+private fun titleTransform(animMs: Int): ContentTransform =
+    fadeIn(tween(animMs)) togetherWith fadeOut(tween(animMs))
