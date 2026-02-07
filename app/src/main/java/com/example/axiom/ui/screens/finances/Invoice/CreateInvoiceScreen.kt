@@ -41,8 +41,11 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AccountBox
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.ShoppingCart
@@ -74,6 +77,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -109,6 +113,8 @@ import com.example.axiom.data.finances.SupplyType
 import com.example.axiom.data.finances.dataStore.FinancePreferences
 import com.example.axiom.data.finances.dataStore.SelectedSellerPref
 import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
+import com.example.axiom.ui.components.shared.dialog.AppDialog
+import com.example.axiom.ui.navigation.InvoiceFormMode
 import com.example.axiom.ui.screens.finances.product.UnitSelectionDialog
 import com.example.axiom.ui.utils.numberToWords
 import kotlinx.coroutines.delay
@@ -118,6 +124,27 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import kotlin.math.roundToInt
+import kotlin.math.roundToLong
+
+
+// Round to exactly 2 decimal places using banker's rounding (standard for money)
+fun Double.toMoney(): Double {
+    return (this * 100).roundToLong() / 100.0
+}
+
+// Safe parse from text input (TextField)
+fun String?.toSafeMoney(default: Double = 0.0): Double {
+    if (this.isNullOrBlank()) return default
+    return this.trim()
+        .replace(",", "")           // tolerate 1,234.56
+        .toDoubleOrNull()
+        ?.toMoney()
+        ?: default
+}
+
+// For display in Text / labels
+fun Double.formatMoney(): String = String.format("%.2f", this)
+// or locale-aware: "₹ ${"%,.2f".format(this)}" if you prefer
 
 // --- Colors from your React Native Design ---
 val BgDark = Color(0xFF000000)
@@ -128,149 +155,160 @@ val TextGray = Color(0xFF94A3B8)
 val PrimaryBlue = Color(0xFF3B82F6)
 
 
-enum class SheetType {
-    NONE, CUSTOMER, PRODUCT
+enum class SheetType { NONE, CUSTOMER, PRODUCT }
+enum class ProductSheetMode { LIST, CREATE }
+enum class PaymentMode { CASH, UPI, CHEQUE, BANK_TRANSFER }
+enum class PaymentStatus { UNPAID, PARTIAL, PAID }
+
+private const val DEFAULT_GST_RATE = 0.18
+private const val INVOICE_NUMBER_MIN = 1L
+private const val INVOICE_NUMBER_MAX = 99999999L  // reasonable upper limit
+private const val INVOICE_NUMBER_PADDING = 3
+
+private fun Long.toPaddedInvoiceNumber(): String {
+    return if (this in INVOICE_NUMBER_MIN..999L) {
+        "%0${INVOICE_NUMBER_PADDING}d".format(this)   // 001 to 999
+    } else {
+        this.toString()                               // 1000+
+    }
 }
 
-fun calculateGst(
-    taxableAmount: Double,
-    supplyType: SupplyType
-): GstBreakdown {
-    val rate = 0.18
+// ────────────────────────────────────────────────
+// GST Calculation
+// ────────────────────────────────────────────────
 
-    return if (supplyType == SupplyType.INTRA_STATE) {
-        val halfRate = rate / 2
-        val cgst = taxableAmount * halfRate
-        val sgst = taxableAmount * halfRate
+fun calculateGst(taxableAmount: Double, supplyType: SupplyType): GstBreakdown {
+    val amt = taxableAmount.toMoney()
+    if (amt <= 0.0) return GstBreakdown()
 
-        GstBreakdown(
-            cgstRate = halfRate * 100,
-            sgstRate = halfRate * 100,
-            cgstAmount = cgst,
-            sgstAmount = sgst,
-            totalTax = cgst + sgst
-        )
-    } else {
-        val igst = taxableAmount * rate
+    val rate = DEFAULT_GST_RATE
 
-        GstBreakdown(
-            igstRate = rate * 100,
-            igstAmount = igst,
-            totalTax = igst
-        )
+    return when (supplyType) {
+        SupplyType.INTRA_STATE -> {
+            val halfRate = rate / 2
+            val halfAmount = (taxableAmount * halfRate).toMoney()
+            GstBreakdown(
+                cgstRate = halfRate * 100,
+                sgstRate = halfRate * 100,
+                cgstAmount = halfAmount,
+                sgstAmount = halfAmount,
+                totalTax = (halfAmount * 2).toMoney()
+            )
+        }
+
+        SupplyType.INTER_STATE -> {
+            val igst = (taxableAmount * rate).toMoney()
+            GstBreakdown(
+                igstRate = rate * 100,
+                igstAmount = igst,
+                totalTax = igst
+            )
+        }
+
+        else -> GstBreakdown()
     }
 }
 
 fun resolveSupplyType(
     sellerStateCode: String?,
     customerStateCode: String?
-): SupplyType {
-    return if (
-        !sellerStateCode.isNullOrBlank() &&
-        !customerStateCode.isNullOrBlank() &&
-        sellerStateCode == customerStateCode
-    ) {
-        SupplyType.INTRA_STATE
-    } else {
-        SupplyType.INTER_STATE
-    }
+): SupplyType = when {
+    sellerStateCode.isNullOrBlank() || customerStateCode.isNullOrBlank() -> SupplyType.INTER_STATE
+    sellerStateCode == customerStateCode -> SupplyType.INTRA_STATE
+    else -> SupplyType.INTER_STATE
 }
 
-enum class ProductSheetMode {
-    LIST,
-    CREATE
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) {
+fun CreateInvoiceScreen(
+    mode: InvoiceFormMode,
+    onBack: () -> Unit,
+    onInvoicePreview: (String) -> Unit
+) {
     val context = LocalContext.current
-
     val viewModel: CreateInvoiceViewModel = viewModel(
         factory = CreateInvoiceViewModelFactory(context)
     )
+    val scope = rememberCoroutineScope()
+
+    // Collected flows
     val customers by viewModel.customers.collectAsState(initial = emptyList())
     val products by viewModel.products.collectAsState(initial = emptyList())
+    val invoiceById by viewModel.invoiceById.collectAsState()
 
-    val invoiceId = remember { UUID.randomUUID().toString() }
-
-
-    // DataStore Integration
     val financePreferences = remember { FinancePreferences(context) }
     val lastInvoiceNo by financePreferences.lastInvoiceNumber.collectAsState(initial = 0L)
+    val selectedSeller by financePreferences.selectedSeller.collectAsState(
+        initial = SelectedSellerPref(null, null, null)
+    )
 
-
+    // ─── Invoice number logic ───────────────────────────────
     var invoiceNo by remember { mutableStateOf("") }
     var suggestedInvoiceNo by remember { mutableStateOf("") }
     var userEditedInvoiceNo by remember { mutableStateOf(false) }
 
     LaunchedEffect(lastInvoiceNo) {
-        val next = (lastInvoiceNo + 1).toString()
-        suggestedInvoiceNo = next
+        val nextNumber = (lastInvoiceNo + 1)
+            .coerceIn(INVOICE_NUMBER_MIN, INVOICE_NUMBER_MAX)
+        val padded = nextNumber.toPaddedInvoiceNumber()
+        suggestedInvoiceNo = padded
 
         if (!userEditedInvoiceNo) {
-            invoiceNo = next
+            invoiceNo = padded
         }
     }
 
+    // ─── Core invoice state ────────────────────────────────
+    val invoiceId = remember(mode) {
+        when (mode) {
+            is InvoiceFormMode.Create -> UUID.randomUUID().toString()
+            is InvoiceFormMode.Edit -> mode.invoiceId
+        }
+    }
 
-    val selectedSeller by financePreferences.selectedSeller
-        .collectAsState(initial = SelectedSellerPref(null, null, null))
-    val sellerStateCode = selectedSeller.stateCode
+    var selectedCustomer by remember { mutableStateOf<CustomerFirm?>(null) }
+    val invoiceItems = remember { mutableStateListOf<InvoiceItem>() }
 
-    val savedSellerId by financePreferences.selectedSellerFirmId.collectAsState(initial = null)
-    val savedSellerName by financePreferences.selectedSellerFirmName.collectAsState(initial = null)
-
-
-    val scope = rememberCoroutineScope()
-
-
-    // State
-
-    var isInvoiceNoEditable by remember { mutableStateOf(false) }
-    var isRoundOffEnabled by remember { mutableStateOf(true) }
+    var shippingCharges by remember { mutableDoubleStateOf(0.0.toMoney()) }
+    var shippedTo by remember { mutableStateOf("") }
     var vehicleNumber by remember { mutableStateOf("") }
 
+    var isRoundOffEnabled by remember { mutableStateOf(true) }
+    var isInvoiceNoEditable by remember { mutableStateOf(false) }
 
-    // Date Picker State
-    val datePickerState = rememberDatePickerState()
+    // Payment related (you can expand later)
+    var paymentMode by remember { mutableStateOf<PaymentMode?>(null) }
+    var paymentStatus by remember { mutableStateOf(PaymentStatus.UNPAID) }
+    var receivedAmount by remember { mutableDoubleStateOf(0.0.toMoney()) }
+    var paymentDateMillis by remember { mutableStateOf<Long?>(null) }
+
+    // ─── Date picker ───────────────────────────────────────
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = when (mode) {
+            is InvoiceFormMode.Edit -> invoiceById?.date?.toLongOrNull()
+            else -> System.currentTimeMillis()
+        } ?: System.currentTimeMillis()
+    )
     var showDatePicker by remember { mutableStateOf(false) }
-
     val selectedDateMillis = datePickerState.selectedDateMillis ?: System.currentTimeMillis()
+
     val formattedDate = remember(selectedDateMillis) {
         SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
             .format(Date(selectedDateMillis))
     }
 
-
-    var selectedCustomer by remember { mutableStateOf<CustomerFirm?>(null) }
-
-    // Placeholder logic for supplyType until seller stateCode is fully integrated
+    // ─── Business logic ────────────────────────────────────
+    val sellerStateCode = selectedSeller.stateCode
     val supplyType = resolveSupplyType(sellerStateCode, selectedCustomer?.stateCode)
 
+    val itemsTotal = invoiceItems.sumOf { it.total }.toMoney()
+    val taxableAmount = (itemsTotal + shippingCharges).toMoney()
 
-    var shippingCharges by remember { mutableStateOf(0.0) }
-    val shippedTo by remember { mutableStateOf("") }
-
-
-    // Bottom Sheet State
-    var activeSheet by remember { mutableStateOf(SheetType.NONE) }
-    var productSheetMode by remember { mutableStateOf(ProductSheetMode.LIST) }
-
-    // Items
-    val invoiceItems = remember { mutableStateListOf<InvoiceItem>() }
-
-
-    val itemsTotal = invoiceItems.sumOf { it.total }
-    val taxableAmount = itemsTotal + shippingCharges
-
-    val gst = calculateGst(
-        taxableAmount = taxableAmount,
-        supplyType = supplyType
-    )
+    val gstBreakdown = calculateGst(taxableAmount, supplyType)
 
     val totalBeforeTax = taxableAmount
-    val totalWithTax = totalBeforeTax + gst.totalTax
+    val totalWithTax = (totalBeforeTax + gstBreakdown.totalTax).toMoney()
 
     val totalAmount = if (isRoundOffEnabled) {
         totalWithTax.roundToInt().toDouble()
@@ -278,40 +316,106 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
         totalWithTax
     }
 
+    val gst = calculateGst(
+        taxableAmount = taxableAmount,
+        supplyType = supplyType
+    )
     val roundOffDifference = totalAmount - totalWithTax
 
-    val invoiceStatus = InvoiceStatus.FINAL
+
+    // ─── Load existing invoice (edit mode) ─────────────────
+    LaunchedEffect(mode) {
+        if (mode is InvoiceFormMode.Edit) {
+            viewModel.getInvoiceById(mode.invoiceId)
+        }
+    }
+
+    LaunchedEffect(invoiceById) {
+        val invoice = invoiceById ?: return@LaunchedEffect
+
+        invoiceNo = invoice.invoiceNo
+        userEditedInvoiceNo = true
+
+        selectedCustomer = invoice.customerDetails
+        vehicleNumber = invoice.vehicleNumber.orEmpty()
+        shippingCharges = invoice.shippingCharge ?: 0.0
+        shippedTo = invoice.shippedTo.orEmpty()
+        isRoundOffEnabled = true   // or load from DB if you store it
+
+        invoiceItems.clear()
+        invoiceItems.addAll(invoice.items)
+    }
+
+    // ─── Bottom sheets control ─────────────────────────────
+    var activeSheet by remember { mutableStateOf(SheetType.NONE) }
+    var productSheetMode by remember { mutableStateOf(ProductSheetMode.LIST) }
+
+    // ─── Dialog control ─────────────────────────────
+    var activeDialog by remember { mutableStateOf(false) }
+
+
+    val savedSellerId by financePreferences.selectedSellerFirmId.collectAsState(initial = null)
+    val savedSellerName by financePreferences.selectedSellerFirmName.collectAsState(initial = null)
+
+
+    // ─── Main generation logic ─────────────────────────────
+
+    fun canGenerateInvoice(): Boolean = when {
+        selectedSeller.id == null -> false
+        selectedCustomer == null -> false
+        invoiceItems.isEmpty() -> false
+        invoiceNo.isBlank() -> false
+        else -> true
+    }
 
     fun generateInvoice() {
 
-        if (selectedSeller.id == null || selectedCustomer == null || invoiceItems.isEmpty()) {
-            Toast.makeText(context, "Missing required fields", Toast.LENGTH_SHORT).show()
+        if (!canGenerateInvoice()) {
+            Toast.makeText(context, "Please fill all required fields", Toast.LENGTH_LONG).show()
             return
         }
-//        isLocked = true
+
         val invoice = Invoice(
             id = invoiceId,
-            invoiceNo = invoiceNo,
+            invoiceNo = invoiceNo.trim(),
             date = selectedDateMillis.toString(),
-            sellerId = selectedSeller.id.toString(),
-            customerDetails = selectedCustomer,
+            sellerId = selectedSeller.id?.toString() ?: return,
+            customerDetails = selectedCustomer ?: return,
             supplyType = supplyType,
-            vehicleNumber = vehicleNumber,
+            vehicleNumber = vehicleNumber.trim().ifBlank { null },
             items = invoiceItems.toList(),
-            shippingCharge = shippingCharges,
-            shippedTo = shippedTo,
+            shippingCharge = shippingCharges.takeIf { it > 0 },
+            shippedTo = shippedTo.trim().ifBlank { null },
             totalBeforeTax = totalBeforeTax,
-            gst = gst,
+            gst = gstBreakdown,
             totalAmount = totalAmount,
             amountInWords = numberToWords(totalAmount),
-            status = invoiceStatus
+            status = InvoiceStatus.FINAL
+            // payment fields can be added here when implemented
         )
 
-
-        // SINGLE SOURCE OF TRUTH: always create
-
         scope.launch {
-            viewModel.insertInvoice(invoice)
+            when (mode) {
+                is InvoiceFormMode.Create -> {
+                    viewModel.insertInvoice(invoice)
+
+                    // Only increment if user kept the auto-suggested value
+                    // (this avoids incrementing when user typed custom like "2025-001")
+                    val wasAutoUsed = !userEditedInvoiceNo &&
+                            invoiceNo.trim() == suggestedInvoiceNo
+
+                    if (wasAutoUsed) {
+                        val nextNumeric = (lastInvoiceNo + 1)
+                            .coerceIn(INVOICE_NUMBER_MIN, INVOICE_NUMBER_MAX)
+                        financePreferences.saveLastInvoiceNumber(nextNumeric)
+                    }
+                }
+
+                is InvoiceFormMode.Edit -> {
+                    viewModel.updateInvoice(invoice)
+                }
+            }
+
             // increment ONLY if auto-suggested invoice number was used
             val autoNumberUsed =
                 !userEditedInvoiceNo && invoiceNo == (lastInvoiceNo + 1).toString()
@@ -332,9 +436,8 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
             userEditedInvoiceNo = false
             onInvoicePreview(invoiceId)
         }
-
-
     }
+
 
 
 
@@ -344,7 +447,7 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
             TopAppBar(
                 title = {
                     Text(
-                        "New GST Invoice",
+                        if (mode is InvoiceFormMode.Edit) "Edit Invoice" else "New GST Invoice",
                         color = TextWhite,
                         fontWeight = FontWeight.Bold
                     )
@@ -359,8 +462,14 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                     }
                 },
                 actions = {
-                    TextButton(onClick = { /* Save Draft */ }) {
-                        Text("Save as Draft", color = PrimaryBlue, fontWeight = FontWeight.Bold)
+                    if (mode is InvoiceFormMode.Create) {
+                        TextButton(onClick = { /* Save Draft */ }) {
+                            Text(
+                                "Save as Draft",
+                                color = PrimaryBlue,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0D1117))
@@ -369,7 +478,8 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
         bottomBar = {
             BottomActionSection(
                 totalAmount = "₹ ${String.format("%.2f", totalAmount)}",
-                onGenerate = { generateInvoice() }
+                onGenerate = { generateInvoice() },
+                mode = mode
             )
         }
     ) { paddingValues ->
@@ -725,7 +835,82 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
                     HorizontalDivider(color = BorderDark)
                     SettingItem(icon = Icons.Outlined.Info, title = "Notes & Terms")
                     HorizontalDivider(color = BorderDark)
-                    SettingItem(icon = Icons.Outlined.PlayArrow, title = "Add Shipping To")
+                    SettingItem(
+                        icon = Icons.Outlined.PlayArrow,
+                        title = "Shipping Address",
+                        subtitle = shippedTo.takeIf { it.isNotBlank() },
+                        badge = if (shippedTo.isBlank()) "Add" else null,
+                        onClick = { activeDialog = true },
+                        onClear = if (shippedTo.isNotBlank()) {
+                            { shippedTo = "" }
+                        } else null
+                    )
+
+
+                }
+
+                //payment
+                SectionGroup(title = "Payment") {
+                    Column(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(1.dp, BorderDark, RoundedCornerShape(12.dp))
+                    ) {
+                        SettingItem(
+                            icon = Icons.Outlined.CheckCircle,
+                            title = "Payment Status",
+                            subtitle = paymentStatus.name.replace("_", " "),
+                            onClick = {
+                                paymentStatus = when (paymentStatus) {
+                                    PaymentStatus.UNPAID -> PaymentStatus.PARTIAL
+                                    PaymentStatus.PARTIAL -> PaymentStatus.PAID
+                                    PaymentStatus.PAID -> PaymentStatus.UNPAID
+                                }
+                            }
+                        )
+
+                        HorizontalDivider(color = BorderDark)
+
+                        // Payment Mode
+                        SettingItem(
+                            icon = Icons.Outlined.Email,
+                            title = "Payment Mode",
+                            subtitle = paymentMode?.name ?: "Select",
+                            badge = if (paymentMode == null) "Add" else null,
+                            onClick = {
+                                // open dialog / bottom sheet later
+                            }
+                        )
+
+                        HorizontalDivider(color = BorderDark)
+
+                        // Received Amount
+                        SettingItem(
+                            icon = Icons.Outlined.ShoppingCart,
+                            title = "Amount Received",
+                            subtitle = if (receivedAmount > 0) "₹ ${"%.2f".format(receivedAmount)}" else null,
+                            badge = if (receivedAmount == 0.0) "Add" else null,
+                            onClick = {
+                                // open input dialog
+                            }
+                        )
+
+                        HorizontalDivider(color = BorderDark)
+
+                        // Payment Date
+                        SettingItem(
+                            icon = Icons.Outlined.DateRange,
+                            title = "Payment Date",
+                            subtitle = paymentDateMillis?.let {
+                                SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+                                    .format(Date(it))
+                            },
+                            badge = if (paymentDateMillis == null) "Add" else null,
+                            onClick = {
+                                // date picker later
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -824,6 +1009,21 @@ fun CreateInvoiceScreen(onBack: () -> Unit, onInvoicePreview: (String) -> Unit) 
             else -> {}
         }
     }
+    // for shipped to input
+    AppDialog(
+        show = activeDialog,
+        title = "Enter Shipping Address",
+        message = "Provide the shipping address for the invoice.",
+        showInput = true,
+        inputLabel = "Shipping Address",
+        confirmText = "Add",
+        onConfirm = { address ->
+            shippedTo = address.orEmpty()
+            activeDialog = false
+        },
+        onDismiss = { activeDialog = false }
+    )
+
 }
 
 @Composable
@@ -1353,7 +1553,7 @@ fun ProductItemCard(
                 Icon(
                     imageVector = Icons.Outlined.Delete,
                     contentDescription = "Delete",
-                    tint = TextSlate400,
+                    tint = Color.Red,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -1516,37 +1716,93 @@ fun TaxRow(label: String, value: String, isTotal: Boolean = false) {
 }
 
 @Composable
-fun SettingItem(icon: ImageVector, title: String, badge: String? = null) {
+fun SettingItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String? = null,
+    badge: String? = null,
+    onClick: (() -> Unit)? = null,
+    onClear: (() -> Unit)? = null
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { }
+            .then(
+                if (onClick != null)
+                    Modifier.clickable(onClick = onClick)
+                else
+                    Modifier
+            )
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
+        horizontalArrangement = Arrangement.SpaceBetween,
+
+        ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(icon, null, tint = TextGray, modifier = Modifier.size(20.dp))
-            Text(title, color = TextWhite, fontSize = 14.sp)
+            Column {
+                Text(title, color = TextWhite, fontSize = 14.sp)
+                subtitle?.let {
+                    Text(
+                        it,
+                        color = TextGray,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
         }
-        if (badge != null) {
-            Text(badge, color = PrimaryBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        } else {
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                null,
-                tint = TextGray,
-                modifier = Modifier.size(20.dp)
-            )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            when {
+                badge != null -> {
+                    Text(
+                        badge,
+                        color = PrimaryBlue,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                onClear != null || subtitle != null -> {
+                    // no arrow when value exists
+                }
+
+                else -> {
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        null,
+                        tint = TextGray,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+
+            if (onClear != null) {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = "Clear",
+                    tint = TextGray,
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clickable(onClick = onClear)
+                )
+            }
         }
+
     }
 }
 
 @Composable
-fun BottomActionSection(totalAmount: String, onGenerate: () -> Unit) {
+fun BottomActionSection(totalAmount: String, onGenerate: () -> Unit, mode: InvoiceFormMode) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1570,7 +1826,7 @@ fun BottomActionSection(totalAmount: String, onGenerate: () -> Unit) {
                 colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Generate", color = TextWhite)
+                Text(if (mode is InvoiceFormMode.Edit) "Update" else "Generate", color = TextWhite)
             }
 
         }

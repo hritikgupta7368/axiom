@@ -67,6 +67,10 @@ import com.example.axiom.ui.screens.space.WorkspaceScreen
 import com.example.axiom.ui.screens.vault.VaultScreen
 import com.example.axiom.ui.theme.AxiomTheme
 
+sealed class InvoiceFormMode {
+    object Create : InvoiceFormMode()
+    data class Edit(val invoiceId: String) : InvoiceFormMode()
+}
 
 sealed class Route(val route: String) {
 
@@ -82,7 +86,13 @@ sealed class Route(val route: String) {
 
     // Stack-only (no bottom bar)
     data object Invoices : Route("invoices")
-    data object CreateInvoice : Route("create_invoice")
+    data object CreateInvoice : Route("invoice_form/create")
+
+    data object EditInvoice : Route("invoice_form/edit/{invoiceId}") {
+        fun createRoute(invoiceId: String) =
+            "invoice_form/edit/$invoiceId"
+    }
+
     data object InvoicePreview : Route("invoice_preview/{invoiceId}") {
         fun createRoute(invoiceId: String): String {
             return "invoice_preview/$invoiceId"
@@ -346,15 +356,18 @@ fun RootScaffold(navController: NavHostController) {
                     InvoicePreviewScreen(
                         invoiceId = invoiceId,
                         onBack = { navController.popBackStack() },
+                        onEditInvoice = { id ->
+                            navController.navigate(Route.EditInvoice.createRoute(id))
+                        },
                         onNavigateToPdfViewer = { pdfUri ->
-                            // When this is called, store the URI so the next screen can get it
-                            navController.currentBackStackEntry?.savedStateHandle?.set(
-                                "pdf_uri",
-                                pdfUri
-                            )
+                            navController.currentBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("pdf_uri", pdfUri)
+
                             navController.navigate(Route.PdfPreview.route)
                         }
                     )
+
                 }
 
                 composable(Route.PdfPreview.route) { backStackEntry ->
@@ -376,15 +389,35 @@ fun RootScaffold(navController: NavHostController) {
                     }
                 }
 
+                // CREATE
                 composable(Route.CreateInvoice.route) {
                     CreateInvoiceScreen(
+                        mode = InvoiceFormMode.Create,
                         onBack = { navController.popBackStack() },
                         onInvoicePreview = { invoiceId ->
                             navController.navigate(Route.InvoicePreview.createRoute(invoiceId))
                         }
-
                     )
                 }
+
+// EDIT
+                composable(
+                    route = Route.EditInvoice.route,
+                    arguments = listOf(
+                        navArgument("invoiceId") { type = NavType.StringType }
+                    )
+                ) { backStackEntry ->
+                    val invoiceId = backStackEntry.arguments!!.getString("invoiceId")!!
+
+                    CreateInvoiceScreen(
+                        mode = InvoiceFormMode.Edit(invoiceId),
+                        onBack = { navController.popBackStack() },
+                        onInvoicePreview = { id ->
+                            navController.navigate(Route.InvoicePreview.createRoute(id))
+                        }
+                    )
+                }
+
                 composable(Route.Customers.route) {
                     CustomerScreen(
                         onBack = { navController.popBackStack() },

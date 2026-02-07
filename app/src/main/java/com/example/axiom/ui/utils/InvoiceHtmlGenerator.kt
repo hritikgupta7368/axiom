@@ -38,7 +38,7 @@ object InvoiceHtmlGenerator {
                     <td>${i + 1}</td>
                     <td>${item.name}</td>
                     <td>${item.hsn}</td>
-                    <td class="right">${item.quantity.toInt()}</td>
+                    <td class="">${item.quantity.toInt()}</td>
                     <td>${item.unit}</td>
                     <td class="right">${"%.2f".format(item.price)}</td>
                     <td class="right">${"%.2f".format(item.total)}</td>
@@ -486,7 +486,7 @@ object InvoiceHtmlGenerator {
                       <!-- COLUMN 3 -->
                       <div class="col col-3">
                           <div class="col-header">Shipped To :</div>
-                          <div class="shipped-value">${invoice.shippedTo}</div>
+                          <div class="shipped-value"> ${invoice.shippedTo} </div>
                       </div>
                   </div>
 

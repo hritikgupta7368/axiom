@@ -996,8 +996,15 @@ class InvoiceRepository(
         dao.insert(entity)
     }
 
-    suspend fun update(invoice: Invoice) =
-        dao.update(invoice.toEntity())
+
+    // In CustomerFirmRepository
+    suspend fun update(invoice: Invoice) {
+        val updatedInvoice = invoice.copy(
+            updatedAt = System.currentTimeMillis()
+        )
+        dao.update(updatedInvoice.toEntity())
+    }
+
 
     suspend fun softDelete(invoice: Invoice) =
         dao.update(invoice.copy(deleted = true).toEntity())
@@ -1320,6 +1327,10 @@ class CreateInvoiceViewModel(
     private val customerSearchQuery = MutableStateFlow("")
     private val invoiceSearchQuery = MutableStateFlow("")
 
+    private val _invoiceById = MutableStateFlow<Invoice?>(null)
+
+    val invoiceById: StateFlow<Invoice?> = _invoiceById
+
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val invoices: StateFlow<List<Invoice>> =
@@ -1351,6 +1362,15 @@ class CreateInvoiceViewModel(
 
     fun insertInvoice(invoice: Invoice) =
         viewModelScope.launch { invoiceRepo.insert(invoice) }
+
+    fun updateInvoice(invoice: Invoice) =
+        viewModelScope.launch { invoiceRepo.update(invoice) }
+
+    fun getInvoiceById(id: String) {
+        viewModelScope.launch {
+            _invoiceById.value = invoiceRepo.getById(id)
+        }
+    }
 
     fun onProductSearch(query: String) {
         productSearchQuery.value = query

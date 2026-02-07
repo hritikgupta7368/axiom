@@ -152,6 +152,14 @@ fun ProductScreen(onBack: () -> Unit) {
 
     val products by viewModel.products.collectAsState(initial = emptyList())
 
+    val groupedProducts = remember(products) {
+        products
+            .filter { it.active }
+            .groupBy { product ->
+                product.category.ifBlank { "Uncategorized" }
+            }
+            .toSortedMap(compareBy { it }) // optional: alphabetical categories
+    }
 
     // Selection State
     var selectedProductId by remember { mutableStateOf<String?>(null) }

@@ -77,7 +77,9 @@ private val PurpleBg = Color(0xFF581C87) // Darker purple for bg
 fun InvoicePreviewScreen(
     invoiceId: String? = null, // ID parameter as requested
     onBack: () -> Unit,
-    onNavigateToPdfViewer: (Uri) -> Unit
+    onNavigateToPdfViewer: (Uri) -> Unit,
+    onEditInvoice: (String) -> Unit
+
 ) {
     val context = LocalContext.current
     val invoiceViewModel: InvoiceViewModel = viewModel(
@@ -114,10 +116,15 @@ fun InvoicePreviewScreen(
     val grandTotal = "₹${String.format("%.2f", currentInvoice?.totalAmount ?: 0.0)}"
     val status = currentInvoice?.status?.name ?: "DRAFT"
 
+
+
     Scaffold(
         containerColor = Color(0xFF000000),
         topBar = {
-            PreviewTopBar(onBack = onBack, onDelete = { deleteInvoice(invoiceId ?: "") })
+            PreviewTopBar(
+                onBack = onBack,
+                onDelete = { deleteInvoice(invoiceId ?: "") },
+                onUpdate = { onEditInvoice(invoiceId ?: "") })
         },
         bottomBar = {
             currentInvoice?.let { nonNullInvoice ->
@@ -145,6 +152,16 @@ fun InvoicePreviewScreen(
                     Locale.getDefault()
                 ).format(Date(invoice.date.toLongOrNull() ?: 0L))
             }
+            val updatedText = remember(invoice.updatedAt) {
+                invoice.updatedAt?.let {
+                    val formatted = SimpleDateFormat(
+                        "MMM dd, yyyy • hh:mm a",
+                        Locale.getDefault()
+                    ).format(Date(it))
+                    "Updated $formatted"
+                }
+            }
+
             Column(
                 modifier = Modifier
                     .padding(paddingValues)
@@ -157,7 +174,8 @@ fun InvoicePreviewScreen(
                     invoiceNo = invoice.invoiceNo,
                     date = date,
                     customer = invoice.customerDetails?.name ?: "Unknown Customer",
-                    status = invoice.status.name
+                    status = invoice.status.name,
+                    updatedText = updatedText
                 )
 
                 // --- Product Details ---
@@ -178,7 +196,7 @@ fun InvoicePreviewScreen(
 // -----------------------------------------------------------------------------
 
 @Composable
-fun PreviewTopBar(onBack: () -> Unit, onDelete: () -> Unit) {
+fun PreviewTopBar(onBack: () -> Unit, onDelete: () -> Unit, onUpdate: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -205,7 +223,7 @@ fun PreviewTopBar(onBack: () -> Unit, onDelete: () -> Unit) {
             AppIconButton(
                 icon = AppIcons.Edit,
                 contentDescription = "edit button",
-                onClick = onBack,
+                onClick = onUpdate,
             )
             AppIconButton(
                 icon = AppIcons.Delete,
@@ -219,7 +237,13 @@ fun PreviewTopBar(onBack: () -> Unit, onDelete: () -> Unit) {
 }
 
 @Composable
-fun HeaderCard(invoiceNo: String, date: String, customer: String, status: String) {
+fun HeaderCard(
+    invoiceNo: String,
+    date: String,
+    customer: String,
+    status: String,
+    updatedText: String?
+) {
     Box(
         modifier = Modifier
             .padding(16.dp)
@@ -257,6 +281,18 @@ fun HeaderCard(invoiceNo: String, date: String, customer: String, status: String
                         color = Color(0xFFFFFFFF)
                     )
                 }
+                updatedText?.let {
+                    Column {
+                        LabelText("UPDATED AT")
+                        Text(
+                            text = it,
+                            fontSize = 11.sp,
+                            color = Color(0xFFFFFFFF),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+
                 Column(horizontalAlignment = Alignment.End) {
                     LabelText("STATUS")
                     Box(
