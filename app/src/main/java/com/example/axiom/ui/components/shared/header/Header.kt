@@ -11,7 +11,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -34,6 +33,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -82,7 +82,7 @@ data class ListHeaderStyle(
 object ListHeaderDefaults {
     @Composable
     fun style(
-        backgroundColor: Color = MaterialTheme.colorScheme.surface,
+        backgroundColor: Color = MaterialTheme.colorScheme.background,
         contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         titleStyle: TextStyle = MaterialTheme.typography.titleLarge,
         iconTint: Color = MaterialTheme.colorScheme.onSurface,
@@ -123,8 +123,6 @@ fun ListHeader(
     delete: HeaderActionSpec? = null,
     // Search
     search: SearchSpec = SearchSpec.Hidden,
-    leadingSlot: (@Composable RowScope.() -> Unit)? = null,
-    trailingSlot: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val animMs = style.animationMillis
 
@@ -187,12 +185,12 @@ fun ListHeader(
                                     tint = style.iconTint,
                                     iconSize = style.iconSize
                                 )
-                                Spacer(Modifier.width(style.spacing))
                             }
 
                             Text(
                                 text = title,
-                                style = style.titleStyle
+                                style = style.titleStyle,
+                                fontWeight = FontWeight.Bold
                             )
 
 
@@ -216,7 +214,7 @@ fun ListHeader(
                                     icon = it.icon,
                                     contentDescription = it.contentDescription,
                                     onClick = it.onClick,
-                                    tint = style.iconTint,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     iconSize = style.iconSize
                                 )
                             }

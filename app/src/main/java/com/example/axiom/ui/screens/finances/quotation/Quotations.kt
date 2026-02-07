@@ -1,7 +1,10 @@
 package com.example.axiom.ui.screens.finances.quotation
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,6 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -28,6 +34,8 @@ import androidx.compose.runtime.snapshots.SnapshotStateSet
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.axiom.ui.components.shared.button.AppIcons
 import com.example.axiom.ui.components.shared.header.HeaderActionSpec
@@ -142,81 +150,113 @@ fun QuotationRoute(
             Spacer(modifier = Modifier.height(8.dp))
 
             LazyColumn(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                modifier = Modifier.fillMaxSize()
+
+                contentPadding = PaddingValues(16.dp),
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+
+
                 items(filtered, key = { it.id }) { row ->
+
                     val isSelected = row.id in selectedIds
 
-                    QuotationListItem(
+                    QuotationCard(
                         row = row,
-                        selected = isSelected,
+                        isSelected = isSelected,
+
                         onClick = {
                             if (isSelectionMode) {
-                                // Toggle selection in selection mode
                                 if (isSelected) selectedIds.remove(row.id)
                                 else selectedIds.add(row.id)
                             } else {
-                                // TODO: Implement view details / navigate to new page for quotation #${row.id}
+                                // navigate to quotation details
                             }
                         },
+
                         onLongClick = {
-                            // Start or toggle selection on long press
                             if (isSelected) selectedIds.remove(row.id)
                             else selectedIds.add(row.id)
                         }
                     )
-                    Spacer(Modifier.height(10.dp))
                 }
+
+
             }
         }
     }
 }
 
-@Composable
-private fun QuotationListItem(
-    row: QuotationRow,
-    selected: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit = {}
-) {
-    val bg = if (selected) {
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
 
-    Column(
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun QuotationCard(
+    row: QuotationRow,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
+    val borderColor =
+        if (isSelected)
+            MaterialTheme.colorScheme.primary
+        else
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+
+    val containerColor =
+        if (isSelected)
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+        else
+            MaterialTheme.colorScheme.surface
+
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
         modifier = Modifier
             .fillMaxWidth()
-            .background(bg, MaterialTheme.shapes.medium)
-            .clip(MaterialTheme.shapes.medium)
+            .clip(RoundedCornerShape(12.dp))
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
             )
-            .padding(14.dp)
+            .background(containerColor)
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.padding(14.dp)) {
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "#${row.id}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(Modifier.width(10.dp))
+
+                Text(
+                    text = row.customer,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Text(
+                    text = row.amount,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+
             Text(
-                text = "#${row.id}",
-                style = MaterialTheme.typography.labelLarge
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = row.customer,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = row.amount,
-                style = MaterialTheme.typography.titleSmall
+                text = "Status: ${row.status}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = "Status: ${row.status}",
-            style = MaterialTheme.typography.bodyMedium
-        )
     }
 }
+
