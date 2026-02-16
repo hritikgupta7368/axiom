@@ -129,6 +129,6 @@ dependencies {
 
     // for json converiosn
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
-
-
+    // for http req
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
