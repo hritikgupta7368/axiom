@@ -1,3 +1,5 @@
+import java.io.ByteArrayOutputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,6 +10,22 @@ plugins {
     alias(libs.plugins.kotlin.serialization) // aded for json
 }
 
+fun gitCommitCount(): Int {
+    return try {
+        val stdout = ByteArrayOutputStream()
+        exec {
+            commandLine("git", "rev-list", "--count", "HEAD")
+            standardOutput = stdout
+        }
+        stdout.toString().trim().toInt()
+    } catch (e: Exception) {
+        1
+    }
+}
+
+val autoVersionCode = gitCommitCount()
+
+
 android {
     namespace = "com.example.axiom"
     compileSdk {
@@ -16,17 +34,17 @@ android {
     signingConfigs {
         create("release") { // Use create() for Kotlin DSL
             storeFile = file("axiom-release.keystore")
-            storePassword = "Pizza@123"
-            keyAlias = "axiom"
-            keyPassword = "Pizza@123"
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
         }
     }
     defaultConfig {
         applicationId = "com.example.axiom"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = autoVersionCode
+        versionName = "1.0.$autoVersionCode"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -44,14 +62,7 @@ android {
                 "proguard-rules.pro"
             )
         }
-//        release {
-//            isMinifyEnabled = true
-//            isShrinkResources = true
-//            proguardFiles(
-//                getDefaultProguardFile("proguard-android-optimize.txt"),
-//                "proguard-rules.pro"
-//            )
-//        }
+
         create("profile") {
             initWith(getByName("release"))
 
