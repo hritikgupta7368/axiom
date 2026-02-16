@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import com.example.axiom.BuildConfig
 import com.example.axiom.data.finances.CustomerFirmDao
 import com.example.axiom.data.finances.CustomerFirmEntity
 import com.example.axiom.data.finances.InvoiceDao
@@ -41,7 +42,7 @@ import com.example.axiom.data.vault.VaultEntryEntity
 
         // add more entityies here
     ],
-    version = AppDatabase.VERSION,
+    version = BuildConfig.DB_VERSION,
     exportSchema = false
 )
 

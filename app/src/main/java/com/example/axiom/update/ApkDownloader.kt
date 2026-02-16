@@ -31,7 +31,7 @@ object ApkDownloader {
                 if (uri != null) {
                     install(ctx, uri)
                 }
-                install(ctx, uri)
+               
                 ctx.unregisterReceiver(this)
             }
         }

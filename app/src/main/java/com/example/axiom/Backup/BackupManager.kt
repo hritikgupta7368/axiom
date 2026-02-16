@@ -5,6 +5,7 @@ package com.example.axiom.Backup
 import android.content.Context
 import android.net.Uri
 import androidx.room.withTransaction
+import com.example.axiom.BuildConfig
 import com.example.axiom.DB.AppDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -54,8 +55,8 @@ class BackupManager(
 
         AppBackup(
             meta = BackupMeta(
-                appVersion = 1, // You can pull this from BuildConfig.VERSION_CODE
-                dbVersion = AppDatabase.VERSION,
+                appVersion = BuildConfig.VERSION_CODE,
+                dbVersion = BuildConfig.DB_VERSION,
                 createdAt = System.currentTimeMillis()
             ),
             vaultEntries = vault,
@@ -76,6 +77,9 @@ class BackupManager(
     suspend fun restore(backup: AppBackup): Boolean =
         withContext(Dispatchers.IO) {
             try {
+                if (backup.meta.dbVersion > BuildConfig.DB_VERSION) {
+                    return@withContext false
+                }
                 db.withTransaction {
                     // Restore Vault
                     db.vaultDao().restore(backup.vaultEntries.map { it.toEntity() })

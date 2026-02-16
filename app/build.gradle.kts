@@ -1,4 +1,5 @@
 import java.io.ByteArrayOutputStream
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -10,20 +11,27 @@ plugins {
     alias(libs.plugins.kotlin.serialization) // aded for json
 }
 
-fun gitCommitCount(): Int {
+val configFile = rootProject.file("config/app-config.properties")
+val props = Properties()
+props.load(configFile.inputStream())
+
+val dbVersion = props["DB_VERSION"].toString().toInt()
+
+fun gitTagVersion(): String {
     return try {
         val stdout = ByteArrayOutputStream()
         exec {
-            commandLine("git", "rev-list", "--count", "HEAD")
+            commandLine("git", "describe", "--tags", "--abbrev=0")
             standardOutput = stdout
         }
-        stdout.toString().trim().toInt()
+        stdout.toString().trim().removePrefix("v")
     } catch (e: Exception) {
-        1
+        "1"
     }
 }
 
-val autoVersionCode = gitCommitCount()
+val tagVersion = gitTagVersion()
+val numericVersion = tagVersion.filter { it.isDigit() }.toIntOrNull() ?: 1
 
 
 android {
@@ -43,10 +51,11 @@ android {
         applicationId = "com.example.axiom"
         minSdk = 26
         targetSdk = 36
-        versionCode = autoVersionCode
-        versionName = "1.0.$autoVersionCode"
+        versionCode = numericVersion
+        versionName = tagVersion
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("int", "DB_VERSION", dbVersion.toString())
     }
 
     buildTypes {
@@ -65,7 +74,6 @@ android {
 
         create("profile") {
             initWith(getByName("release"))
-
             signingConfig = signingConfigs.getByName("debug")
             isDebuggable = false
         }
