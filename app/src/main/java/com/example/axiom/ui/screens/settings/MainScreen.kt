@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.axiom.BuildConfig
 import com.example.axiom.ui.components.shared.ThemeToggle
 import com.example.axiom.ui.components.shared.button.AppIconButton
 import com.example.axiom.ui.components.shared.button.AppIcons
@@ -101,7 +102,12 @@ fun SettingsScreen(
                     SettingsRow(
                         icon = Icons.Default.Info,
                         title = "App Version",
-                        subtitle = "1.0.0"
+                        subtitle = BuildConfig.VERSION_NAME
+                    )
+                    SettingsRow(
+                        icon = Icons.Default.Info,
+                        title = "DB Version",
+                        subtitle = (BuildConfig.DB_VERSION).toString()
                     )
                     SettingsRow(
                         icon = Icons.Default.Info,
