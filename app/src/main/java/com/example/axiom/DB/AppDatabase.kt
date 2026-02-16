@@ -40,7 +40,7 @@ import com.example.axiom.data.vault.VaultEntryEntity
         TaskEntity::class,
         EventEntity::class
 
-        // add more entityies here
+        // add more entityies
     ],
     version = BuildConfig.DB_VERSION,
     exportSchema = false
