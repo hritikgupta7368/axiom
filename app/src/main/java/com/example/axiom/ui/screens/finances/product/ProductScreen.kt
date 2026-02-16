@@ -305,27 +305,50 @@ fun ProductScreen(onBack: () -> Unit) {
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(products, key = { it.id }) { product ->
-                    val isVisible = !deletedItemIds.contains(product.id)
-                    AnimatedVisibility(
-                        visible = isVisible,
-                        exit = shrinkVertically(animationSpec = tween(500)) + fadeOut(
-                            animationSpec = tween(
-                                500
-                            )
-                        ),
-                        enter = expandVertically() + fadeIn()
-                    ) {
-                        ProductCard(
-                            product = product,
-                            isSelected = product.id == selectedProductId,
-                            onSelect = {
-                                selectedProductId =
-                                    if (selectedProductId == product.id) null else product.id
-                            }
+
+
+                // new data rendering
+                groupedProducts.forEach { (category, itemsInCategory) ->
+
+                    // CATEGORY HEADER
+                    item(key = "header_$category") {
+                        Text(
+                            text = category,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp, vertical = 8.dp)
                         )
                     }
+
+                    // PRODUCTS UNDER CATEGORY
+                    items(
+                        itemsInCategory,
+                        key = { it.id }
+                    ) { product ->
+
+                        val isVisible = !deletedItemIds.contains(product.id)
+
+                        AnimatedVisibility(
+                            visible = isVisible,
+                            exit = shrinkVertically(animationSpec = tween(500)) +
+                                    fadeOut(animationSpec = tween(500)),
+                            enter = expandVertically() + fadeIn()
+                        ) {
+                            ProductCard(
+                                product = product,
+                                isSelected = product.id == selectedProductId,
+                                onSelect = {
+                                    selectedProductId =
+                                        if (selectedProductId == product.id) null else product.id
+                                }
+                            )
+                        }
+                    }
                 }
+
             }
         }
 
