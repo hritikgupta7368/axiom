@@ -105,7 +105,7 @@ private fun HeaderBlock(visible: Boolean) {
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                text = "AXIOM",
+                text = "AXIOM V2",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.onBackground
