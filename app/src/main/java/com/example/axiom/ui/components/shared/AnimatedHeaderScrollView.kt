@@ -1,6 +1,5 @@
 package com.example.axiom.ui.components.shared
 
-import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -21,8 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -32,7 +30,6 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,7 +52,6 @@ fun AnimatedHeaderScrollView(
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // If we are currently stretched and dragging up, consume the drag to un-stretch first
                 if (overscrollOffset.value > 0f && available.y < 0f) {
                     val consumed = available.y.coerceAtLeast(-overscrollOffset.value)
                     coroutineScope.launch {
@@ -71,9 +67,8 @@ fun AnimatedHeaderScrollView(
                 available: Offset,
                 source: NestedScrollSource
             ): Offset {
-                // When we drag down past the top of the list, accumulate the stretch
                 if (available.y > 0f) {
-                    val resistance = 0.45f // iOS-like drag resistance
+                    val resistance = 0.45f // iOS drag resistance
                     coroutineScope.launch {
                         overscrollOffset.snapTo(overscrollOffset.value + (available.y * resistance))
                     }
@@ -82,7 +77,6 @@ fun AnimatedHeaderScrollView(
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                // Spring bounce back to 0 when the user releases their finger
                 if (overscrollOffset.value > 0f) {
                     overscrollOffset.animateTo(
                         targetValue = 0f,
@@ -102,21 +96,16 @@ fun AnimatedHeaderScrollView(
     val scrollY = scrollState.value
     val normalizedScroll = (scrollY / headerHeightPx).coerceIn(0f, 1f)
 
-    // Large title fades out as you scroll down
     val largeTitleOpacity = 1f - (normalizedScroll * 1.5f).coerceIn(0f, 1f)
-
-    // Small sticky header fades in
     val smallHeaderOpacity =
         if (normalizedScroll > 0.6f) ((normalizedScroll - 0.6f) * 2.5f).coerceIn(0f, 1f) else 0f
-
-    // Scale calculation based on the overscroll drag
     val zoomScale = 1f + (overscrollOffset.value / 800f).coerceAtLeast(0f)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .nestedScroll(nestedScrollConnection) // Attach the rubber-banding gesture
+            .nestedScroll(nestedScrollConnection)
     ) {
 
         // --- 1. MAIN SCROLLABLE CONTENT ---
@@ -124,21 +113,18 @@ fun AnimatedHeaderScrollView(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                // THIS FIXES THE DRAG: Translates the ENTIRE list (title + cards) down when pulling
                 .graphicsLayer { translationY = overscrollOffset.value }
         ) {
-
             // Large Title Block
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .padding(top = 80.dp, bottom = 16.dp) // Tightened top space
+                    .padding(top = 80.dp, bottom = 16.dp)
                     .graphicsLayer {
                         alpha = largeTitleOpacity
                         scaleX = zoomScale
                         scaleY = zoomScale
-                        // Anchor the stretch to the bottom-left so it grows upwards and outwards
                         transformOrigin = TransformOrigin(0f, 1f)
                     }
             ) {
@@ -164,36 +150,38 @@ fun AnimatedHeaderScrollView(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
             ) {
-                content() // Your Schedule/Tasks cards go here
+                content()
             }
 
-            Spacer(modifier = Modifier.height(100.dp)) // Bottom padding so last item is scannable
+            Spacer(modifier = Modifier.height(100.dp))
         }
 
-        // --- 2. FIXED TOP BLUR HEADER ---
-        // Placing this AT THE END of the Box + adding zIndex ensures it ALWAYS covers the cards
+        // --- 2. FIXED TOP HEADER (NO EXTERNAL LIBS) ---
         if (smallHeaderOpacity > 0f) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(90.dp)
-                    .zIndex(10f)
-                    .graphicsLayer { alpha = smallHeaderOpacity }
-                    .then(
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            Modifier.blur(20.dp, BlurredEdgeTreatment.Unbounded)
-                        } else {
-                            Modifier.background(Color.Black.copy(alpha = 0.85f))
-                        }
-                    ),
+                    .zIndex(100f) // Forces this above the scrolling cards
+                    .alpha(smallHeaderOpacity),
                 contentAlignment = Alignment.BottomCenter
             ) {
+
+                // The Translucent Background Layer (Separate from the text)
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        // Using a 90% opaque black. This gives the illusion of a solid header
+                        // while letting just enough color bleed through to feel native.
+                        .background(Color(0xE6000000))
+                )
+
+                // The Crisp Text Layer (Sits ON TOP of the background, so it NEVER blurs)
                 Text(
                     text = largeTitle,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White,
-                    textAlign = TextAlign.Center,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
             }
