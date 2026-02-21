@@ -334,7 +334,7 @@ fun RootScaffold(navController: NavHostController) {
 
                 // Routes without bottom nav bar
                 composable(Route.Profile.route) { ProfileScreen(onBack = { navController.popBackStack() }) }
-                composable(Route.Challans.route) { ChallansScreen(onBack = { navController.popBackStack() }) }
+                composable(Route.Challans.route) { ChallansScreen() }
                 composable(Route.Invoices.route) {
                     InvoicesScreen(
                         onBack = { navController.popBackStack() },

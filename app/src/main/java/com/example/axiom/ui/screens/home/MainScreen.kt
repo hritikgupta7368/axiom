@@ -1,5 +1,6 @@
 package com.example.axiom.ui.screens.home
 
+import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -44,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.axiom.BuildConfig
+import com.example.axiom.ui.components.shared.Aurora // Ensure this import points to your new Aurora component
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,32 +59,47 @@ fun HomeScreen() {
         visible = true
     }
 
-    val backgroundGradient = Brush.linearGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.08f),
-            MaterialTheme.colorScheme.background
-        )
-    )
-
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent, // Make Scaffold transparent so edge-to-edge works
+    ) { padding ->
 
-        ) { padding ->
-
+        // Parent Box fills max size WITHOUT Scaffold padding
+        // This allows the background to draw behind the status bar and navigation bar.
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(backgroundGradient)
-                .padding(padding)
+            modifier = Modifier.fillMaxSize()
         ) {
 
-            AnimatedGradientCircles()
+            // Background Layer: Aurora for API 33+, Circles for older devices
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Aurora(
+                    modifier = Modifier.fillMaxSize(), // Fills entire screen including status bar
+                    speed = 0.5f,
+                    intensity = 1f
+                )
+            } else {
+                // Fallback gradient base + animated circles
+                val fallbackGradient = Brush.linearGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.08f),
+                        Color(0xFF020308) // Match Aurora dark sky color
+                    )
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(fallbackGradient)
+                ) {
+                    AnimatedGradientCircles()
+                }
+            }
 
+            // Foreground Content Layer
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp),
+                    .padding(padding) // Apply Scaffold padding HERE so content respects system bars
+                    .padding(24.dp),  // Your original screen padding
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
 
@@ -109,12 +126,12 @@ private fun HeaderBlock(visible: Boolean) {
                 text = "AXIOM" + " v" + BuildConfig.VERSION_CODE,
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onBackground
+                color = Color.White // Forced white to pop against dark Aurora background
             )
             Text(
                 text = "Control · Records · Memory",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color.White.copy(alpha = 0.7f)
             )
         }
     }
@@ -143,8 +160,8 @@ private fun GlassSystemStateCard(visible: Boolean) {
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                                Color.White.copy(alpha = 0.15f),
+                                Color.White.copy(alpha = 0.05f)
                             )
                         )
                     )
@@ -155,7 +172,7 @@ private fun GlassSystemStateCard(visible: Boolean) {
                 modifier = Modifier.matchParentSize(),
                 shape = RoundedCornerShape(28.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.White.copy(alpha = 0.06f)
+                    containerColor = Color.White.copy(alpha = 0.08f)
                 ),
                 elevation = CardDefaults.cardElevation(0.dp)
             ) {
@@ -169,20 +186,20 @@ private fun GlassSystemStateCard(visible: Boolean) {
                     Text(
                         text = "System State",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color.White.copy(alpha = 0.7f)
                     )
 
                     Text(
                         text = "All systems stable\nNo pending actions",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = Color.White
                     )
 
                     Text(
                         text = "Last sync: moments ago",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color.White.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -190,10 +207,7 @@ private fun GlassSystemStateCard(visible: Boolean) {
     }
 }
 
-/* ───────────────────── PRIMARY ACTION ───────────────────── */
-
-
-/* ─────────────────── ANIMATED BACKGROUND ─────────────────── */
+/* ─────────────────── ANIMATED BACKGROUND FALLBACK ─────────────────── */
 
 @Composable
 private fun AnimatedGradientCircles() {
