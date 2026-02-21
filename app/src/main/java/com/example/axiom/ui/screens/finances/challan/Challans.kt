@@ -71,6 +71,17 @@ fun ChallansScreen() {
             TaskItem(title = "Schedule meeting", initialDone = true)
         }
 
+        SectionTitle("Tasks again")
+        CardBlock {
+            TaskItem(title = "Review designs", initialDone = true)
+            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
+            TaskItem(title = "Update documentation", initialDone = false)
+            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
+            TaskItem(title = "Send weekly report", initialDone = false)
+            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
+            TaskItem(title = "Schedule meeting", initialDone = true)
+        }
+
         // --- Quick Actions Section ---
         SectionTitle("Quick Actions")
         Row(

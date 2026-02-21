@@ -34,6 +34,9 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.hazeChild
 import kotlinx.coroutines.launch
 
 @Composable
@@ -46,7 +49,10 @@ fun AnimatedHeaderScrollView(
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
 
-    // 1. OVERSCROLL TRACKING FOR iOS RUBBER-BANDING
+    // 1. HAZE STATE: The camera that captures the background
+    val hazeState = remember { HazeState() }
+
+    // 2. OVERSCROLL TRACKING FOR iOS RUBBER-BANDING
     val overscrollOffset = remember { Animatable(0f) }
 
     val nestedScrollConnection = remember {
@@ -91,7 +97,7 @@ fun AnimatedHeaderScrollView(
         }
     }
 
-    // 2. SCROLL ANIMATION CALCULATIONS
+    // 3. SCROLL ANIMATION CALCULATIONS
     val headerHeightPx = with(density) { 90.dp.toPx() }
     val scrollY = scrollState.value
     val normalizedScroll = (scrollY / headerHeightPx).coerceIn(0f, 1f)
@@ -105,6 +111,8 @@ fun AnimatedHeaderScrollView(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            // Apply Haze to the ROOT box so it can "see" the scrolling list
+            .haze(hazeState)
             .nestedScroll(nestedScrollConnection)
     ) {
 
@@ -115,7 +123,6 @@ fun AnimatedHeaderScrollView(
                 .verticalScroll(scrollState)
                 .graphicsLayer { translationY = overscrollOffset.value }
         ) {
-            // Large Title Block
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -144,7 +151,6 @@ fun AnimatedHeaderScrollView(
                 }
             }
 
-            // Cards Content Container
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -156,34 +162,42 @@ fun AnimatedHeaderScrollView(
             Spacer(modifier = Modifier.height(100.dp))
         }
 
-        // --- 2. FIXED TOP HEADER (NO EXTERNAL LIBS) ---
+        // --- 2. FIXED TOP HEADER (WITH TRUE BACKDROP BLUR) ---
         if (smallHeaderOpacity > 0f) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(90.dp)
-                    .zIndex(100f) // Forces this above the scrolling cards
-                    .alpha(smallHeaderOpacity),
-                contentAlignment = Alignment.BottomCenter
+                    .zIndex(100f)
+//                    .graphicsLayer { alpha = smallHeaderOpacity }
+                    .alpha(smallHeaderOpacity)
+
             ) {
 
-                // The Translucent Background Layer (Separate from the text)
+                // LAYER A: The Frosted Glass (Blurs the background)
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        // Using a 90% opaque black. This gives the illusion of a solid header
-                        // while letting just enough color bleed through to feel native.
-                        .background(Color(0xE6000000))
+//                        .graphicsLayer { clip = false }
+                        .hazeChild(state = hazeState)
+                        .background(Color.Black.copy(alpha = 0.3f))
                 )
 
-                // The Crisp Text Layer (Sits ON TOP of the background, so it NEVER blurs)
-                Text(
-                    text = largeTitle,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
+                // LAYER B: The Crisp Text (Sits safely on top)
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .zIndex(200f),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
+                    Text(
+                        text = largeTitle,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
+                }
             }
         }
     }
