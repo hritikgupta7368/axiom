@@ -7,11 +7,15 @@ import android.annotation.SuppressLint
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.os.Build
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -24,23 +28,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.Icon
-import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,11 +60,11 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.fontscaling.MathUtils.lerp
-import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 
 
@@ -75,22 +77,14 @@ fun SearchBar(
     modifier: Modifier = Modifier,
     placeholder: String = "Search",
     containerWidth: Dp? = null,               // if provided, use fixed container width
-    focusedWidth: Dp? = null,                 // width when focused (optional)
-    cancelButtonWidth: Dp = 68.dp,
-    enableWidthAnimation: Boolean = true,
     centerWhenUnfocused: Boolean = true,
-    textCenterOffset: Float = 2.5f,
-    iconCenterOffset: Float = 2.5f,
     tint: Color = Color(0xFF007AFF),
     onSearch: (String) -> Unit = {},
     onClear: (() -> Unit)? = null,
     onSearchDone: () -> Unit = {},
-    onSearchMount: () -> Unit = {},
-    renderLeadingIcons: (@Composable () -> Unit)? = null,
     renderTrailingIcons: (@Composable () -> Unit)? = null,
 ) {
     val focusManager = LocalFocusManager.current
-    val coroutineScope = rememberCoroutineScope()
 
     // measured width (when containerWidth not provided)
     var measuredWidthDp by remember { mutableStateOf(0.dp) }
@@ -108,24 +102,9 @@ fun SearchBar(
         derivedStateOf { containerWidth ?: measuredWidthDp }
     }
 
-    // animate container width depending on focusAnim
-    val animatedContainerWidth by derivedStateOf {
-        if (!enableWidthAnimation) currentWidthDp.value
-        else {
-            val start = currentWidthDp.value
-            val end = focusedWidth ?: (currentWidthDp.value - cancelButtonWidth)
-            val t = focusAnim.value
-            // linear interpolation between start and end
-            lerp(start, end, t)
-        }
-    }
 
     val density = LocalDensity.current
 
-    // Recompute center offsets in px
-    val iconWidthPx = with(density) { 36.dp.toPx() } // approx icon area size used in RN
-    val iconCenterOffsetDp = iconCenterOffset
-    val textCenterOffsetDp = textCenterOffset
 
     // When focus changes, animate
 
@@ -166,12 +145,22 @@ fun SearchBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Animated container (search bar) width
+//        Box(
+//            modifier = Modifier
+//                .weight(1f)
+//                .height(IntrinsicSize.Min)
+//        )
+        var searchWidthPx by remember { mutableStateOf(0f) }
+
         Box(
             modifier = Modifier
-//                .width(animatedContainerWidth)
                 .weight(1f)
                 .height(IntrinsicSize.Min)
-        ) {
+                .onGloballyPositioned {
+                    searchWidthPx = it.size.width.toFloat()
+                }
+        )
+        {
             // background with blur-like effect:
             Box(
                 modifier = Modifier
@@ -217,19 +206,37 @@ fun SearchBar(
                 contentAlignment = Alignment.CenterStart
             ) {
                 // Calculate translation for centered state
+//                val centerTranslateX by remember {
+//                    derivedStateOf {
+//                        if (!centerWhenUnfocused) 0f
+//                        else {
+//                            with(density) {
+//                                val totalPx = currentWidthDp.value.toPx()
+//                                val iconAndPaddingPx = 36.dp.toPx() * textCenterOffsetDp
+//                                val centerOffsetPx =
+//                                    (totalPx - iconAndPaddingPx) / 2f - 10.dp.toPx()
+//
+//                                val t = focusAnim.value
+//                                centerOffsetPx * (1f - t)
+//                            }
+//                        }
+//                    }
+//                }
+
                 val centerTranslateX by remember {
                     derivedStateOf {
-                        if (!centerWhenUnfocused) 0f
+                        if (!centerWhenUnfocused || searchWidthPx == 0f) 0f
                         else {
-                            with(density) {
-                                val totalPx = currentWidthDp.value.toPx()
-                                val iconAndPaddingPx = 36.dp.toPx() * textCenterOffsetDp
-                                val centerOffsetPx =
-                                    (totalPx - iconAndPaddingPx) / 2f - 10.dp.toPx()
+                            val horizontalPadding = with(density) { 12.dp.toPx() }
+                            val iconWidth = with(density) { 17.sp.toDp().toPx() }
+                            val iconGap = with(density) { 8.dp.toPx() }
 
-                                val t = focusAnim.value
-                                centerOffsetPx * (1f - t)
-                            }
+                            val contentWidth = iconWidth + iconGap
+
+                            val centerOffset =
+                                (searchWidthPx - contentWidth) / 2f - horizontalPadding
+
+                            centerOffset * (1f - focusAnim.value)
                         }
                     }
                 }
@@ -243,20 +250,17 @@ fun SearchBar(
                     // Leading icon
                     Box(
                         modifier = Modifier
-                            .size(20.dp)
-                            .padding(end = 8.dp)
+                            .padding(end = 8.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        if (renderLeadingIcons != null) {
-                            renderLeadingIcons()
-                        } else {
-                            // default search icon (tint #8E8E93)
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "search",
-                                tint = Color(0xFF8E8E93),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "search",
+                            tint = Color(0xFF8E8E93),
+                            modifier = Modifier.size(17.sp.value.dp)
+                        )
+
                     }
 
                     // Input field container (flex:1)
@@ -289,7 +293,7 @@ fun SearchBar(
                                 .padding(vertical = 10.dp),
                             keyboardOptions = KeyboardOptions(
                                 imeAction = ImeAction.Search,
-                                autoCorrect = false
+                                autoCorrectEnabled = false
                             ),
                             keyboardActions = KeyboardActions(
                                 onSearch = {
@@ -298,37 +302,35 @@ fun SearchBar(
                                 }
                             ),
                             decorationBox = { innerTextField ->
+
                                 Box {
                                     if (value.isEmpty()) {
-                                        androidx.compose.material.Text(
+                                        Text(
                                             text = placeholder,
                                             color = Color(0xFF8E8E93),
                                             fontSize = 17.sp,
-                                            modifier = Modifier
-                                                .padding(top = 0.dp)
-                                        )
+                                            textAlign = TextAlign.Center,
+
+                                            )
                                     }
                                     innerTextField()
                                 }
                             },
                             onTextLayout = {},
-                            // focus handling:
-                        )
+
+                            )
                     }
 
                     // Clear button (animated scale + opacity)
                     if (value.isNotEmpty()) {
                         Box(
                             modifier = Modifier
-//                                .padding(start = 4.dp)
-//                                .size(24.dp)
                                 .scale(clearScale.value)
                                 .graphicsLayer { alpha = clearOpacity.value }
                                 .clickable {
                                     onValueChange("")
                                     onClear?.invoke()
                                 },
-//                            contentAlignment = Alignment.Center
                         ) {
                             if (renderTrailingIcons != null) {
                                 renderTrailingIcons()
@@ -347,54 +349,23 @@ fun SearchBar(
         } // Box container end
 
         // Cancel button animated style - slide + fade similar to RN
-//        val cancelVisible = focusAnim.value > 0.05f
-//        AnimatedVisibility(
-//            visible = cancelVisible,
-//            enter = fadeIn(tween(180)) + slideInHorizontally(
-//                tween(180),
-//                initialOffsetX = { it / 4 }),
-//            exit = fadeOut(tween(160)) + slideOutHorizontally(
-//                tween(160),
-//                targetOffsetX = { it / 4 }),
-//            modifier = Modifier.padding(start = 12.dp)
-//        ) {
-//            Box(
-//                modifier = Modifier
-//                    .width(cancelButtonWidth)
-//                    .height(48.dp),
-//                contentAlignment = Alignment.CenterStart
-//            ) {
-//                androidx.compose.material.Text(
-//                    text = "Cancel",
-//                    color = tint,
-//                    fontSize = 17.sp,
-//                    modifier = Modifier
-//                        .clickable(
-//                            indication = null,
-//                            interactionSource = remember { MutableInteractionSource() }
-//                        ) {
-//                            // Cancel behavior: blur/focus out, clear query, call onClear/onSearchDone
-//                            focusManager.clearFocus()
-//                            onValueChange("")
-//                            onClear?.invoke()
-//                            onSearchDone()
-//                        }
-//                )
-//            }
-//        }
-        val cancelWidth by animateDpAsState(
-            targetValue = if (isFocused) cancelButtonWidth else 0.dp,
-            animationSpec = tween(200),
-            label = ""
-        )
-        Box(
-            modifier = Modifier
-                .padding(start = if (isFocused) 12.dp else 0.dp)
-                .width(cancelWidth)
-                .height(48.dp),
-            contentAlignment = Alignment.CenterStart
+        AnimatedVisibility(
+            visible = isFocused,
+            enter = slideInHorizontally(
+                animationSpec = tween(220),
+                initialOffsetX = { it }   // slide from right
+            ) + fadeIn(animationSpec = tween(180)),
+            exit = slideOutHorizontally(
+                animationSpec = tween(200),
+                targetOffsetX = { it }    // slide to right
+            ) + fadeOut(animationSpec = tween(150))
         ) {
-            if (cancelWidth > 0.dp) {
+            Box(
+                modifier = Modifier
+                    .padding(start = 12.dp)
+                    .height(48.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
                 Text(
                     text = "Cancel",
                     color = tint,
@@ -411,6 +382,5 @@ fun SearchBar(
                 )
             }
         }
-    } // Row outer end
+    }
 }
-

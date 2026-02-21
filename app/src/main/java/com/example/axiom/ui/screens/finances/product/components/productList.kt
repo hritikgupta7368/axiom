@@ -117,14 +117,10 @@ fun ProductListSheet(
         SearchBar(
             containerWidth = 350.dp,
             tint = Color.White,
-            textCenterOffset = 2.2f,
-            iconCenterOffset = 2.2f,
             value = query,
             onValueChange = onQueryChange,
-            placeholder = "Search product",
-            onSearchDone = {
-                // trigger search submit logic
-            }
+            placeholder = "Search Products / HSN",
+            centerWhenUnfocused = false,
         )
 
         Spacer(Modifier.height(12.dp))
