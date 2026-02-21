@@ -119,9 +119,9 @@ fun ProductListSheet(
             tint = Color.White,
             value = query,
             onValueChange = onQueryChange,
-            placeholder = "Search Products / HSN",
-            centerWhenUnfocused = false,
-        )
+            placeholder = "Search Products",
+
+            )
 
         Spacer(Modifier.height(12.dp))
 
