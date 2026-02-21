@@ -25,6 +25,9 @@ import com.example.axiom.data.temp.EventEntity
 import com.example.axiom.data.temp.TaskEntity
 import com.example.axiom.data.vault.VaultDao
 import com.example.axiom.data.vault.VaultEntryEntity
+import com.example.axiom.ui.screens.finances.quotation.components.QuotationDao
+import com.example.axiom.ui.screens.finances.quotation.components.QuotationEntity
+import com.example.axiom.ui.screens.finances.quotation.components.QuotationItemEntity
 
 
 @Database(
@@ -38,7 +41,11 @@ import com.example.axiom.data.vault.VaultEntryEntity
         VaultEntryEntity::class,
         NoteEntity::class,
         TaskEntity::class,
-        EventEntity::class
+        EventEntity::class,
+
+
+        QuotationEntity::class,
+        QuotationItemEntity::class,
 
         // add more entityies
     ],
@@ -58,6 +65,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun customerFirmDao(): CustomerFirmDao
     abstract fun sellerFirmDao(): SellerFirmDao
     abstract fun invoiceDao(): InvoiceDao
+
+    abstract fun quotationDao(): QuotationDao
 
 
     // and daos here

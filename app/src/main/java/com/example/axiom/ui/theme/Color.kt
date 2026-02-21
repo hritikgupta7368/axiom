@@ -5,7 +5,7 @@ import androidx.compose.ui.graphics.Color
 /* ---------- BRAND COLORS ---------- */
 
 // Primary brand color (buttons, FAB, highlights)
-val BrandPrimary = Color(0xFF6366F1)   // Indigo / modern SaaS
+val BrandPrimary = Color(0xFF6366F1)   // Purple
 val BrandSecondary = Color(0xFF22D3EE) // Cyan accent
 val BrandTertiary = Color(0xFFF472B6)  // Pink accent
 

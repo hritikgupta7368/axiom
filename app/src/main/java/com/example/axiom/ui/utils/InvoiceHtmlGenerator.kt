@@ -419,7 +419,7 @@ object InvoiceHtmlGenerator {
 
                       <div class="s3-right">
                           <p>Mob : 9212047198</p>
-                          <p>Web :</p>
+                          <p>Web : </p>
                           <p>Email : </p>
                       </div>
                   </div>
@@ -468,8 +468,8 @@ object InvoiceHtmlGenerator {
                           </div>
 
                           <div class="row">
-                              <span class="label">Purchase No.</span>
-                              <span class="value"></span>
+                              <span class="label">Reverse Charge</span>
+                              <span class="value"></span> 
                           </div>
 
                           <div class="row">
@@ -542,19 +542,21 @@ object InvoiceHtmlGenerator {
                   </tr>
                   <tr class="border-b total-row">
                       <td rowspan="2" colspan="3" class="center border-r">Rupees ${invoice.amountInWords} Only</td>
-                      <td colspan="3" class="label left">Add: IGST</td>
-                      <td class="value">${invoice.gst.igstAmount}</td>
+                      <td colspan="3" class="label left">${if (invoice.gst.igstRate > 0 && invoice.gst.igstAmount > 0) "Add: IGST @ ${invoice.gst.igstRate}%" else "&nbsp;"}</td>
+                      <td class="value">${if (invoice.gst.igstRate > 0 && invoice.gst.igstAmount > 0) invoice.gst.igstAmount else "&nbsp;"}</td>
                   </tr>
                    <!--CGST-->
                   <tr class="border-b total-row">
-                      <td colspan="3" class="label left">Add: CGST @ 9%</td>
-                      <td class="value">${invoice.gst.cgstAmount}</td>
+                      <td colspan="3" class="label left">${if (invoice.gst.cgstRate > 0 && invoice.gst.cgstAmount > 0) "Add: CGST @ ${invoice.gst.cgstRate}%" else "&nbsp;"}</td>
+                      <td class="value">${if (invoice.gst.cgstRate > 0 && invoice.gst.cgstAmount > 0) invoice.gst.cgstAmount else "&nbsp;"}</td>
+
                   </tr>
                   <!--Bank header + SGST-->
                   <tr class="border-b">
                       <td colspan="3" class="section-title border-r">Bank Details</td>
-                      <td colspan="3" class="label left">Add: SGST @ 9%</td>
-                      <td class="value">${invoice.gst.cgstAmount}</td>
+                      <td colspan="3" class="label left">${if (invoice.gst.sgstRate > 0 && invoice.gst.sgstAmount > 0) "Add: SGST @ ${invoice.gst.sgstRate}%" else "&nbsp;"}</td>
+                      <td class="value">${if (invoice.gst.sgstRate > 0 && invoice.gst.sgstAmount > 0) invoice.gst.sgstAmount else "&nbsp;"}</td>
+
                   </tr>
                   <!--Bank name + total tax-->
                   <tr class="bank-row">

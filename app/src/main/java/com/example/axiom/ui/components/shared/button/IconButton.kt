@@ -55,7 +55,10 @@ package com.example.axiom.ui.components.shared.button
 //    }
 //}
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -108,6 +111,35 @@ object AppIcons {
 }
 
 
+//@Composable
+//fun AppIconButton(
+//    icon: AppIcon,
+//    contentDescription: String?,
+//    onClick: () -> Unit,
+//    modifier: Modifier = Modifier,
+//    tint: Color = MaterialTheme.colorScheme.onSurface,
+//    iconSize: Dp = 24.dp
+//) {
+//    IconButton(onClick = onClick, modifier = modifier) {
+//        when (icon) {
+//            is AppIcon.Vector -> Icon(
+//                imageVector = icon.imageVector,
+//                contentDescription = contentDescription,
+//                tint = tint,
+//                modifier = Modifier.size(iconSize)
+//            )
+//
+//            is AppIcon.PainterRes -> Icon(
+//                painter = painterResource(icon.resId),
+//                contentDescription = contentDescription,
+//                tint = tint,
+//                modifier = Modifier.size(iconSize)
+//            )
+//        }
+//    }
+//}
+
+
 @Composable
 fun AppIconButton(
     icon: AppIcon,
@@ -115,26 +147,37 @@ fun AppIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     tint: Color = MaterialTheme.colorScheme.onSurface,
-    iconSize: Dp = 24.dp
+    iconSize: Dp = 24.dp,
+    enclosedInCircle: Boolean = false,
+    circleColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
 ) {
     IconButton(onClick = onClick, modifier = modifier) {
+
+        val circleModifier = if (enclosedInCircle) {
+            Modifier
+                .size(iconSize * 2)
+                .background(circleColor, CircleShape)
+                .padding(iconSize * 0.5f)
+        } else {
+            Modifier.size(iconSize)
+        }
+
         when (icon) {
             is AppIcon.Vector -> Icon(
                 imageVector = icon.imageVector,
                 contentDescription = contentDescription,
                 tint = tint,
-                modifier = Modifier.size(iconSize)
+                modifier = circleModifier
             )
 
             is AppIcon.PainterRes -> Icon(
                 painter = painterResource(icon.resId),
                 contentDescription = contentDescription,
                 tint = tint,
-                modifier = Modifier.size(iconSize)
+                modifier = circleModifier
             )
         }
     }
 }
-
 
 

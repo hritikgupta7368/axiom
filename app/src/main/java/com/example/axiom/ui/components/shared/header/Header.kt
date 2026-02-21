@@ -13,8 +13,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -22,6 +25,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,7 +37,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -137,7 +140,8 @@ fun ListHeader(
         modifier = modifier
             .fillMaxWidth()
             .background(style.backgroundColor)
-            .padding(style.contentPadding)
+            .windowInsetsPadding(TopAppBarDefaults.windowInsets)
+            .heightIn(min = 64.dp)
     ) {
 
         AnimatedContent(
@@ -166,7 +170,7 @@ fun ListHeader(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(style.backgroundColor),
+                    .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
@@ -183,15 +187,16 @@ fun ListHeader(
                                     contentDescription = it.contentDescription,
                                     onClick = it.onClick,
                                     tint = style.iconTint,
-                                    iconSize = style.iconSize
+                                    iconSize = style.iconSize,
+                                    modifier = Modifier.offset(x = (-4).dp)
                                 )
                             }
 
                             Text(
                                 text = title,
-                                style = style.titleStyle,
-                                fontWeight = FontWeight.Bold
-                            )
+                                style = MaterialTheme.typography.titleLarge,
+
+                                )
 
 
                         }
@@ -278,7 +283,9 @@ fun ListHeader(
                             onValueChange = inline.onQueryChange,
                             modifier = Modifier
                                 .weight(1f)
+                                .heightIn(min = 64.dp)
                                 .focusRequester(focusRequester),
+
                             placeholder = { Text(inline.placeholder) },
                             singleLine = true,
                             leadingIcon = {

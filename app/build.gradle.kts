@@ -39,6 +39,7 @@ android {
     compileSdk {
         version = release(36)
     }
+
     signingConfigs {
         create("release") { // Use create() for Kotlin DSL
             storeFile = file("axiom-release.keystore")
@@ -59,11 +60,17 @@ android {
     }
 
     buildTypes {
-
+        getByName("debug") {
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-DEBUG"
+            // This ensures the dev app has a different name on your phone
+            // if you use string resources for your app name.
+            manifestPlaceholders["appLabel"] = "Axiom Dev"
+        }
         getByName("release") {
             // Reference the signing config we created above
             signingConfig = signingConfigs.getByName("release")
-
+            manifestPlaceholders["appLabel"] = "Axiom"
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -73,6 +80,7 @@ android {
         }
 
         create("profile") {
+            manifestPlaceholders["appLabel"] = "Axiom Profile"
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
             isDebuggable = false

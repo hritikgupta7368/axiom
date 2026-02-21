@@ -31,7 +31,7 @@ object ApkDownloader {
                 if (uri != null) {
                     install(ctx, uri)
                 }
-               
+
                 ctx.unregisterReceiver(this)
             }
         }
@@ -45,14 +45,26 @@ object ApkDownloader {
 
     private fun install(context: Context, uri: Uri) {
 
+        
+        if (!context.packageManager.canRequestPackageInstalls()) {
+            val intent = Intent(
+                android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse("package:${context.packageName}")
+            )
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            return
+        }
+
+
         val intent = Intent(Intent.ACTION_VIEW)
         intent.setDataAndType(
             uri,
             "application/vnd.android.package-archive"
         )
         intent.flags =
-            Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                    Intent.FLAG_ACTIVITY_NEW_TASK
+            Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
 
         context.startActivity(intent)
     }

@@ -24,7 +24,7 @@ private val DarkColorScheme = darkColorScheme(
      * - Selected states
      * - Active icons
      */
-    primary = BrandPrimary,
+    primary = BrandPrimary,  //purple
 
     /**
      * SECONDARY
@@ -40,7 +40,7 @@ private val DarkColorScheme = darkColorScheme(
      * - Decorative accents
      * - Optional highlights
      */
-    tertiary = BrandTertiary,
+    tertiary = BrandTertiary,  //pink
 
     /**
      * BACKGROUND
@@ -141,13 +141,13 @@ private val LightColorScheme = lightColorScheme(
     tertiary = BrandTertiary,
 
     // Screen background
-    background = LightBackground,
+    background = LightBackground,  // almost white
 
     // Cards / sheets / dialogs
-    surface = LightSurface,
+    surface = LightSurface,       //white
 
     // Elevated UI containers
-    surfaceVariant = LightSurfaceVariant,
+    surfaceVariant = LightSurfaceVariant, //very light gray
 
     // Text on primary buttons
     onPrimary = Color.White,
