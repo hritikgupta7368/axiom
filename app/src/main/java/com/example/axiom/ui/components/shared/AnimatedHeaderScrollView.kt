@@ -20,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
@@ -112,7 +111,7 @@ fun AnimatedHeaderScrollView(
             .fillMaxSize()
             .background(Color.Black)
             // Apply Haze to the ROOT box so it can "see" the scrolling list
-            .haze(hazeState)
+//            .haze(hazeState)
             .nestedScroll(nestedScrollConnection)
     ) {
 
@@ -120,6 +119,7 @@ fun AnimatedHeaderScrollView(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .haze(hazeState)
                 .verticalScroll(scrollState)
                 .graphicsLayer { translationY = overscrollOffset.value }
         ) {
@@ -169,8 +169,8 @@ fun AnimatedHeaderScrollView(
                     .fillMaxWidth()
                     .height(90.dp)
                     .zIndex(100f)
-//                    .graphicsLayer { alpha = smallHeaderOpacity }
-                    .alpha(smallHeaderOpacity)
+                    .graphicsLayer { alpha = smallHeaderOpacity }
+//                    .alpha(smallHeaderOpacity)
 
             ) {
 
@@ -192,7 +192,7 @@ fun AnimatedHeaderScrollView(
                 ) {
                     Text(
                         text = largeTitle,
-                        fontSize = 17.sp,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White,
                         modifier = Modifier.padding(bottom = 12.dp)
