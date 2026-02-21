@@ -177,7 +177,7 @@ fun AnimatedHeaderScrollView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(90.dp)
-                    .zIndex(10f) // FIX: Absolutely forces this above all scrolling content
+                    .zIndex(10f)
                     .graphicsLayer { alpha = smallHeaderOpacity }
                     .then(
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
