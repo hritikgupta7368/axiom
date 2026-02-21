@@ -1,9 +1,14 @@
 package com.example.axiom.ui.screens.finances.challan
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -19,10 +24,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material3.Divider
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,77 +45,207 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.axiom.ui.components.shared.AnimatedHeaderScrollView
 
+//@Composable
+//fun ChallansScreen() {
+//    AnimatedHeaderScrollView(
+//        largeTitle = "Today",
+//        subtitle = "Wednesday, Jan 22",
+////        onBackClick = {
+////            // Handle your back navigation here
+////            println("Back button clicked!")
+////        }
+//    ) {
+//        // --- Schedule Section ---
+//        SectionTitle("Schedule")
+//        CardBlock {
+//            ScheduleItem(title = "Morning Routine", time = "6:00 AM", icon = Icons.Default.Add)
+//            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
+//            ScheduleItem(title = "Workout", time = "7:30 AM", icon = Icons.Default.DateRange)
+//            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
+//            ScheduleItem(title = "Team Standup", time = "9:00 AM", icon = Icons.Default.CheckCircle)
+//        }
+//
+//        // --- Tasks Section ---
+//        SectionTitle("Tasks")
+//        CardBlock {
+//            TaskItem(title = "Review designs", initialDone = true)
+//            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
+//            TaskItem(title = "Update documentation", initialDone = false)
+//            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
+//            TaskItem(title = "Send weekly report", initialDone = false)
+//            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
+//            TaskItem(title = "Schedule meeting", initialDone = true)
+//        }
+//
+//        SectionTitle("Tasks again")
+//        CardBlock {
+//            TaskItem(title = "Review designs", initialDone = true)
+//            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
+//            TaskItem(title = "Update documentation", initialDone = false)
+//            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
+//            TaskItem(title = "Send weekly report", initialDone = false)
+//            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
+//            TaskItem(title = "Schedule meeting", initialDone = true)
+//        }
+//
+//        // --- Quick Actions Section ---
+//        SectionTitle("Quick Actions")
+//        Row(
+//            modifier = Modifier.fillMaxWidth(),
+//            horizontalArrangement = Arrangement.spacedBy(12.dp)
+//        ) {
+//            QuickActionButton(
+//                modifier = Modifier.weight(1f),
+//                title = "New Task",
+//                icon = Icons.Default.Add,
+//                color = Color(0xFF30D158)
+//            )
+//            QuickActionButton(
+//                modifier = Modifier.weight(1f),
+//                title = "Schedule",
+//                icon = Icons.Default.DateRange,
+//                color = Color(0xFF0A84FF)
+//            )
+//            QuickActionButton(
+//                modifier = Modifier.weight(1f),
+//                title = "Saved",
+//                icon = Icons.Default.Email,
+//                color = Color(0xFFFF9F0A)
+//            )
+//        }
+//    }
+//}
 @Composable
 fun ChallansScreen() {
+    // State to track which items the user has selected
+    var selectedItemIds by remember { mutableStateOf(setOf<Int>()) }
+    val isSelectionMode = selectedItemIds.isNotEmpty()
+
+    // iOS Blue Color for interactive elements
+    val iosBlue = Color(0xFF0A84FF)
+
     AnimatedHeaderScrollView(
-        largeTitle = "Today",
-        subtitle = "Wednesday, Jan 22",
-//        onBackClick = {
-//            // Handle your back navigation here
-//            println("Back button clicked!")
-//        }
+        largeTitle = "Notes",
+        subtitle = "14 Items",
+        trailingContent = {
+            // Smoothly crossfades between the two button states based on 'isSelectionMode'
+            AnimatedContent(
+                targetState = isSelectionMode,
+                transitionSpec = {
+                    (fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.92f)) togetherWith fadeOut(
+                        animationSpec = tween(150)
+                    )
+                },
+                label = "Header Actions"
+            ) { selectionActive ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 2.dp) // Aligns perfectly with the header text
+                ) {
+                    if (selectionActive) {
+                        // --- SELECTION MODE BUTTONS ---
+                        IconButton(onClick = { /* Handle Edit */ }) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = iosBlue)
+                        }
+                        IconButton(onClick = {
+                            /* Handle Delete & clear selection */
+                            selectedItemIds = emptySet()
+                        }) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = Color(0xFFFF453A)
+                            ) // iOS Red
+                        }
+                    } else {
+                        // --- NORMAL MODE BUTTONS ---
+                        IconButton(onClick = { /* Handle Search */ }) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = "Search",
+                                tint = iosBlue
+                            )
+                        }
+                        IconButton(onClick = { /* Handle Add */ }) {
+                            Icon(Icons.Default.Add, contentDescription = "Add", tint = iosBlue)
+                        }
+                    }
+                }
+            }
+        }
     ) {
-        // --- Schedule Section ---
-        SectionTitle("Schedule")
-        CardBlock {
-            ScheduleItem(title = "Morning Routine", time = "6:00 AM", icon = Icons.Default.Add)
-            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
-            ScheduleItem(title = "Workout", time = "7:30 AM", icon = Icons.Default.DateRange)
-            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
-            ScheduleItem(title = "Team Standup", time = "9:00 AM", icon = Icons.Default.CheckCircle)
-        }
+        // --- DUMMY LIST CONTENT ---
+        val dummyItems = (1..15).toList()
 
-        // --- Tasks Section ---
-        SectionTitle("Tasks")
-        CardBlock {
-            TaskItem(title = "Review designs", initialDone = true)
-            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
-            TaskItem(title = "Update documentation", initialDone = false)
-            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
-            TaskItem(title = "Send weekly report", initialDone = false)
-            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
-            TaskItem(title = "Schedule meeting", initialDone = true)
-        }
-
-        SectionTitle("Tasks again")
-        CardBlock {
-            TaskItem(title = "Review designs", initialDone = true)
-            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
-            TaskItem(title = "Update documentation", initialDone = false)
-            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
-            TaskItem(title = "Send weekly report", initialDone = false)
-            Divider(color = Color(0xFF2C2C2E), thickness = 1.dp)
-            TaskItem(title = "Schedule meeting", initialDone = true)
-        }
-
-        // --- Quick Actions Section ---
-        SectionTitle("Quick Actions")
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF1C1C1E))
         ) {
-            QuickActionButton(
-                modifier = Modifier.weight(1f),
-                title = "New Task",
-                icon = Icons.Default.Add,
-                color = Color(0xFF30D158)
-            )
-            QuickActionButton(
-                modifier = Modifier.weight(1f),
-                title = "Schedule",
-                icon = Icons.Default.DateRange,
-                color = Color(0xFF0A84FF)
-            )
-            QuickActionButton(
-                modifier = Modifier.weight(1f),
-                title = "Saved",
-                icon = Icons.Default.Email,
-                color = Color(0xFFFF9F0A)
-            )
+            dummyItems.forEach { itemId ->
+                val isSelected = selectedItemIds.contains(itemId)
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            // Toggle selection
+                            selectedItemIds = if (isSelected) {
+                                selectedItemIds - itemId
+                            } else {
+                                selectedItemIds + itemId
+                            }
+                        }
+                        .padding(16.dp)
+                ) {
+                    // Selection indicator (Checkbox circle)
+                    if (isSelectionMode) {
+                        Box(
+                            modifier = Modifier
+                                .padding(end = 12.dp)
+                                .size(22.dp)
+                                .clip(RoundedCornerShape(11.dp))
+                                .background(if (isSelected) iosBlue else Color.Transparent)
+                                .border(
+                                    1.5.dp,
+                                    if (isSelected) iosBlue else Color.DarkGray,
+                                    RoundedCornerShape(11.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isSelected) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = "Item $itemId",
+                        color = Color.White,
+                        fontSize = 17.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // Divider line
+                if (itemId != dummyItems.last()) {
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(Color(0xFF2C2C2E))
+                    )
+                }
+            }
         }
     }
 }
-
 // --- Reusable UI Elements ---
 
 @Composable

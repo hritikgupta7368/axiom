@@ -42,16 +42,14 @@ import kotlinx.coroutines.launch
 fun AnimatedHeaderScrollView(
     largeTitle: String,
     subtitle: String? = null,
+    trailingContent: @Composable () -> Unit = {}, // NEW: Slot for our action buttons
     content: @Composable ColumnScope.() -> Unit
 ) {
     val scrollState = rememberScrollState()
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
 
-    // 1. HAZE STATE: The camera that captures the background
     val hazeState = remember { HazeState() }
-
-    // 2. OVERSCROLL TRACKING FOR iOS RUBBER-BANDING
     val overscrollOffset = remember { Animatable(0f) }
 
     val nestedScrollConnection = remember {
@@ -59,9 +57,7 @@ fun AnimatedHeaderScrollView(
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (overscrollOffset.value > 0f && available.y < 0f) {
                     val consumed = available.y.coerceAtLeast(-overscrollOffset.value)
-                    coroutineScope.launch {
-                        overscrollOffset.snapTo(overscrollOffset.value + consumed)
-                    }
+                    coroutineScope.launch { overscrollOffset.snapTo(overscrollOffset.value + consumed) }
                     return Offset(0f, consumed)
                 }
                 return Offset.Zero
@@ -73,10 +69,8 @@ fun AnimatedHeaderScrollView(
                 source: NestedScrollSource
             ): Offset {
                 if (available.y > 0f) {
-                    val resistance = 0.45f // iOS drag resistance
-                    coroutineScope.launch {
-                        overscrollOffset.snapTo(overscrollOffset.value + (available.y * resistance))
-                    }
+                    val resistance = 0.45f
+                    coroutineScope.launch { overscrollOffset.snapTo(overscrollOffset.value + (available.y * resistance)) }
                 }
                 return Offset.Zero
             }
@@ -96,7 +90,6 @@ fun AnimatedHeaderScrollView(
         }
     }
 
-    // 3. SCROLL ANIMATION CALCULATIONS
     val headerHeightPx = with(density) { 90.dp.toPx() }
     val scrollY = scrollState.value
     val normalizedScroll = (scrollY / headerHeightPx).coerceIn(0f, 1f)
@@ -110,8 +103,6 @@ fun AnimatedHeaderScrollView(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
-            // Apply Haze to the ROOT box so it can "see" the scrolling list
-//            .haze(hazeState)
             .nestedScroll(nestedScrollConnection)
     ) {
 
@@ -151,18 +142,16 @@ fun AnimatedHeaderScrollView(
                 }
             }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
+            Column(modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)) {
                 content()
             }
 
             Spacer(modifier = Modifier.height(100.dp))
         }
 
-        // --- 2. FIXED TOP HEADER (WITH TRUE BACKDROP BLUR) ---
+        // --- 2. FIXED TOP HEADER (Fades in on scroll) ---
         if (smallHeaderOpacity > 0f) {
             Box(
                 modifier = Modifier
@@ -170,20 +159,13 @@ fun AnimatedHeaderScrollView(
                     .height(90.dp)
                     .zIndex(100f)
                     .graphicsLayer { alpha = smallHeaderOpacity }
-//                    .alpha(smallHeaderOpacity)
-
             ) {
-
-                // LAYER A: The Frosted Glass (Blurs the background)
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-//                        .graphicsLayer { clip = false }
                         .hazeChild(state = hazeState)
                         .background(Color.Black.copy(alpha = 0.3f))
                 )
-
-                // LAYER B: The Crisp Text (Sits safely on top)
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -192,13 +174,26 @@ fun AnimatedHeaderScrollView(
                 ) {
                     Text(
                         text = largeTitle,
-                        fontSize = 18.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White,
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
                 }
             }
+        }
+
+        // --- 3. LAYER C: ACTION BUTTONS (Always Pinned) ---
+        // Aligned specifically to TopEnd so it doesn't block touches on the center/left of the list
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .height(90.dp)
+                .padding(end = 8.dp) // Slight inset from the right screen edge
+                .zIndex(300f), // Highest layer, sits above everything
+            contentAlignment = Alignment.BottomEnd // Aligns buttons horizontally with small text
+        ) {
+            trailingContent()
         }
     }
 }
