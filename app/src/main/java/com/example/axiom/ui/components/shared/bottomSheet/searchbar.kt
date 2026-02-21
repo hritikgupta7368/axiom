@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -131,6 +132,7 @@ fun SearchBar(
             clearOpacity.animateTo(0f, animationSpec = tween(durationMillis = 160))
         }
     }
+    var contentRowWidthPx by remember { mutableStateOf(0f) }
 
     // top-level container
     Row(
@@ -151,6 +153,7 @@ fun SearchBar(
 //                .height(IntrinsicSize.Min)
 //        )
         var searchWidthPx by remember { mutableStateOf(0f) }
+
 
         Box(
             modifier = Modifier
@@ -225,17 +228,13 @@ fun SearchBar(
 
                 val centerTranslateX by remember {
                     derivedStateOf {
-                        if (!centerWhenUnfocused || searchWidthPx == 0f) 0f
+                        if (!centerWhenUnfocused || searchWidthPx == 0f || contentRowWidthPx == 0f) 0f
                         else {
                             val horizontalPadding = with(density) { 12.dp.toPx() }
-                            val iconWidth = with(density) { 17.sp.toDp().toPx() }
-                            val iconGap = with(density) { 8.dp.toPx() }
-
-                            val contentWidth = iconWidth + iconGap
-
-                            val centerOffset =
-                                (searchWidthPx - contentWidth) / 2f - horizontalPadding
-
+                            val availableWidth = searchWidthPx - 2f * horizontalPadding
+                            // how much to shift right so content appears centered
+                            val centerOffset = (availableWidth - contentRowWidthPx) / 2f
+                            // animate from centered (unfocused) to start (focused)
                             centerOffset * (1f - focusAnim.value)
                         }
                     }
@@ -245,7 +244,10 @@ fun SearchBar(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .offset { IntOffset(x = centerTranslateX.toInt(), y = 0) }
-                        .fillMaxWidth()
+//                        .fillMaxWidth()
+                        .onGloballyPositioned {
+                            contentRowWidthPx = it.size.width.toFloat()  // ← add this
+                        }
                 ) {
                     // Leading icon
                     Box(
@@ -266,7 +268,10 @@ fun SearchBar(
                     // Input field container (flex:1)
                     Box(
                         modifier = Modifier
-                            .weight(1f)
+                            .then(
+                                if (isFocused || value.isNotEmpty()) Modifier.weight(1f)
+                                else Modifier.wrapContentWidth()
+                            )
                             .height(48.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
