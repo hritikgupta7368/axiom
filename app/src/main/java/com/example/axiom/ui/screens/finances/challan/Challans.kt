@@ -1,10 +1,14 @@
 package com.example.axiom.ui.screens.finances.challan
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,13 +24,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -39,7 +47,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -117,64 +127,154 @@ import com.example.axiom.ui.components.shared.AnimatedHeaderScrollView
 //}
 @Composable
 fun ChallansScreen() {
-    // State to track which items the user has selected
     var selectedItemIds by remember { mutableStateOf(setOf<Int>()) }
     val isSelectionMode = selectedItemIds.isNotEmpty()
+    var isSearchActive by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
-    // iOS Blue Color for interactive elements
     val iosBlue = Color(0xFF0A84FF)
+    val iosGray = Color(0xFF8E8E93)
+    val iosSearchBg = Color(0xFF1C1C1E)
 
     AnimatedHeaderScrollView(
         largeTitle = "Notes",
         subtitle = "14 Items",
+        leadingContent = {
+            // --- NATIVE iOS BACK BUTTON ---
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { /* Handle Back */ }
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                    .padding(bottom = 2.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = "Back",
+                    tint = iosBlue,
+                    modifier = Modifier.size(22.dp)
+                )
+                Text(
+                    text = "Folders",
+                    color = iosBlue,
+                    fontSize = 17.sp,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+        },
         trailingContent = {
-            // Smoothly crossfades between the two button states based on 'isSelectionMode'
+            // --- ANIMATED iOS ICONS ---
             AnimatedContent(
                 targetState = isSelectionMode,
                 transitionSpec = {
-                    (fadeIn(animationSpec = tween(220)) + scaleIn(initialScale = 0.92f)) togetherWith fadeOut(
-                        animationSpec = tween(150)
-                    )
+                    // Slide up and fade in/out for a very native feel
+                    if (targetState) {
+                        (slideInVertically(tween(300)) { it } + fadeIn(tween(300))) togetherWith
+                                (slideOutVertically(tween(300)) { -it } + fadeOut(tween(300)))
+                    } else {
+                        (slideInVertically(tween(300)) { -it } + fadeIn(tween(300))) togetherWith
+                                (slideOutVertically(tween(300)) { it } + fadeOut(tween(300)))
+                    }
                 },
                 label = "Header Actions"
             ) { selectionActive ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 2.dp) // Aligns perfectly with the header text
+                    modifier = Modifier.padding(bottom = 4.dp)
                 ) {
                     if (selectionActive) {
-                        // --- SELECTION MODE BUTTONS ---
-                        IconButton(onClick = { /* Handle Edit */ }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = iosBlue)
-                        }
-                        IconButton(onClick = {
-                            /* Handle Delete & clear selection */
-                            selectedItemIds = emptySet()
-                        }) {
+                        IconButton(onClick = { /* Edit action */ }) {
                             Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Delete",
-                                tint = Color(0xFFFF453A)
-                            ) // iOS Red
-                        }
-                    } else {
-                        // --- NORMAL MODE BUTTONS ---
-                        IconButton(onClick = { /* Handle Search */ }) {
-                            Icon(
-                                Icons.Default.Search,
-                                contentDescription = "Search",
-                                tint = iosBlue
+                                Icons.Rounded.Edit,
+                                contentDescription = "Edit",
+                                tint = iosBlue,
+                                modifier = Modifier.size(24.dp)
                             )
                         }
-                        IconButton(onClick = { /* Handle Add */ }) {
-                            Icon(Icons.Default.Add, contentDescription = "Add", tint = iosBlue)
+                        IconButton(onClick = { selectedItemIds = emptySet() }) {
+                            Icon(
+                                Icons.Rounded.Delete,
+                                contentDescription = "Delete",
+                                tint = Color(0xFFFF453A),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    } else {
+                        IconButton(onClick = { isSearchActive = !isSearchActive }) {
+                            Icon(
+                                Icons.Rounded.Search,
+                                contentDescription = "Search",
+                                tint = iosBlue,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                        IconButton(onClick = { /* Add action */ }) {
+                            Icon(
+                                Icons.Rounded.Add,
+                                contentDescription = "Add",
+                                tint = iosBlue,
+                                modifier = Modifier.size(28.dp)
+                            )
                         }
                     }
                 }
             }
         }
     ) {
-        // --- DUMMY LIST CONTENT ---
+        // --- iOS SEARCH BAR (Expandable) ---
+        AnimatedVisibility(
+            visible = isSearchActive,
+            enter = expandVertically(animationSpec = tween(300)) + fadeIn(tween(300)),
+            exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(tween(300))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(iosSearchBg)
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Rounded.Search,
+                    contentDescription = null,
+                    tint = iosGray,
+                    modifier = Modifier.size(20.dp)
+                )
+                BasicTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    textStyle = TextStyle(color = Color.White, fontSize = 17.sp),
+                    cursorBrush = SolidColor(iosBlue),
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp),
+                    decorationBox = { innerTextField ->
+                        if (searchQuery.isEmpty()) {
+                            Text("Search", color = iosGray, fontSize = 17.sp)
+                        }
+                        innerTextField()
+                    }
+                )
+                if (searchQuery.isNotEmpty()) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = "Clear",
+                        tint = iosGray,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF3A3A3C))
+                            .clickable { searchQuery = "" }
+                    )
+                }
+            }
+        }
+
+        // --- LIST CONTENT ---
         val dummyItems = (1..15).toList()
 
         Column(
@@ -190,17 +290,13 @@ fun ChallansScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            // Toggle selection
-                            selectedItemIds = if (isSelected) {
-                                selectedItemIds - itemId
-                            } else {
-                                selectedItemIds + itemId
-                            }
+                            selectedItemIds =
+                                if (isSelected) selectedItemIds - itemId else selectedItemIds + itemId
                         }
                         .padding(16.dp)
                 ) {
-                    // Selection indicator (Checkbox circle)
-                    if (isSelectionMode) {
+                    // Checkbox animates in smoothly
+                    AnimatedVisibility(visible = isSelectionMode) {
                         Box(
                             modifier = Modifier
                                 .padding(end = 12.dp)
@@ -216,7 +312,7 @@ fun ChallansScreen() {
                         ) {
                             if (isSelected) {
                                 Icon(
-                                    Icons.Default.Check,
+                                    Icons.Rounded.Check,
                                     contentDescription = null,
                                     tint = Color.White,
                                     modifier = Modifier.size(16.dp)
@@ -233,12 +329,11 @@ fun ChallansScreen() {
                     )
                 }
 
-                // Divider line
                 if (itemId != dummyItems.last()) {
                     Spacer(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(1.dp)
+                            .height(0.5.dp)
                             .background(Color(0xFF2C2C2E))
                     )
                 }

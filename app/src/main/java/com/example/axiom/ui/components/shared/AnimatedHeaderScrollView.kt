@@ -42,7 +42,8 @@ import kotlinx.coroutines.launch
 fun AnimatedHeaderScrollView(
     largeTitle: String,
     subtitle: String? = null,
-    trailingContent: @Composable () -> Unit = {}, // NEW: Slot for our action buttons
+    leadingContent: @Composable () -> Unit = {},  // NEW: Top Left (Back Button)
+    trailingContent: @Composable () -> Unit = {}, // Top Right (Actions)
     content: @Composable ColumnScope.() -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -151,7 +152,7 @@ fun AnimatedHeaderScrollView(
             Spacer(modifier = Modifier.height(100.dp))
         }
 
-        // --- 2. FIXED TOP HEADER (Fades in on scroll) ---
+        // --- 2. FIXED TOP HEADER ---
         if (smallHeaderOpacity > 0f) {
             Box(
                 modifier = Modifier
@@ -183,17 +184,28 @@ fun AnimatedHeaderScrollView(
             }
         }
 
-        // --- 3. LAYER C: ACTION BUTTONS (Always Pinned) ---
-        // Aligned specifically to TopEnd so it doesn't block touches on the center/left of the list
+        // --- 3. LAYER C: ACTION BUTTONS (Pinned Right) ---
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .height(90.dp)
-                .padding(end = 8.dp) // Slight inset from the right screen edge
-                .zIndex(300f), // Highest layer, sits above everything
-            contentAlignment = Alignment.BottomEnd // Aligns buttons horizontally with small text
+                .padding(end = 8.dp)
+                .zIndex(300f),
+            contentAlignment = Alignment.BottomEnd
         ) {
             trailingContent()
+        }
+
+        // --- 4. LAYER D: BACK BUTTON (Pinned Left) ---
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .height(90.dp)
+                .padding(start = 8.dp)
+                .zIndex(300f),
+            contentAlignment = Alignment.BottomStart
+        ) {
+            leadingContent()
         }
     }
 }
