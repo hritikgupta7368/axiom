@@ -3,11 +3,11 @@ package com.example.axiom.ui.screens.finances.challan
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -125,163 +125,206 @@ import com.example.axiom.ui.components.shared.AnimatedHeaderScrollView
 //        }
 //    }
 //}
+
+// for use with serach
 @Composable
 fun ChallansScreen() {
     var selectedItemIds by remember { mutableStateOf(setOf<Int>()) }
     val isSelectionMode = selectedItemIds.isNotEmpty()
+
     var isSearchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
     val iosBlue = Color(0xFF0A84FF)
+    val iosYellow = Color(0xFFFFCC00) // Matched to your screenshot
     val iosGray = Color(0xFF8E8E93)
     val iosSearchBg = Color(0xFF1C1C1E)
 
     AnimatedHeaderScrollView(
         largeTitle = "Notes",
         subtitle = "14 Items",
-        leadingContent = {
-            // --- NATIVE iOS BACK BUTTON ---
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { /* Handle Back */ }
-                    .padding(horizontal = 8.dp, vertical = 8.dp)
-                    .padding(bottom = 2.dp)
+        isSearchActive = isSearchActive, // Passes state to hide small title
+
+        // --- 1. SEARCH BAR OVERLAY (Slides right-to-left) ---
+        searchBarContent = {
+            AnimatedVisibility(
+                visible = isSearchActive,
+                enter = slideInHorizontally(
+                    initialOffsetX = { fullWidth -> fullWidth },
+                    animationSpec = tween(300)
+                ) + fadeIn(tween(300)),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { fullWidth -> fullWidth },
+                    animationSpec = tween(300)
+                ) + fadeOut(tween(300))
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back",
-                    tint = iosBlue,
-                    modifier = Modifier.size(22.dp)
-                )
-                Text(
-                    text = "Folders",
-                    color = iosBlue,
-                    fontSize = 17.sp,
-                    modifier = Modifier.padding(start = 4.dp)
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Gray Input Field
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(iosSearchBg)
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Rounded.Search,
+                            contentDescription = null,
+                            tint = iosGray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            textStyle = TextStyle(color = Color.White, fontSize = 17.sp),
+                            cursorBrush = SolidColor(iosYellow),
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 8.dp),
+                            decorationBox = { innerTextField ->
+                                if (searchQuery.isEmpty()) {
+                                    Text("Search", color = iosGray, fontSize = 17.sp)
+                                }
+                                innerTextField()
+                            }
+                        )
+                        if (searchQuery.isNotEmpty()) {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = "Clear",
+                                tint = Color.Black,
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .background(iosGray)
+                                    .clickable { searchQuery = "" }
+                            )
+                        }
+                    }
+
+                    // Cancel Button
+                    Text(
+                        text = "Cancel",
+                        color = iosYellow,
+                        fontSize = 17.sp,
+                        modifier = Modifier
+                            .clickable {
+                                isSearchActive = false
+                                searchQuery = ""
+                            }
+                            .padding(start = 16.dp)
+                    )
+                }
             }
         },
-        trailingContent = {
-            // --- ANIMATED iOS ICONS ---
-            AnimatedContent(
-                targetState = isSelectionMode,
-                transitionSpec = {
-                    // Slide up and fade in/out for a very native feel
-                    if (targetState) {
-                        (slideInVertically(tween(300)) { it } + fadeIn(tween(300))) togetherWith
-                                (slideOutVertically(tween(300)) { -it } + fadeOut(tween(300)))
-                    } else {
-                        (slideInVertically(tween(300)) { -it } + fadeIn(tween(300))) togetherWith
-                                (slideOutVertically(tween(300)) { it } + fadeOut(tween(300)))
-                    }
-                },
-                label = "Header Actions"
-            ) { selectionActive ->
+
+        // --- 2. BACK BUTTON ---
+        leadingContent = {
+            AnimatedVisibility(visible = !isSearchActive, enter = fadeIn(), exit = fadeOut()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 4.dp)
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { /* Handle Back */ }
+                        .padding(horizontal = 8.dp, vertical = 8.dp)
+                        .padding(bottom = 2.dp)
                 ) {
-                    if (selectionActive) {
-                        IconButton(onClick = { /* Edit action */ }) {
-                            Icon(
-                                Icons.Rounded.Edit,
-                                contentDescription = "Edit",
-                                tint = iosBlue,
-                                modifier = Modifier.size(24.dp)
-                            )
+                    Icon(
+                        Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = iosYellow,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = "Folders",
+                        color = iosYellow,
+                        fontSize = 17.sp,
+                        modifier = Modifier.padding(start = 2.dp)
+                    )
+                }
+            }
+        },
+
+        // --- 3. ICONS (Search, Add -> Edit, Delete) ---
+        trailingContent = {
+            AnimatedVisibility(visible = !isSearchActive, enter = fadeIn(), exit = fadeOut()) {
+                AnimatedContent(
+                    targetState = isSelectionMode,
+                    transitionSpec = {
+                        if (targetState) {
+                            (slideInVertically(tween(300)) { it } + fadeIn(tween(300))) togetherWith (slideOutVertically(
+                                tween(300)
+                            ) { -it } + fadeOut(tween(300)))
+                        } else {
+                            (slideInVertically(tween(300)) { -it } + fadeIn(tween(300))) togetherWith (slideOutVertically(
+                                tween(300)
+                            ) { it } + fadeOut(tween(300)))
                         }
-                        IconButton(onClick = { selectedItemIds = emptySet() }) {
-                            Icon(
-                                Icons.Rounded.Delete,
-                                contentDescription = "Delete",
-                                tint = Color(0xFFFF453A),
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    } else {
-                        IconButton(onClick = { isSearchActive = !isSearchActive }) {
-                            Icon(
-                                Icons.Rounded.Search,
-                                contentDescription = "Search",
-                                tint = iosBlue,
-                                modifier = Modifier.size(26.dp)
-                            )
-                        }
-                        IconButton(onClick = { /* Add action */ }) {
-                            Icon(
-                                Icons.Rounded.Add,
-                                contentDescription = "Add",
-                                tint = iosBlue,
-                                modifier = Modifier.size(28.dp)
-                            )
+                    },
+                    label = "Actions"
+                ) { selectionActive ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    ) {
+                        if (selectionActive) {
+                            IconButton(onClick = { /* Edit */ }) {
+                                Icon(
+                                    Icons.Rounded.Edit,
+                                    contentDescription = "Edit",
+                                    tint = iosYellow,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            IconButton(onClick = {
+                                selectedItemIds = emptySet()
+                            }) {
+                                Icon(
+                                    Icons.Rounded.Delete,
+                                    contentDescription = "Delete",
+                                    tint = Color(0xFFFF453A),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        } else {
+                            IconButton(onClick = {
+                                isSearchActive = true
+                            }) {
+                                Icon(
+                                    Icons.Rounded.Search,
+                                    contentDescription = "Search",
+                                    tint = iosYellow,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+                            IconButton(onClick = { /* Add */ }) {
+                                Icon(
+                                    Icons.Rounded.Add,
+                                    contentDescription = "Add",
+                                    tint = iosYellow,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     ) {
-        // --- iOS SEARCH BAR (Expandable) ---
-        AnimatedVisibility(
-            visible = isSearchActive,
-            enter = expandVertically(animationSpec = tween(300)) + fadeIn(tween(300)),
-            exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(tween(300))
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
-                    .height(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(iosSearchBg)
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Rounded.Search,
-                    contentDescription = null,
-                    tint = iosGray,
-                    modifier = Modifier.size(20.dp)
-                )
-                BasicTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    textStyle = TextStyle(color = Color.White, fontSize = 17.sp),
-                    cursorBrush = SolidColor(iosBlue),
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 8.dp),
-                    decorationBox = { innerTextField ->
-                        if (searchQuery.isEmpty()) {
-                            Text("Search", color = iosGray, fontSize = 17.sp)
-                        }
-                        innerTextField()
-                    }
-                )
-                if (searchQuery.isNotEmpty()) {
-                    Icon(
-                        imageVector = Icons.Rounded.Close,
-                        contentDescription = "Clear",
-                        tint = iosGray,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF3A3A3C))
-                            .clickable { searchQuery = "" }
-                    )
-                }
-            }
-        }
-
         // --- LIST CONTENT ---
         val dummyItems = (1..15).toList()
 
-        Column(
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF1C1C1E))
-        ) {
+        Column(modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF1C1C1E))) {
             dummyItems.forEach { itemId ->
                 val isSelected = selectedItemIds.contains(itemId)
 
@@ -295,32 +338,28 @@ fun ChallansScreen() {
                         }
                         .padding(16.dp)
                 ) {
-                    // Checkbox animates in smoothly
                     AnimatedVisibility(visible = isSelectionMode) {
                         Box(
                             modifier = Modifier
                                 .padding(end = 12.dp)
                                 .size(22.dp)
                                 .clip(RoundedCornerShape(11.dp))
-                                .background(if (isSelected) iosBlue else Color.Transparent)
+                                .background(if (isSelected) iosYellow else Color.Transparent)
                                 .border(
                                     1.5.dp,
-                                    if (isSelected) iosBlue else Color.DarkGray,
+                                    if (isSelected) iosYellow else Color.DarkGray,
                                     RoundedCornerShape(11.dp)
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (isSelected) {
-                                Icon(
-                                    Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
+                            if (isSelected) Icon(
+                                Icons.Rounded.Check,
+                                contentDescription = null,
+                                tint = Color.Black,
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     }
-
                     Text(
                         text = "Item $itemId",
                         color = Color.White,
@@ -328,15 +367,12 @@ fun ChallansScreen() {
                         modifier = Modifier.weight(1f)
                     )
                 }
-
-                if (itemId != dummyItems.last()) {
-                    Spacer(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(0.5.dp)
-                            .background(Color(0xFF2C2C2E))
-                    )
-                }
+                if (itemId != dummyItems.last()) Spacer(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.5.dp)
+                        .background(Color(0xFF2C2C2E))
+                )
             }
         }
     }

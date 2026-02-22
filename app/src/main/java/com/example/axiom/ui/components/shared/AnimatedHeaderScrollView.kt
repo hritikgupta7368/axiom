@@ -2,6 +2,7 @@ package com.example.axiom.ui.components.shared
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -16,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -42,8 +44,10 @@ import kotlinx.coroutines.launch
 fun AnimatedHeaderScrollView(
     largeTitle: String,
     subtitle: String? = null,
-    leadingContent: @Composable () -> Unit = {},  // NEW: Top Left (Back Button)
-    trailingContent: @Composable () -> Unit = {}, // Top Right (Actions)
+    isSearchActive: Boolean = false, // NEW: Tells header to hide small title
+    leadingContent: @Composable () -> Unit = {},
+    trailingContent: @Composable () -> Unit = {},
+    searchBarContent: @Composable () -> Unit = {}, // NEW: The Search Overlay
     content: @Composable ColumnScope.() -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -100,13 +104,18 @@ fun AnimatedHeaderScrollView(
         if (normalizedScroll > 0.6f) ((normalizedScroll - 0.6f) * 2.5f).coerceIn(0f, 1f) else 0f
     val zoomScale = 1f + (overscrollOffset.value / 800f).coerceAtLeast(0f)
 
+    // Smoothly fade out small title when search is opened
+    val animatedTitleAlpha by animateFloatAsState(
+        targetValue = if (isSearchActive) 0f else smallHeaderOpacity,
+        label = "titleAlpha"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
             .nestedScroll(nestedScrollConnection)
     ) {
-
         // --- 1. MAIN SCROLLABLE CONTENT ---
         Column(
             modifier = Modifier
@@ -145,14 +154,11 @@ fun AnimatedHeaderScrollView(
 
             Column(modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)) {
-                content()
-            }
-
+                .padding(horizontal = 16.dp)) { content() }
             Spacer(modifier = Modifier.height(100.dp))
         }
 
-        // --- 2. FIXED TOP HEADER ---
+        // --- 2. FIXED TOP HEADER (Glass & Title) ---
         if (smallHeaderOpacity > 0f) {
             Box(
                 modifier = Modifier
@@ -170,7 +176,8 @@ fun AnimatedHeaderScrollView(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .zIndex(200f),
+                        .zIndex(200f)
+                        .graphicsLayer { alpha = animatedTitleAlpha },
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     Text(
@@ -192,9 +199,7 @@ fun AnimatedHeaderScrollView(
                 .padding(end = 8.dp)
                 .zIndex(300f),
             contentAlignment = Alignment.BottomEnd
-        ) {
-            trailingContent()
-        }
+        ) { trailingContent() }
 
         // --- 4. LAYER D: BACK BUTTON (Pinned Left) ---
         Box(
@@ -204,8 +209,15 @@ fun AnimatedHeaderScrollView(
                 .padding(start = 8.dp)
                 .zIndex(300f),
             contentAlignment = Alignment.BottomStart
-        ) {
-            leadingContent()
-        }
+        ) { leadingContent() }
+
+        // --- 5. LAYER E: SEARCH BAR OVERLAY (Highest Z-Index) ---
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(90.dp)
+                .zIndex(400f),
+            contentAlignment = Alignment.BottomCenter
+        ) { searchBarContent() }
     }
 }
