@@ -107,37 +107,9 @@ object AppIcons {
     val key = AppIcon.PainterRes(R.drawable.key)
     val visibilityOn = AppIcon.PainterRes(R.drawable.visibilityon)
     val visibilityOff = AppIcon.PainterRes(R.drawable.visibilityoff)
+    val Back_IOS = AppIcon.PainterRes(R.drawable.back_ios)
 
 }
-
-
-//@Composable
-//fun AppIconButton(
-//    icon: AppIcon,
-//    contentDescription: String?,
-//    onClick: () -> Unit,
-//    modifier: Modifier = Modifier,
-//    tint: Color = MaterialTheme.colorScheme.onSurface,
-//    iconSize: Dp = 24.dp
-//) {
-//    IconButton(onClick = onClick, modifier = modifier) {
-//        when (icon) {
-//            is AppIcon.Vector -> Icon(
-//                imageVector = icon.imageVector,
-//                contentDescription = contentDescription,
-//                tint = tint,
-//                modifier = Modifier.size(iconSize)
-//            )
-//
-//            is AppIcon.PainterRes -> Icon(
-//                painter = painterResource(icon.resId),
-//                contentDescription = contentDescription,
-//                tint = tint,
-//                modifier = Modifier.size(iconSize)
-//            )
-//        }
-//    }
-//}
 
 
 @Composable

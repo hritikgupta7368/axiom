@@ -1,53 +1,89 @@
 package com.example.axiom.ui.components.shared
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.example.axiom.ui.components.shared.button.AppIconButton
+import com.example.axiom.ui.components.shared.button.AppIcons
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
 import kotlinx.coroutines.launch
+
+
+val headerHeight = 90.dp // You can adjust this to 56.dp or whatever looks best
+
 
 @Composable
 fun AnimatedHeaderScrollView(
     largeTitle: String,
     subtitle: String? = null,
     isSearchActive: Boolean = false, // NEW: Tells header to hide small title
-    leadingContent: @Composable () -> Unit = {},
-    trailingContent: @Composable () -> Unit = {},
-    searchBarContent: @Composable () -> Unit = {}, // NEW: The Search Overlay
+    query: String = "",
+    updateQuery: (String) -> Unit = {},
     content: @Composable ColumnScope.() -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -95,7 +131,7 @@ fun AnimatedHeaderScrollView(
         }
     }
 
-    val headerHeightPx = with(density) { 90.dp.toPx() }
+    val headerHeightPx = with(density) { headerHeight.toPx() }
     val scrollY = scrollState.value
     val normalizedScroll = (scrollY / headerHeightPx).coerceIn(0f, 1f)
 
@@ -109,6 +145,10 @@ fun AnimatedHeaderScrollView(
         targetValue = if (isSearchActive) 0f else smallHeaderOpacity,
         label = "titleAlpha"
     )
+
+
+
+
 
     Box(
         modifier = Modifier
@@ -128,7 +168,7 @@ fun AnimatedHeaderScrollView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .padding(top = 80.dp, bottom = 16.dp)
+                    .padding(top = headerHeight, bottom = 16.dp)
                     .graphicsLayer {
                         alpha = largeTitleOpacity
                         scaleX = zoomScale
@@ -152,9 +192,11 @@ fun AnimatedHeaderScrollView(
                 }
             }
 
-            Column(modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)) { content() }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            ) { content() }
             Spacer(modifier = Modifier.height(100.dp))
         }
 
@@ -163,7 +205,7 @@ fun AnimatedHeaderScrollView(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(90.dp)
+                    .height(headerHeight)
                     .zIndex(100f)
                     .graphicsLayer { alpha = smallHeaderOpacity }
             ) {
@@ -195,29 +237,234 @@ fun AnimatedHeaderScrollView(
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .height(90.dp)
+                .height(headerHeight)
                 .padding(end = 8.dp)
                 .zIndex(300f),
             contentAlignment = Alignment.BottomEnd
-        ) { trailingContent() }
+        ) {
+            AnimatedVisibility(visible = !isSearchActive, enter = fadeIn(), exit = fadeOut()) {
+                AnimatedContent(
+                    targetState = false,
+                    transitionSpec = {
+                        if (targetState) {
+                            (slideInVertically(tween(300)) { it } + fadeIn(tween(300))) togetherWith (slideOutVertically(
+                                tween(300)
+                            ) { -it } + fadeOut(tween(300)))
+                        } else {
+                            (slideInVertically(tween(300)) { -it } + fadeIn(tween(300))) togetherWith (slideOutVertically(
+                                tween(300)
+                            ) { it } + fadeOut(tween(300)))
+                        }
+                    },
+                    label = "Actions"
+                ) { selectionActive ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    ) {
+                        if (selectionActive) {
+                            IconButton(onClick = { /* Edit */ }) {
+                                Icon(
+                                    Icons.Rounded.Edit,
+                                    contentDescription = "Edit",
+                                    tint = Color(0xFFFFCC00),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            IconButton(onClick = {
+
+                            }) {
+                                Icon(
+                                    Icons.Rounded.Delete,
+                                    contentDescription = "Delete",
+                                    tint = Color(0xFFFF453A),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        } else {
+                            IconButton(onClick = {
+//                            isSearchActive = true
+                            }) {
+                                Icon(
+                                    Icons.Rounded.Search,
+                                    contentDescription = "Search",
+                                    tint = Color(0xFFFFCC00),
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+                            IconButton(onClick = { /* Add */ }) {
+                                Icon(
+                                    Icons.Rounded.Add,
+                                    contentDescription = "Add",
+                                    tint = Color(0xFFFFCC00),
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // --- 4. LAYER D: BACK BUTTON (Pinned Left) ---
         Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .height(90.dp)
+                .height(headerHeight)
                 .padding(start = 8.dp)
                 .zIndex(300f),
-            contentAlignment = Alignment.BottomStart
-        ) { leadingContent() }
+            contentAlignment = Alignment.BottomEnd
+        ) {
+            AnimatedVisibility(visible = !isSearchActive, enter = fadeIn(), exit = fadeOut()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { /* Handle Back */ }
+                        .padding(horizontal = 8.dp, vertical = 8.dp)
+                        .padding(bottom = 2.dp)
+                ) {
+                    AppIconButton(
+                        icon = AppIcons.Back_IOS,
+                        contentDescription = "Search",
+                        onClick = { },
+                        tint = Color(0xFFFFCC00)
+                    )
+                    Text(
+                        text = "Folders",
+                        color = Color(0xFFFFCC00),
+                        fontSize = 17.sp,
+                        modifier = Modifier.padding(start = 2.dp)
+                    )
+                }
+            }
+        }
 
         // --- 5. LAYER E: SEARCH BAR OVERLAY (Highest Z-Index) ---
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(90.dp)
+                .height(headerHeight)
                 .zIndex(400f),
             contentAlignment = Alignment.BottomCenter
-        ) { searchBarContent() }
+        ) {
+            AnimatedVisibility(
+                visible = isSearchActive,
+                enter = slideInHorizontally(
+                    initialOffsetX = { fullWidth -> fullWidth },
+                    animationSpec = tween(300)
+                ) + fadeIn(tween(300)),
+                exit = slideOutHorizontally(
+                    targetOffsetX = { fullWidth -> fullWidth },
+                    animationSpec = tween(300)
+                ) + fadeOut(tween(300))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Gray Input Field
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF1C1C1E))
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Rounded.Search,
+                            contentDescription = null,
+                            tint = Color(0xFF8E8E93),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        BasicTextField(
+                            value = query,
+                            onValueChange = { updateQuery(it) },
+                            textStyle = TextStyle(color = Color.White, fontSize = 17.sp),
+                            cursorBrush = SolidColor(Color(0xFFFFCC00)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 8.dp),
+                            decorationBox = { innerTextField ->
+                                if (query.isEmpty()) {
+                                    Text("Search", color = Color(0xFF8E8E93), fontSize = 17.sp)
+                                }
+                                innerTextField()
+                            }
+                        )
+                        if (query.isNotEmpty()) {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = "Clear",
+                                tint = Color.Black,
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF8E8E93))
+                                    .clickable { updateQuery("") }
+                            )
+                        }
+                    }
+
+                    // Cancel Button
+                    Text(
+                        text = "Cancel",
+                        color = Color(0xFFFFCC00),
+                        fontSize = 17.sp,
+                        modifier = Modifier
+                            .clickable {
+//                                isSearchActive = false
+                                updateQuery("")
+                            }
+                            .padding(start = 16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun AnimatedHeaderScrollViewPreview() {
+
+    MaterialTheme {
+        Surface(color = Color.Black) {
+
+            val searchActive = remember { mutableStateOf(false) }
+
+            AnimatedHeaderScrollView(
+                largeTitle = "Notes",
+                subtitle = "iCloud",
+                isSearchActive = searchActive.value,
+
+
+                ) {
+
+                // Dummy scrolling content
+                repeat(30) { index ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp)
+                            .height(60.dp)
+                            .background(Color(0xFF1E1E1E)),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Text(
+                            text = "Note Item ${index + 1}",
+                            color = Color.White,
+                            modifier = Modifier.padding(start = 16.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
