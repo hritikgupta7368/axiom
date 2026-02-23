@@ -1,4 +1,4 @@
-package com.example.axiom.ui.components.shared
+package com.example.axiom.ui.components.shared.header
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable

@@ -35,7 +35,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.axiom.ui.components.shared.AnimatedHeaderScrollView
+import com.example.axiom.ui.components.shared.header.AnimatedHeaderScrollView
 
 //@Composable
 //fun ChallansScreen() {
