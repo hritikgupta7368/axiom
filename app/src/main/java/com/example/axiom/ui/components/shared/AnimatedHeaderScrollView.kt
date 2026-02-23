@@ -25,12 +25,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
@@ -91,7 +91,7 @@ fun AnimatedHeaderScrollView(
 //    content: @Composable ColumnScope.() -> Unit
     content: LazyListScope.() -> Unit
 ) {
-    val scrollState = rememberScrollState()
+    val lazyListState = rememberLazyListState()
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -103,11 +103,10 @@ fun AnimatedHeaderScrollView(
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // Unlock and hide search bar natively when user scrolls UP normally
-                if (isSearchLocked && available.y < 0f && scrollState.value > 5) {
+                // Check firstVisibleItemIndex to know if we are at the top
+                if (isSearchLocked && available.y < 0f && lazyListState.firstVisibleItemIndex > 0) {
                     isSearchLocked = false
                 }
-
                 if (overscrollOffset.value > 0f && available.y < 0f) {
                     val consumed = available.y.coerceAtLeast(-overscrollOffset.value)
                     coroutineScope.launch { overscrollOffset.snapTo(overscrollOffset.value + consumed) }
@@ -121,23 +120,17 @@ fun AnimatedHeaderScrollView(
                 available: Offset,
                 source: NestedScrollSource
             ): Offset {
-                // FLUID FIX 2: Only stretch to reveal search if we are at the absolute top of the list
-                if (available.y > 0f && scrollState.value == 0) {
+                if (available.y > 0f && lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset == 0) {
                     val resistance = 0.45f
                     coroutineScope.launch { overscrollOffset.snapTo(overscrollOffset.value + (available.y * resistance)) }
                 }
                 return Offset.Zero
             }
 
-            override suspend fun onPostFling(
-                consumed: Velocity,
-                available: Velocity
-            ): Velocity {
-                // FLUID FIX 3: If pulled down more than 100 pixels, lock it open!
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                 if (overscrollOffset.value > 100f) {
                     isSearchLocked = true
                 }
-
                 if (overscrollOffset.value > 0f) {
                     overscrollOffset.animateTo(
                         targetValue = 0f,
@@ -153,7 +146,11 @@ fun AnimatedHeaderScrollView(
     }
 
     val headerHeightPx = with(density) { headerHeight.toPx() }
-    val scrollY = scrollState.value
+    val scrollY = if (lazyListState.firstVisibleItemIndex == 0) {
+        lazyListState.firstVisibleItemScrollOffset.toFloat()
+    } else {
+        headerHeightPx // Cap the value if we've scrolled past the first item
+    }
     val normalizedScroll = (scrollY / headerHeightPx).coerceIn(0f, 1f)
 
     val largeTitleOpacity = 1f - (normalizedScroll * 1.5f).coerceIn(0f, 1f)
@@ -194,112 +191,111 @@ fun AnimatedHeaderScrollView(
             .nestedScroll(nestedScrollConnection)
     ) {
         // --- 1. MAIN SCROLLABLE CONTENT ---
-        Column(
+        LazyColumn(
+            state = lazyListState,
             modifier = Modifier
                 .fillMaxSize()
                 .haze(hazeState)
-                .verticalScroll(scrollState)
                 .graphicsLayer { translationY = overscrollOffset.value }
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    // Restored your 80.dp top padding choice
-                    .padding(top = 80.dp, bottom = 16.dp)
-                    .graphicsLayer {
-                        alpha = largeTitleOpacity
-                        scaleX = zoomScale
-                        scaleY = zoomScale
-                        transformOrigin = TransformOrigin(0f, 1f)
-                    }
-            ) {
-                Text(
-                    text = largeTitle,
-                    fontSize = 38.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.4).sp,
-                    color = Color.White
-                )
-                if (subtitle != null) {
-                    Text(
-                        text = subtitle,
-                        fontSize = 16.sp,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
-
-            // FLUID FIX 5: Layout Masking. We don't remove it from the composition.
-            // We just animate the height of the parent box and clip it. Zero stutter.
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .height(searchHeight)
-                    .graphicsLayer { alpha = searchAlpha }
-                    .clip(RoundedCornerShape(10.dp)),
-                contentAlignment = Alignment.BottomCenter // Keeps it anchored to the bottom as it opens
-            ) {
-                // The actual internal row is always full height so it doesn't squish, it just gets masked
-                Row(
+            item {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                        .height(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(searchbar)
-                        .padding(horizontal = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Rounded.Search,
-                        contentDescription = null,
-                        tint = Color(0xFF8E8E93),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    BasicTextField(
-                        value = query,
-                        onValueChange = { updateQuery(it) },
-                        textStyle = TextStyle(
-                            color = Color.White,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Normal,
-                            letterSpacing = (-0.4).sp,
-                        ),
-                        cursorBrush = SolidColor(Color(0xFFFFCC00)),
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 8.dp),
-                        decorationBox = { innerTextField ->
-                            if (query.isEmpty()) {
-                                Text("Search", color = Color(0xFF8E8E93), fontSize = 17.sp)
-                            }
-                            innerTextField()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 80.dp, bottom = 16.dp)
+                        .graphicsLayer {
+                            alpha = largeTitleOpacity
+                            scaleX = zoomScale
+                            scaleY = zoomScale
+                            transformOrigin = TransformOrigin(0f, 1f)
                         }
+                ) {
+                    Text(
+                        text = largeTitle,
+                        fontSize = 38.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.4).sp,
+                        color = Color.White
                     )
-                    if (query.isNotEmpty()) {
-                        Icon(
-                            imageVector = Icons.Rounded.Close,
-                            contentDescription = "Clear",
-                            tint = Color.Black,
-                            modifier = Modifier
-                                .size(16.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF8E8E93))
-                                .clickable { updateQuery("") }
+                    if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            fontSize = 16.sp,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(top = 4.dp)
                         )
                     }
                 }
             }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-            ) { content() }
-            Spacer(modifier = Modifier.height(100.dp))
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .height(searchHeight)
+                        .graphicsLayer { alpha = searchAlpha }
+                        .clip(RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.BottomCenter // Keeps it anchored to the bottom as it opens
+                ) {
+                    // The actual internal row is always full height so it doesn't squish, it just gets masked
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(searchbar)
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Rounded.Search,
+                            contentDescription = null,
+                            tint = Color(0xFF8E8E93),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        BasicTextField(
+                            value = query,
+                            onValueChange = { updateQuery(it) },
+                            textStyle = TextStyle(
+                                color = Color.White,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Normal,
+                                letterSpacing = (-0.4).sp,
+                            ),
+                            cursorBrush = SolidColor(Color(0xFFFFCC00)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 8.dp),
+                            decorationBox = { innerTextField ->
+                                if (query.isEmpty()) {
+                                    Text("Search", color = Color(0xFF8E8E93), fontSize = 17.sp)
+                                }
+                                innerTextField()
+                            }
+                        )
+                        if (query.isNotEmpty()) {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = "Clear",
+                                tint = Color.Black,
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF8E8E93))
+                                    .clickable { updateQuery("") }
+                            )
+                        }
+                    }
+                }
+            }
+
+            content()
+            item {
+                Spacer(modifier = Modifier.height(100.dp))
+            }
         }
 
         // --- 2. FIXED TOP HEADER (Glass & Title) ---
