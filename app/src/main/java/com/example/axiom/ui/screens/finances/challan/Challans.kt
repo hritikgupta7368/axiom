@@ -150,7 +150,6 @@ fun ChallansScreen() {
     AnimatedHeaderScrollView(
         largeTitle = "Notes",
         subtitle = "14 Items",
-        isSearchActive = isSearchActive, // Passes state to hide small title
 
         // --- 1. SEARCH BAR OVERLAY (Slides right-to-left) ---
 //        searchBarContent = {

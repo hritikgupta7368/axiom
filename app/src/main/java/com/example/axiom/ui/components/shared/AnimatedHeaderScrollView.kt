@@ -7,11 +7,11 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -49,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,23 +70,18 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.example.axiom.ui.components.shared.button.AppIconButton
-import com.example.axiom.ui.components.shared.button.AppIcons
+import com.example.axiom.R
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
 import kotlinx.coroutines.launch
-import com.example.axiom.R
-
 
 val headerHeight = 44.dp + 54.dp // You can adjust this to 56.dp or whatever looks best
-
 
 @Composable
 fun AnimatedHeaderScrollView(
     largeTitle: String,
     subtitle: String? = null,
-    isSearchActive: Boolean = false, // NEW: Tells header to hide small title
     query: String = "",
     updateQuery: (String) -> Unit = {},
     content: @Composable ColumnScope.() -> Unit
@@ -97,9 +93,17 @@ fun AnimatedHeaderScrollView(
     val hazeState = remember { HazeState() }
     val overscrollOffset = remember { Animatable(0f) }
 
+    // 1. NEW: State to track if the search bar is revealed
+    var isSearchRevealed by remember { mutableStateOf(false) }
+
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // Hide search bar when user starts scrolling the list back up
+                if (available.y < -5f && scrollState.value > 10) {
+                    isSearchRevealed = false
+                }
+
                 if (overscrollOffset.value > 0f && available.y < 0f) {
                     val consumed = available.y.coerceAtLeast(-overscrollOffset.value)
                     coroutineScope.launch { overscrollOffset.snapTo(overscrollOffset.value + consumed) }
@@ -113,6 +117,11 @@ fun AnimatedHeaderScrollView(
                 available: Offset,
                 source: NestedScrollSource
             ): Offset {
+                // Reveal search bar when pulling down at the very top of the list
+                if (available.y > 10f) {
+                    isSearchRevealed = true
+                }
+
                 if (available.y > 0f) {
                     val resistance = 0.45f
                     coroutineScope.launch { overscrollOffset.snapTo(overscrollOffset.value + (available.y * resistance)) }
@@ -146,13 +155,9 @@ fun AnimatedHeaderScrollView(
 
     // Smoothly fade out small title when search is opened
     val animatedTitleAlpha by animateFloatAsState(
-        targetValue = if (isSearchActive) 0f else smallHeaderOpacity,
+        targetValue = if (isSearchRevealed) 0f else smallHeaderOpacity,
         label = "titleAlpha"
     )
-
-
-
-
 
     Box(
         modifier = Modifier
@@ -172,7 +177,8 @@ fun AnimatedHeaderScrollView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .padding(top = headerHeight, bottom = 16.dp)
+                    // 2. FIX: Reduced top padding to move title up
+                    .padding(top = 80.dp, bottom = 16.dp)
                     .graphicsLayer {
                         alpha = largeTitleOpacity
                         scaleX = zoomScale
@@ -193,6 +199,59 @@ fun AnimatedHeaderScrollView(
                         color = Color.Gray,
                         modifier = Modifier.padding(top = 4.dp)
                     )
+                }
+            }
+
+            // 3. FIX: PULL-TO-REVEAL SEARCH BAR (Embedded in scrolling content)
+            AnimatedVisibility(
+                visible = isSearchRevealed,
+                enter = expandVertically(animationSpec = tween(300)) + fadeIn(tween(300)),
+                exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(tween(300))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 16.dp)
+                        .height(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF1C1C1E))
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Rounded.Search,
+                        contentDescription = null,
+                        tint = Color(0xFF8E8E93),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    BasicTextField(
+                        value = query,
+                        onValueChange = { updateQuery(it) },
+                        textStyle = TextStyle(color = Color.White, fontSize = 17.sp),
+                        cursorBrush = SolidColor(Color(0xFFFFCC00)),
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp),
+                        decorationBox = { innerTextField ->
+                            if (query.isEmpty()) {
+                                Text("Search", color = Color(0xFF8E8E93), fontSize = 17.sp)
+                            }
+                            innerTextField()
+                        }
+                    )
+                    if (query.isNotEmpty()) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = "Clear",
+                            tint = Color.Black,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF8E8E93))
+                                .clickable { updateQuery("") }
+                        )
+                    }
                 }
             }
 
@@ -241,17 +300,15 @@ fun AnimatedHeaderScrollView(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(headerHeight) // Using your new variable!
+                .height(headerHeight)
                 .zIndex(300f),
             contentAlignment = Alignment.Center
         ) {
-            // A single AnimatedVisibility controls BOTH sides fading out during a search
-            AnimatedVisibility(visible = !isSearchActive, enter = fadeIn(), exit = fadeOut()) {
+            // A single AnimatedVisibility controls BOTH sides fading out if you wanted to hide them
+            AnimatedVisibility(visible = true, enter = fadeIn(), exit = fadeOut()) {
 
-                // The Row pushes the Left and Right sections to opposite ends
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -259,30 +316,25 @@ fun AnimatedHeaderScrollView(
                     // --- LEFT SIDE: Back Button ---
                     Row(
                         modifier = Modifier
-                            // Figma: Content left padding: 12
-                            .padding(start = 8.dp) // was 12
+                            .padding(start = 8.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .clickable { /* Handle Back */ }
-                            .padding(horizontal = 4.dp, vertical = 8.dp), //only vertical 8
+                            .padding(horizontal = 4.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp) //was no there
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
-
-
                         Icon(
-                            painter = painterResource(id = R.drawable.back_ios), // Reference your drawable directly
+                            painter = painterResource(id = R.drawable.back_ios),
                             contentDescription = "Back",
                             tint = Color(0xFFFFCC00),
-                            modifier = Modifier.size(24.dp) // Adjust this size if your SVG needs it
+                            modifier = Modifier.size(24.dp)
                         )
-                            Text(
-                                text = "Folders",
-                                color = Color(0xFFFFCC00),
-                                fontSize = 17.sp,
-                                modifier = Modifier.offset(x = (-4).dp)
-                                // Note: I removed the old padding(start = 2.dp) because spacedBy(4.dp) handles it now
-                            )
-
+                        Text(
+                            text = "Folders",
+                            color = Color(0xFFFFCC00),
+                            fontSize = 17.sp,
+                            modifier = Modifier.offset(x = (-4).dp)
+                        )
                     }
 
                     // --- RIGHT SIDE: Action Buttons ---
@@ -320,14 +372,7 @@ fun AnimatedHeaderScrollView(
                                     )
                                 }
                             } else {
-                                IconButton(onClick = { /* isSearchActive = true */ }) {
-                                    Icon(
-                                        Icons.Rounded.Search,
-                                        contentDescription = "Search",
-                                        tint = Color(0xFFFFCC00),
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
+                                // 4. FIX: Removed Search Button, only Add remains
                                 IconButton(onClick = { /* Add */ }) {
                                     Icon(
                                         Icons.Rounded.Add,
@@ -342,96 +387,8 @@ fun AnimatedHeaderScrollView(
                 }
             }
         }
-
-        // --- 5. LAYER E: SEARCH BAR OVERLAY (Highest Z-Index) ---
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(headerHeight)
-                .zIndex(400f),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            AnimatedVisibility(
-                visible = isSearchActive,
-                enter = slideInHorizontally(
-                    initialOffsetX = { fullWidth -> fullWidth },
-                    animationSpec = tween(300)
-                ) + fadeIn(tween(300)),
-                exit = slideOutHorizontally(
-                    targetOffsetX = { fullWidth -> fullWidth },
-                    animationSpec = tween(300)
-                ) + fadeOut(tween(300))
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Gray Input Field
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFF1C1C1E))
-                            .padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Rounded.Search,
-                            contentDescription = null,
-                            tint = Color(0xFF8E8E93),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        BasicTextField(
-                            value = query,
-                            onValueChange = { updateQuery(it) },
-                            textStyle = TextStyle(color = Color.White, fontSize = 17.sp),
-                            cursorBrush = SolidColor(Color(0xFFFFCC00)),
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 8.dp),
-                            decorationBox = { innerTextField ->
-                                if (query.isEmpty()) {
-                                    Text("Search", color = Color(0xFF8E8E93), fontSize = 17.sp)
-                                }
-                                innerTextField()
-                            }
-                        )
-                        if (query.isNotEmpty()) {
-                            Icon(
-                                imageVector = Icons.Rounded.Close,
-                                contentDescription = "Clear",
-                                tint = Color.Black,
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF8E8E93))
-                                    .clickable { updateQuery("") }
-                            )
-                        }
-                    }
-
-                    // Cancel Button
-                    Text(
-                        text = "Cancel",
-                        color = Color(0xFFFFCC00),
-                        fontSize = 17.sp,
-                        modifier = Modifier
-                            .clickable {
-//                                isSearchActive = false
-                                updateQuery("")
-                            }
-                            .padding(start = 16.dp)
-                    )
-                }
-            }
-        }
     }
 }
-
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
@@ -440,15 +397,14 @@ fun AnimatedHeaderScrollViewPreview() {
     MaterialTheme {
         Surface(color = Color.Black) {
 
-            val searchActive = remember { mutableStateOf(false) }
+            var query by remember { mutableStateOf("") }
 
             AnimatedHeaderScrollView(
                 largeTitle = "Notes",
                 subtitle = "iCloud",
-                isSearchActive = searchActive.value,
-
-
-                ) {
+                query = query,
+                updateQuery = { query = it }
+            ) {
 
                 // Dummy scrolling content
                 repeat(30) { index ->
