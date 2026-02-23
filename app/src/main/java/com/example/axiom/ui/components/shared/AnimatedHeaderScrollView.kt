@@ -16,6 +16,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -59,6 +61,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -72,9 +75,10 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
 import kotlinx.coroutines.launch
+import com.example.axiom.R
 
 
-val headerHeight = 90.dp // You can adjust this to 56.dp or whatever looks best
+val headerHeight = 44.dp + 54.dp // You can adjust this to 56.dp or whatever looks best
 
 
 @Composable
@@ -195,7 +199,7 @@ fun AnimatedHeaderScrollView(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 20.dp)
             ) { content() }
             Spacer(modifier = Modifier.height(100.dp))
         }
@@ -233,109 +237,108 @@ fun AnimatedHeaderScrollView(
             }
         }
 
-        // --- 3. LAYER C: ACTION BUTTONS (Pinned Right) ---
+        // --- 3 & 4. COMBINED ACTION CONTAINER (Left & Right Buttons) ---
         Box(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .height(headerHeight)
-                .padding(end = 8.dp)
+                .fillMaxWidth()
+                .height(headerHeight) // Using your new variable!
                 .zIndex(300f),
-            contentAlignment = Alignment.BottomEnd
+            contentAlignment = Alignment.Center
         ) {
+            // A single AnimatedVisibility controls BOTH sides fading out during a search
             AnimatedVisibility(visible = !isSearchActive, enter = fadeIn(), exit = fadeOut()) {
-                AnimatedContent(
-                    targetState = false,
-                    transitionSpec = {
-                        if (targetState) {
-                            (slideInVertically(tween(300)) { it } + fadeIn(tween(300))) togetherWith (slideOutVertically(
-                                tween(300)
-                            ) { -it } + fadeOut(tween(300)))
-                        } else {
-                            (slideInVertically(tween(300)) { -it } + fadeIn(tween(300))) togetherWith (slideOutVertically(
-                                tween(300)
-                            ) { it } + fadeOut(tween(300)))
-                        }
-                    },
-                    label = "Actions"
-                ) { selectionActive ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 2.dp)
-                    ) {
-                        if (selectionActive) {
-                            IconButton(onClick = { /* Edit */ }) {
-                                Icon(
-                                    Icons.Rounded.Edit,
-                                    contentDescription = "Edit",
-                                    tint = Color(0xFFFFCC00),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                            IconButton(onClick = {
 
-                            }) {
-                                Icon(
-                                    Icons.Rounded.Delete,
-                                    contentDescription = "Delete",
-                                    tint = Color(0xFFFF453A),
-                                    modifier = Modifier.size(24.dp)
-                                )
+                // The Row pushes the Left and Right sections to opposite ends
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    // --- LEFT SIDE: Back Button ---
+                    Row(
+                        modifier = Modifier
+                            // Figma: Content left padding: 12
+                            .padding(start = 8.dp) // was 12
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { /* Handle Back */ }
+                            .padding(horizontal = 4.dp, vertical = 8.dp), //only vertical 8
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp) //was no there
+                    ) {
+
+
+                        Icon(
+                            painter = painterResource(id = R.drawable.back_ios), // Reference your drawable directly
+                            contentDescription = "Back",
+                            tint = Color(0xFFFFCC00),
+                            modifier = Modifier.size(24.dp) // Adjust this size if your SVG needs it
+                        )
+                            Text(
+                                text = "Folders",
+                                color = Color(0xFFFFCC00),
+                                fontSize = 17.sp,
+                                modifier = Modifier.offset(x = (-4).dp)
+                                // Note: I removed the old padding(start = 2.dp) because spacedBy(4.dp) handles it now
+                            )
+
+                    }
+
+                    // --- RIGHT SIDE: Action Buttons ---
+                    AnimatedContent(
+                        targetState = false, // Replace with your selection active state
+                        transitionSpec = {
+                            if (targetState) {
+                                (slideInVertically(tween(300)) { it } + fadeIn(tween(300))) togetherWith (slideOutVertically(
+                                    tween(300)
+                                ) { -it } + fadeOut(tween(300)))
+                            } else {
+                                (slideInVertically(tween(300)) { -it } + fadeIn(tween(300))) togetherWith (slideOutVertically(
+                                    tween(300)
+                                ) { it } + fadeOut(tween(300)))
                             }
-                        } else {
-                            IconButton(onClick = {
-//                            isSearchActive = true
-                            }) {
-                                Icon(
-                                    Icons.Rounded.Search,
-                                    contentDescription = "Search",
-                                    tint = Color(0xFFFFCC00),
-                                    modifier = Modifier.size(26.dp)
-                                )
-                            }
-                            IconButton(onClick = { /* Add */ }) {
-                                Icon(
-                                    Icons.Rounded.Add,
-                                    contentDescription = "Add",
-                                    tint = Color(0xFFFFCC00),
-                                    modifier = Modifier.size(28.dp)
-                                )
+                        },
+                        label = "Actions"
+                    ) { selectionActive ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (selectionActive) {
+                                IconButton(onClick = { /* Edit */ }) {
+                                    Icon(
+                                        Icons.Rounded.Edit,
+                                        contentDescription = "Edit",
+                                        tint = Color(0xFFFFCC00),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                IconButton(onClick = { /* Delete */ }) {
+                                    Icon(
+                                        Icons.Rounded.Delete,
+                                        contentDescription = "Delete",
+                                        tint = Color(0xFFFF453A),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            } else {
+                                IconButton(onClick = { /* isSearchActive = true */ }) {
+                                    Icon(
+                                        Icons.Rounded.Search,
+                                        contentDescription = "Search",
+                                        tint = Color(0xFFFFCC00),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                IconButton(onClick = { /* Add */ }) {
+                                    Icon(
+                                        Icons.Rounded.Add,
+                                        contentDescription = "Add",
+                                        tint = Color(0xFFFFCC00),
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
                             }
                         }
                     }
-                }
-            }
-        }
-
-        // --- 4. LAYER D: BACK BUTTON (Pinned Left) ---
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .height(headerHeight)
-                .padding(start = 8.dp)
-                .zIndex(300f),
-            contentAlignment = Alignment.BottomEnd
-        ) {
-            AnimatedVisibility(visible = !isSearchActive, enter = fadeIn(), exit = fadeOut()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { /* Handle Back */ }
-                        .padding(horizontal = 8.dp, vertical = 8.dp)
-                        .padding(bottom = 2.dp)
-                ) {
-                    AppIconButton(
-                        icon = AppIcons.Back_IOS,
-                        contentDescription = "Search",
-                        onClick = { },
-                        tint = Color(0xFFFFCC00)
-                    )
-                    Text(
-                        text = "Folders",
-                        color = Color(0xFFFFCC00),
-                        fontSize = 17.sp,
-                        modifier = Modifier.padding(start = 2.dp)
-                    )
                 }
             }
         }
