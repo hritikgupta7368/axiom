@@ -1,32 +1,25 @@
 package com.example.axiom.ui.screens.finances.purchase
 
+//import com.example.axiom.data.finances.PurchaseRecordViewModelFactory
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -35,14 +28,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.axiom.data.finances.Product
 import com.example.axiom.data.finances.PurchaseRecord
-import com.example.axiom.data.finances.PurchaseRecordViewModel
-import com.example.axiom.data.finances.PurchaseRecordViewModelFactory
 import com.example.axiom.data.finances.PurchasedItem
 import com.example.axiom.data.finances.SupplierFirm
-import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
 import com.example.axiom.ui.components.shared.button.AppButton
 import com.example.axiom.ui.components.shared.button.AppIconButton
 import com.example.axiom.ui.components.shared.button.AppIcons
@@ -130,102 +119,102 @@ fun PurchaseScreen(onBack: () -> Unit) {
 
     val context = LocalContext.current
 
-    val purchaseViewModel: PurchaseRecordViewModel = viewModel(
-        factory = PurchaseRecordViewModelFactory(context)
-    )
+//    val purchaseViewModel: PurchaseRecordViewModel = viewModel(
+//        factory = PurchaseRecordViewModelFactory(context)
+//    )
     var searchQuery by remember { mutableStateOf("") }
     var showCreateSheet by remember { mutableStateOf(false) }
 
-    val purchases by purchaseViewModel.purchases.collectAsState(
-        initial = emptyList()
-    )
-    val suppliers by purchaseViewModel.suppliers.collectAsState(initial = emptyList())
-    val products by purchaseViewModel.products.collectAsState(initial = emptyList())
-
-    val filteredPurchases = remember(searchQuery, purchases) {
-        if (searchQuery.isBlank()) purchases
-        else purchases.filter {
-            it.remarks?.contains(searchQuery, ignoreCase = true) == true ||
-                    it.supplierId.contains(searchQuery, ignoreCase = true)
-        }
-    }
-    var editingPurchase by remember { mutableStateOf<PurchaseRecord?>(null) }
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(text = "Purchase Screen") },
-                navigationIcon = {
-                    AppIconButton(
-                        icon = AppIcons.Back,
-                        contentDescription = "Back",
-                        onClick = onBack
-                    )
-                }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showCreateSheet = true }
-            ) {
-                AppIconButton(
-                    icon = AppIcons.Add,
-                    contentDescription = "Back",
-                    onClick = { showCreateSheet = true }
-                )
-            }
-        }
-    ) { padding ->
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                placeholder = { Text("Search purchases") },
-                singleLine = true
-            )
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(filteredPurchases, key = { it.id }) { purchase ->
-                    PurchaseRecordCard(purchase, { }, {})
-                }
-            }
-        }
-    }
-
-    AppBottomSheet(
-        showSheet = showCreateSheet || editingPurchase != null,
-        onDismiss = {
-            showCreateSheet = false
-            editingPurchase = null
-        }
-    ) {
-        PurchaseEditorSheet(
-            suppliers = suppliers,
-            products = products,
-            existing = editingPurchase,
-            onSave = {
-                purchaseViewModel.insert(it)
-                showCreateSheet = false
-                editingPurchase = null
-            },
-            onDismiss = {
-                showCreateSheet = false
-                editingPurchase = null
-            }
-        )
-    }
+//    val purchases by purchaseViewModel.purchases.collectAsState(
+//        initial = emptyList()
+//    )
+//    val suppliers by purchaseViewModel.suppliers.collectAsState(initial = emptyList())
+//    val products by purchaseViewModel.products.collectAsState(initial = emptyList())
+//
+//    val filteredPurchases = remember(searchQuery, purchases) {
+//        if (searchQuery.isBlank()) purchases
+//        else purchases.filter {
+//            it.remarks?.contains(searchQuery, ignoreCase = true) == true ||
+//                    it.supplierId.contains(searchQuery, ignoreCase = true)
+//        }
+//    }
+//    var editingPurchase by remember { mutableStateOf<PurchaseRecord?>(null) }
+//    Scaffold(
+//        topBar = {
+//            TopAppBar(
+//                title = { Text(text = "Purchase Screen") },
+//                navigationIcon = {
+//                    AppIconButton(
+//                        icon = AppIcons.Back,
+//                        contentDescription = "Back",
+//                        onClick = onBack
+//                    )
+//                }
+//            )
+//        },
+//        floatingActionButton = {
+//            FloatingActionButton(
+//                onClick = { showCreateSheet = true }
+//            ) {
+//                AppIconButton(
+//                    icon = AppIcons.Add,
+//                    contentDescription = "Back",
+//                    onClick = { showCreateSheet = true }
+//                )
+//            }
+//        }
+//    ) { padding ->
+//
+//        Column(
+//            modifier = Modifier
+//                .fillMaxSize()
+//                .padding(padding)
+//        ) {
+//
+//            OutlinedTextField(
+//                value = searchQuery,
+//                onValueChange = { searchQuery = it },
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(16.dp),
+//                placeholder = { Text("Search purchases") },
+//                singleLine = true
+//            )
+//
+//            LazyColumn(
+//                modifier = Modifier.fillMaxSize(),
+//                contentPadding = PaddingValues(16.dp),
+//                verticalArrangement = Arrangement.spacedBy(12.dp)
+//            ) {
+//                items(filteredPurchases, key = { it.id }) { purchase ->
+//                    PurchaseRecordCard(purchase, { }, {})
+//                }
+//            }
+//        }
+//    }
+//
+//    AppBottomSheet(
+//        showSheet = showCreateSheet || editingPurchase != null,
+//        onDismiss = {
+//            showCreateSheet = false
+//            editingPurchase = null
+//        }
+//    ) {
+//        PurchaseEditorSheet(
+//            suppliers = suppliers,
+//            products = products,
+//            existing = editingPurchase,
+//            onSave = {
+//                purchaseViewModel.insert(it)
+//                showCreateSheet = false
+//                editingPurchase = null
+//            },
+//            onDismiss = {
+//                showCreateSheet = false
+//                editingPurchase = null
+//            }
+//        )
+//    }
 }
 
 

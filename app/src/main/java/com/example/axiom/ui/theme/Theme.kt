@@ -16,115 +16,27 @@ import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
 
-    /**
-     * PRIMARY
-     * Used for:
-     * - Primary buttons
-     * - FloatingActionButton
-     * - Selected states
-     * - Active icons
-     */
+
     primary = BrandPrimary,  //purple
+    secondary = BrandSecondary, //aqua color : eg fab icon background
+    tertiary = BrandTertiary,  //pink like used eg : fab icon background
 
-    /**
-     * SECONDARY
-     * Used for:
-     * - Secondary actions
-     * - Accent UI elements
-     */
-    secondary = BrandSecondary,
 
-    /**
-     * TERTIARY
-     * Used for:
-     * - Decorative accents
-     * - Optional highlights
-     */
-    tertiary = BrandTertiary,  //pink
+    background = DarkBackground, // page background
+    surface = DarkSurface,       // card background
+    surfaceVariant = DarkSurfaceVariant, // for things like on input text background
 
-    /**
-     * BACKGROUND
-     * Used for:
-     * - Entire screen background
-     * - Scaffold background
-     */
-    background = DarkBackground,
 
-    /**
-     * SURFACE
-     * Used for:
-     * - Cards
-     * - Dialogs
-     * - Bottom sheets
-     * - App bars
-     */
-    surface = DarkSurface,
+    onPrimary = Color.Black, // 1st color text in buttons
+    onSecondary = Color.Black, // 2nd color text in buttons
+    onTertiary = Color.Black, // 3rd color text in buttons
+    onBackground = DarkTextPrimary, // text background like title , paragraphs
+    onSurface = DarkTextPrimary, // text inside card or dialog
+    onSurfaceVariant = DarkTextSecondary, // for subtitiles , placeholders etc
 
-    /**
-     * SURFACE VARIANT
-     * Used for:
-     * - Elevated containers
-     * - Input field backgrounds
-     * - Grouped UI sections
-     */
-    surfaceVariant = DarkSurfaceVariant,
 
-    /**
-     * TEXT / ICON COLOR ON PRIMARY
-     * Text shown on buttons or FABs
-     */
-    onPrimary = Color.Black,
-
-    /**
-     * TEXT / ICON COLOR ON SECONDARY
-     */
-    onSecondary = Color.Black,
-
-    /**
-     * TEXT / ICON COLOR ON TERTIARY
-     */
-    onTertiary = Color.Black,
-
-    /**
-     * TEXT COLOR ON BACKGROUND
-     * Used for:
-     * - Main body text
-     * - Titles
-     */
-    onBackground = DarkTextPrimary,
-
-    /**
-     * TEXT COLOR ON SURFACE
-     * Used for:
-     * - Text inside cards / sheets
-     */
-    onSurface = DarkTextPrimary,
-
-    /**
-     * SECONDARY TEXT COLOR
-     * Used for:
-     * - Subtitles
-     * - Timestamps
-     * - Helper text
-     */
-    onSurfaceVariant = DarkTextSecondary,
-
-    /**
-     * OUTLINE
-     * Used for:
-     * - Borders
-     * - Dividers
-     * - Strokes
-     */
-    outline = DarkOutline,
-
-    /**
-     * ERROR COLOR
-     * Used for:
-     * - Error messages
-     * - Destructive actions
-     */
-    error = Error
+    outline = DarkOutline, // card borders
+    error = Error // rec color for error
 )
 
 

@@ -88,8 +88,9 @@ fun AnimatedHeaderScrollView(
     onAddClick: () -> Unit = {},
     onEditClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
-//    content: @Composable ColumnScope.() -> Unit
-    content: LazyListScope.() -> Unit
+    onBack: () -> Unit = {},
+    content: LazyListScope.() -> Unit,
+    isParentRoute: Boolean = true,
 ) {
     val lazyListState = rememberLazyListState()
     val density = LocalDensity.current
@@ -351,7 +352,7 @@ fun AnimatedHeaderScrollView(
                     modifier = Modifier
                         .padding(start = 8.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { /* Handle Back */ }
+                        .clickable { onBack() }
                         .padding(horizontal = 4.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp)

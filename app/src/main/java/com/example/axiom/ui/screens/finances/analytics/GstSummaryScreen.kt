@@ -1,34 +1,24 @@
 package com.example.axiom.ui.screens.finances.analytics
 
+//import com.example.axiom.data.finances.CreateInvoiceViewModelFactory
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.Divider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.data.finances.CreateInvoiceViewModel
-import com.example.axiom.data.finances.CreateInvoiceViewModelFactory
 import com.example.axiom.data.finances.CustomerFirm
 import com.example.axiom.data.finances.Invoice
 import com.example.axiom.data.finances.InvoiceStatus
@@ -44,31 +34,53 @@ private val DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 fun GSTSummaryScreen(
     onBack: () -> Unit
 ) {
-    val context = LocalContext.current
-
-    val viewModel: CreateInvoiceViewModel = viewModel(
-        factory = CreateInvoiceViewModelFactory(context)
-    )
-    val customers by viewModel.customers.collectAsState(initial = emptyList())
-    val invoices by viewModel.invoices.collectAsState(initial = emptyList())
-
-
-    val customerMap = remember(customers) {
-        customers.associateBy { it.id }
-    }
-
-    var selectedMonth by remember {
-        mutableStateOf(YearMonth.now())
-    }
-
-    /* ---------------- MONTH FILTER ---------------- */
-
-//    val monthAllInvoices = remember(invoices, selectedMonth) {
-//        invoices.filter { inv ->
-//            val date = runCatching {
-//                LocalDate.parse(inv.date, DATE_FMT)
-//            }.getOrNull() ?: return@filter false
+//    val context = LocalContext.current
 //
+//    val viewModel: CreateInvoiceViewModel = viewModel(
+//        factory = CreateInvoiceViewModelFactory(context)
+//    )
+//    val customers by viewModel.customers.collectAsState(initial = emptyList())
+//    val invoices by viewModel.invoices.collectAsState(initial = emptyList())
+//
+//
+//    val customerMap = remember(customers) {
+//        customers.associateBy { it.id }
+//    }
+//
+//    var selectedMonth by remember {
+//        mutableStateOf(YearMonth.now())
+//    }
+//
+//    /* ---------------- MONTH FILTER ---------------- */
+//
+////    val monthAllInvoices = remember(invoices, selectedMonth) {
+////        invoices.filter { inv ->
+////            val date = runCatching {
+////                LocalDate.parse(inv.date, DATE_FMT)
+////            }.getOrNull() ?: return@filter false
+////
+////            YearMonth.from(date) == selectedMonth
+////        }
+////    }
+////
+////    val monthFinalInvoices = remember(monthAllInvoices) {
+////        monthAllInvoices.filter {
+////            it.status == InvoiceStatus.FINAL && !it.deleted
+////        }
+////    }
+////
+////    val monthB2bInvoices = remember(monthFinalInvoices, customerMap) {
+////        monthFinalInvoices.filter {
+////            customerMap[it.customerId]?.gstin != null
+////        }
+////    }
+//
+//    val monthAllInvoices = remember(invoices, selectedMonth) {
+//        val zoneId = ZoneId.systemDefault() // Get the system's default time zone
+//        invoices.filter { inv ->
+//            // Convert the 'createdAt' Long timestamp to a LocalDate
+//            val timestamp = inv.date.toLongOrNull() ?: return@filter false
+//            val date = Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDate()
 //            YearMonth.from(date) == selectedMonth
 //        }
 //    }
@@ -81,89 +93,67 @@ fun GSTSummaryScreen(
 //
 //    val monthB2bInvoices = remember(monthFinalInvoices, customerMap) {
 //        monthFinalInvoices.filter {
-//            customerMap[it.customerId]?.gstin != null
+//            // Ensure customer exists and has a GSTIN
+//            customerMap[it.customerDetails!!.id]?.gstin?.isNotBlank() == true
 //        }
 //    }
-
-    val monthAllInvoices = remember(invoices, selectedMonth) {
-        val zoneId = ZoneId.systemDefault() // Get the system's default time zone
-        invoices.filter { inv ->
-            // Convert the 'createdAt' Long timestamp to a LocalDate
-            val timestamp = inv.date.toLongOrNull() ?: return@filter false
-            val date = Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDate()
-            YearMonth.from(date) == selectedMonth
-        }
-    }
-
-    val monthFinalInvoices = remember(monthAllInvoices) {
-        monthAllInvoices.filter {
-            it.status == InvoiceStatus.FINAL && !it.deleted
-        }
-    }
-
-    val monthB2bInvoices = remember(monthFinalInvoices, customerMap) {
-        monthFinalInvoices.filter {
-            // Ensure customer exists and has a GSTIN
-            customerMap[it.customerDetails!!.id]?.gstin?.isNotBlank() == true
-        }
-    }
-
-
-    /* ---------------- UI ---------------- */
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-
-        item {
-            MonthSelector(
-                selected = selectedMonth,
-                onChange = { selectedMonth = it }
-            )
-        }
-
-        item { SectionTitle("B2B Invoices (GSTR-1)") }
-
-
-        if (monthB2bInvoices.isEmpty()) {
-            item {
-                Text(
-                    "No B2B invoices found for ${selectedMonth.month.name} ${selectedMonth.year}.",
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
-        } else {
-            item {
-                B2bInvoiceTable(
-                    invoices = monthB2bInvoices,
-                    customerMap = customerMap
-                )
-            }
-        }
-
-
-
-        item {
-            Divider(thickness = 2.dp)
-            SectionTitle("HSN-wise Summary")
-        }
-
-        item {
-            HsnSummaryTable(monthFinalInvoices)
-        }
-
-        item {
-            Divider(thickness = 2.dp)
-            SectionTitle("Documents Issued")
-        }
-
-        item {
-            DocumentsIssuedSummary(monthAllInvoices)
-        }
-    }
+//
+//
+//    /* ---------------- UI ---------------- */
+//
+//    LazyColumn(
+//        modifier = Modifier
+//            .fillMaxSize()
+//            .padding(16.dp),
+//        verticalArrangement = Arrangement.spacedBy(24.dp)
+//    ) {
+//
+//        item {
+//            MonthSelector(
+//                selected = selectedMonth,
+//                onChange = { selectedMonth = it }
+//            )
+//        }
+//
+//        item { SectionTitle("B2B Invoices (GSTR-1)") }
+//
+//
+//        if (monthB2bInvoices.isEmpty()) {
+//            item {
+//                Text(
+//                    "No B2B invoices found for ${selectedMonth.month.name} ${selectedMonth.year}.",
+//                    modifier = Modifier.padding(vertical = 8.dp)
+//                )
+//            }
+//        } else {
+//            item {
+//                B2bInvoiceTable(
+//                    invoices = monthB2bInvoices,
+//                    customerMap = customerMap
+//                )
+//            }
+//        }
+//
+//
+//
+//        item {
+//            Divider(thickness = 2.dp)
+//            SectionTitle("HSN-wise Summary")
+//        }
+//
+//        item {
+//            HsnSummaryTable(monthFinalInvoices)
+//        }
+//
+//        item {
+//            Divider(thickness = 2.dp)
+//            SectionTitle("Documents Issued")
+//        }
+//
+//        item {
+//            DocumentsIssuedSummary(monthAllInvoices)
+//        }
+//    }
 }
 
 @Composable

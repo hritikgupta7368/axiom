@@ -28,18 +28,18 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.axiom.data.finances.CustomerFirm
+import com.example.axiom.data.finances.GstBreakdown
 import com.example.axiom.data.finances.Invoice
-import com.example.axiom.data.finances.InvoiceViewModel
-import com.example.axiom.data.finances.InvoiceViewModelFactory
+import com.example.axiom.data.finances.InvoiceItem
+import com.example.axiom.data.finances.InvoiceStatus
+import com.example.axiom.data.finances.SupplyType
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -52,12 +52,163 @@ fun InvoicesScreen(
     onInvoiceClick: (String) -> Unit
 ) {
     val context = LocalContext.current
-    val viewModel: InvoiceViewModel = viewModel(
-        factory = InvoiceViewModelFactory(context)
-    )
-    val invoices by viewModel.invoices.collectAsStateWithLifecycle()
+//    val viewModel: InvoiceViewModel = viewModel(
+//        factory = InvoiceViewModelFactory(context)
+//    )
+//    val invoices by viewModel.invoices.collectAsStateWithLifecycle()
 
-    val isLoading = invoices.isEmpty() && viewModel.invoices.replayCache.isEmpty()
+    val invoices = listOf(
+
+        Invoice(
+            id = "INV_ID_001",
+            invoiceNo = "INV-2026-0001",
+            date = "01-02-2026",
+            sellerId = "SELLER_001",
+            customerDetails = CustomerFirm(
+                id = "CUST_001",
+                name = "Sharma Traders",
+                gstin = "22AAAAA0000A1Z5",
+                address = "MG Road, Raipur, Chhattisgarh - 492001",
+                contactNumber = "9876543210",
+                email = "sharma.traders@gmail.com",
+                stateCode = "22",
+                image = null,
+                createdAt = System.currentTimeMillis(),
+                updatedAt = null,
+                active = true
+            ),
+            supplyType = SupplyType.INTRA_STATE,
+            vehicleNumber = "CG04AB1234",
+            shippedTo = "Raipur Warehouse",
+            items = listOf(
+                InvoiceItem(
+                    id = "ITEM_001",
+                    productId = "PROD_001",
+                    name = "Cement Bag",
+                    unit = "BAG",
+                    price = 500.0,
+                    quantity = 100.0,
+                    hsn = "2523",
+                    total = 50000.0
+                ),
+            ),
+            totalBeforeTax = 50000.0,
+            gst = GstBreakdown(
+                cgstRate = 9.0,
+                sgstRate = 9.0,
+                cgstAmount = 4500.0,
+                sgstAmount = 4500.0,
+                totalTax = 9000.0
+            ),
+            shippingCharge = 1000.0,
+            totalAmount = 60000.0,
+            amountInWords = "Sixty Thousand Rupees Only",
+            status = InvoiceStatus.DRAFT,
+            createdAt = System.currentTimeMillis(),
+            version = 1
+        ),
+
+        Invoice(
+            id = "INV_ID_002",
+            invoiceNo = "INV-2026-0002",
+            date = "05-02-2026",
+            sellerId = "SELLER_001",
+            customerDetails = CustomerFirm(
+                id = "CUST_002",
+                name = "Gupta Hardware",
+                gstin = "22BBBBB1111B2Z6",
+                address = "Link Road, Bilaspur, Chhattisgarh - 495001",
+                contactNumber = "9123456780",
+                email = "guptahardware@yahoo.com",
+                stateCode = "22",
+                image = null,
+                createdAt = System.currentTimeMillis(),
+                updatedAt = null,
+                active = true
+            ),
+            supplyType = SupplyType.INTER_STATE,
+            vehicleNumber = "CG10XY5678",
+            shippedTo = "Bilaspur Site",
+            items = listOf(
+                InvoiceItem(
+                    id = "ITEM_002",
+                    productId = "PROD_002",
+                    name = "Steel Rod 12mm",
+                    unit = "PCS",
+                    price = 800.0,
+                    quantity = 50.0,
+                    hsn = "7214",
+                    total = 40000.0
+                ),
+            ),
+            totalBeforeTax = 40000.0,
+            gst = GstBreakdown(
+                igstRate = 18.0,
+                igstAmount = 7200.0,
+                totalTax = 7200.0
+            ),
+            shippingCharge = 500.0,
+            totalAmount = 47700.0,
+            amountInWords = "Forty Seven Thousand Seven Hundred Rupees Only",
+            status = InvoiceStatus.DRAFT,
+            createdAt = System.currentTimeMillis(),
+            version = 1
+        ),
+
+        Invoice(
+            id = "INV_ID_003",
+            invoiceNo = "INV-2026-0003",
+            date = "10-02-2026",
+            sellerId = "SELLER_001",
+            customerDetails = CustomerFirm(
+                id = "CUST_003",
+                name = "Verma Constructions",
+                gstin = "22CCCCC2222C3Z7",
+                address = "Station Road, Durg, Chhattisgarh - 491001",
+                contactNumber = "9988776655",
+                email = "vermaconstructions@outlook.com",
+                stateCode = "22",
+                image = null,
+                createdAt = System.currentTimeMillis(),
+                updatedAt = null,
+                active = true
+            ),
+            supplyType = SupplyType.INTRA_STATE,
+            vehicleNumber = "CG07MN4321",
+            shippedTo = "Durg Project",
+            items = listOf(
+                InvoiceItem(
+                    id = "ITEM_003",
+                    productId = "PROD_003",
+                    name = "Red Bricks",
+                    unit = "PCS",
+                    price = 8.0,
+                    quantity = 1000.0,
+                    hsn = "6901",
+                    total = 8000.0
+                ),
+            ),
+            totalBeforeTax = 8000.0,
+            gst = GstBreakdown(
+                cgstRate = 6.0,
+                sgstRate = 6.0,
+                cgstAmount = 480.0,
+                sgstAmount = 480.0,
+                totalTax = 960.0
+            ),
+            shippingCharge = 200.0,
+            totalAmount = 9160.0,
+            amountInWords = "Nine Thousand One Hundred Sixty Rupees Only",
+            status = InvoiceStatus.CANCELLED,
+            createdAt = System.currentTimeMillis(),
+            cancelledAt = System.currentTimeMillis(),
+            cancelReason = "Order Cancelled by Customer",
+            version = 1
+        )
+    )
+
+//    val isLoading = invoices.isEmpty() && viewModel.invoices.replayCache.isEmpty()
+    val isLoading = false
 
     // Group invoices by Month-Year
     val groupedInvoices = remember(invoices) {
@@ -68,6 +219,20 @@ fun InvoicesScreen(
                 SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date(dateMillis))
             }
     }
+
+//    val groupedInvoices = remember(dummyInvoices) {
+//        val inputFormat = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
+//        val outputFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+//
+//        dummyInvoices
+//            .sortedByDescending { invoice ->
+//                inputFormat.parse(invoice.date)?.time ?: 0L
+//            }
+//            .groupBy { invoice ->
+//                val dateMillis = inputFormat.parse(invoice.date)?.time ?: 0L
+//                outputFormat.format(Date(dateMillis))
+//            }
+//    }
 
     Scaffold(
         topBar = {

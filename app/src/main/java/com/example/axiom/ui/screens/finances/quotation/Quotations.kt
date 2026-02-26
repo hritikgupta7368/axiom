@@ -1,10 +1,6 @@
 package com.example.axiom.ui.screens.finances.quotation
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
+//import com.example.axiom.ui.screens.finances.quotation.components.QuotationForm
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -24,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Divider
@@ -45,49 +40,25 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.data.finances.CustomerFirm
 import com.example.axiom.data.finances.Product
-import com.example.axiom.data.finances.dataStore.FinancePreferences
-import com.example.axiom.data.finances.dataStore.SelectedSellerPref
-import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
-import com.example.axiom.ui.components.shared.button.AppIcons
-import com.example.axiom.ui.components.shared.header.HeaderActionSpec
-import com.example.axiom.ui.components.shared.header.ListHeader
-import com.example.axiom.ui.components.shared.header.SearchSpec
-import com.example.axiom.ui.screens.finances.customer.components.CustomerListSheetWrapper
-import com.example.axiom.ui.screens.finances.product.components.ProductListSheetWrapper
 import com.example.axiom.ui.screens.finances.quotation.components.QuotationEntity
-import com.example.axiom.ui.screens.finances.quotation.components.QuotationForm
 import com.example.axiom.ui.screens.finances.quotation.components.QuotationFull
 import com.example.axiom.ui.screens.finances.quotation.components.QuotationItemEntity
-import com.example.axiom.ui.screens.finances.quotation.components.QuotationViewModel
-import com.example.axiom.ui.screens.finances.quotation.components.QuotationViewModelFactory
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.UUID
 
 
 enum class QuotationSheetMode {
@@ -107,186 +78,186 @@ enum class CreateQuotationMode {
 fun QuotationRoute(
     onBack: () -> Unit
 ) {
-    val context = LocalContext.current
-    val viewModel: QuotationViewModel = viewModel(
-        factory = QuotationViewModelFactory(context)
-    )
-
-
-    val quotations by viewModel.quotations.collectAsState()                 //all quotation
-    val completeQuotation by viewModel.selectedQuotation.collectAsState()   //detailed quotation
-
-    // states
-    var searchExpanded by rememberSaveable { mutableStateOf(false) }
-    var query by rememberSaveable { mutableStateOf("") }
-    val selectedIds = rememberSaveable { mutableStateListOf<String>() }     // for deletion
-    val isSelectionMode by remember { derivedStateOf { selectedIds.isNotEmpty() } }
-    val selectedCount = selectedIds.size
-
-
-    var showSheet by remember { mutableStateOf(false) }
-    var sheetMode by remember { mutableStateOf<QuotationSheetMode?>(null) }
-
-    var selectedQuotationId by remember { mutableStateOf<String?>(null) }
-
-    val financePreferences = remember { FinancePreferences(context) }
-    val selectedSeller by financePreferences.selectedSeller.collectAsState(
-        initial = SelectedSellerPref(null, null, null)
-    )
-
-
-    Surface(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            ListHeader(
-                title = "Quotations",
-                back = HeaderActionSpec(
-                    icon = AppIcons.Back,
-                    contentDescription = "Back",
-                    onClick = onBack
-                ),
-                add = HeaderActionSpec(             // ← add this if you have a + button
-                    icon = AppIcons.Add,
-                    contentDescription = "New Quotation",
-                    onClick = {
-                        sheetMode = QuotationSheetMode.CREATE
-                        showSheet = true
-                    }
-                ),
-                edit = if (selectedCount == 1) HeaderActionSpec(
-                    icon = AppIcons.Edit,
-                    contentDescription = "Edit",
-                    onClick = {
-                        val id = selectedIds.first()
-                        selectedIds.clear()
-                        // Optional: exit selection after edit
-                        // selectedIds.clear()
-                    }
-                ) else null,
-                delete = if (selectedCount >= 1) HeaderActionSpec(
-                    icon = AppIcons.Delete,
-                    contentDescription = "Delete",
-                    onClick = {
-                        viewModel.deleteMany(selectedIds.toList())
-                        selectedIds.clear()
-                    }
-                ) else null,
-                search = SearchSpec.Inline(
-                    expanded = searchExpanded,
-                    onExpandedChange = { shouldExpand ->
-                        searchExpanded = shouldExpand
-                        if (!shouldExpand) {
-                            query = ""          // ← clear query when collapsing
-                        }
-                    },
-                    query = query,
-                    onQueryChange = {
-                        query = it
-                        viewModel.updateSearchQuery(it)
-                    },
-                    placeholder = "Search by customer",
-                    onSearchImeAction = null,
-                    onClear = { query = "" }
-                ),
-                isSelectionMode = isSelectionMode,
-                selectedCount = selectedCount,
-                onCancelSelection = {
-                    selectedIds.clear()
-                },
-            )
-
-
-            if (quotations.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (query.isNotBlank())
-                            "No results found"
-                        else
-                            "No quotations yet",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-
-                LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-
-
-                    items(quotations, key = { it.id }) { row ->
-
-                        val isSelected = row.id in selectedIds
-
-                        QuotationCard(
-                            row = row,
-                            isSelected = isSelected,
-
-                            onClick = {
-                                if (isSelectionMode) {
-                                    if (isSelected) selectedIds.remove(row.id)
-                                    else selectedIds.add(row.id)
-                                } else {
-                                    selectedQuotationId = row.id
-                                    viewModel.loadQuotation(row.id)
-                                    sheetMode = QuotationSheetMode.DETAILS
-                                    showSheet = true
-                                }
-                            },
-
-                            onLongClick = {
-                                if (isSelected) selectedIds.remove(row.id)
-                                else selectedIds.add(row.id)
-                            }
-                        )
-                    }
-
-
-                }
-            }
-        }
-        AppBottomSheet(
-            showSheet = showSheet,
-            onDismiss = {
-                showSheet = false
-                sheetMode = null
-                selectedQuotationId = null
-            }
-        ) {
-
-            when (sheetMode) {
-
-                QuotationSheetMode.DETAILS -> {
-                    completeQuotation?.let { row ->
-                        QuotationDetailContent(
-                            row = row,
-                            onPrintClick = {},
-                            onShareClick = {}
-                        )
-                    }
-                }
-
-                QuotationSheetMode.CREATE -> {
-                    CreateQuotationSheetContent(
-                        sellerId = selectedSeller.id ?: return@AppBottomSheet,
-                        onCreate = { quotation, items ->
-                            viewModel.createQuotation(quotation, items)
-                            showSheet = false
-                        }
-                    )
-                }
-
-                null -> {}
-            }
-        }
-
-    }
+//    val context = LocalContext.current
+//    val viewModel: QuotationViewModel = viewModel(
+//        factory = QuotationViewModelFactory(context)
+//    )
+//
+//
+//    val quotations by viewModel.quotations.collectAsState()                 //all quotation
+//    val completeQuotation by viewModel.selectedQuotation.collectAsState()   //detailed quotation
+//
+//    // states
+//    var searchExpanded by rememberSaveable { mutableStateOf(false) }
+//    var query by rememberSaveable { mutableStateOf("") }
+//    val selectedIds = rememberSaveable { mutableStateListOf<String>() }     // for deletion
+//    val isSelectionMode by remember { derivedStateOf { selectedIds.isNotEmpty() } }
+//    val selectedCount = selectedIds.size
+//
+//
+//    var showSheet by remember { mutableStateOf(false) }
+//    var sheetMode by remember { mutableStateOf<QuotationSheetMode?>(null) }
+//
+//    var selectedQuotationId by remember { mutableStateOf<String?>(null) }
+//
+//    val financePreferences = remember { FinancePreferences(context) }
+//    val selectedSeller by financePreferences.selectedSeller.collectAsState(
+//        initial = SelectedSellerPref(null, null, null)
+//    )
+//
+//
+//    Surface(modifier = Modifier.fillMaxSize()) {
+//        Column(modifier = Modifier.fillMaxSize()) {
+//            ListHeader(
+//                title = "Quotations",
+//                back = HeaderActionSpec(
+//                    icon = AppIcons.Back,
+//                    contentDescription = "Back",
+//                    onClick = onBack
+//                ),
+//                add = HeaderActionSpec(             // ← add this if you have a + button
+//                    icon = AppIcons.Add,
+//                    contentDescription = "New Quotation",
+//                    onClick = {
+//                        sheetMode = QuotationSheetMode.CREATE
+//                        showSheet = true
+//                    }
+//                ),
+//                edit = if (selectedCount == 1) HeaderActionSpec(
+//                    icon = AppIcons.Edit,
+//                    contentDescription = "Edit",
+//                    onClick = {
+//                        val id = selectedIds.first()
+//                        selectedIds.clear()
+//                        // Optional: exit selection after edit
+//                        // selectedIds.clear()
+//                    }
+//                ) else null,
+//                delete = if (selectedCount >= 1) HeaderActionSpec(
+//                    icon = AppIcons.Delete,
+//                    contentDescription = "Delete",
+//                    onClick = {
+//                        viewModel.deleteMany(selectedIds.toList())
+//                        selectedIds.clear()
+//                    }
+//                ) else null,
+//                search = SearchSpec.Inline(
+//                    expanded = searchExpanded,
+//                    onExpandedChange = { shouldExpand ->
+//                        searchExpanded = shouldExpand
+//                        if (!shouldExpand) {
+//                            query = ""          // ← clear query when collapsing
+//                        }
+//                    },
+//                    query = query,
+//                    onQueryChange = {
+//                        query = it
+//                        viewModel.updateSearchQuery(it)
+//                    },
+//                    placeholder = "Search by customer",
+//                    onSearchImeAction = null,
+//                    onClear = { query = "" }
+//                ),
+//                isSelectionMode = isSelectionMode,
+//                selectedCount = selectedCount,
+//                onCancelSelection = {
+//                    selectedIds.clear()
+//                },
+//            )
+//
+//
+//            if (quotations.isEmpty()) {
+//                Box(
+//                    modifier = Modifier
+//                        .fillMaxSize()
+//                        .padding(32.dp),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//                    Text(
+//                        text = if (query.isNotBlank())
+//                            "No results found"
+//                        else
+//                            "No quotations yet",
+//                        style = MaterialTheme.typography.bodyLarge,
+//                        color = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                }
+//            } else {
+//
+//                LazyColumn(
+//                    contentPadding = PaddingValues(16.dp),
+//                    modifier = Modifier.fillMaxSize(),
+//                    verticalArrangement = Arrangement.spacedBy(12.dp)
+//                ) {
+//
+//
+//                    items(quotations, key = { it.id }) { row ->
+//
+//                        val isSelected = row.id in selectedIds
+//
+//                        QuotationCard(
+//                            row = row,
+//                            isSelected = isSelected,
+//
+//                            onClick = {
+//                                if (isSelectionMode) {
+//                                    if (isSelected) selectedIds.remove(row.id)
+//                                    else selectedIds.add(row.id)
+//                                } else {
+//                                    selectedQuotationId = row.id
+//                                    viewModel.loadQuotation(row.id)
+//                                    sheetMode = QuotationSheetMode.DETAILS
+//                                    showSheet = true
+//                                }
+//                            },
+//
+//                            onLongClick = {
+//                                if (isSelected) selectedIds.remove(row.id)
+//                                else selectedIds.add(row.id)
+//                            }
+//                        )
+//                    }
+//
+//
+//                }
+//            }
+//        }
+//        AppBottomSheet(
+//            showSheet = showSheet,
+//            onDismiss = {
+//                showSheet = false
+//                sheetMode = null
+//                selectedQuotationId = null
+//            }
+//        ) {
+//
+//            when (sheetMode) {
+//
+//                QuotationSheetMode.DETAILS -> {
+//                    completeQuotation?.let { row ->
+//                        QuotationDetailContent(
+//                            row = row,
+//                            onPrintClick = {},
+//                            onShareClick = {}
+//                        )
+//                    }
+//                }
+//
+//                QuotationSheetMode.CREATE -> {
+//                    CreateQuotationSheetContent(
+//                        sellerId = selectedSeller.id ?: return@AppBottomSheet,
+//                        onCreate = { quotation, items ->
+//                            viewModel.createQuotation(quotation, items)
+//                            showSheet = false
+//                        }
+//                    )
+//                }
+//
+//                null -> {}
+//            }
+//        }
+//
+//    }
 }
 
 
@@ -906,189 +877,189 @@ fun ExposedProductDropdown(
 }
 
 
-@OptIn(ExperimentalAnimationApi::class)
-@Composable
-fun CreateQuotationSheetContent(
-    sellerId: String,
-    onCreate: (QuotationEntity, List<QuotationItemEntity>) -> Unit
-) {
-
-    var mode by remember { mutableStateOf(CreateQuotationMode.FORM) }
-
-    var quotationNumber by remember { mutableStateOf("Q-${System.currentTimeMillis()}") }
-    var issueDateMillis by remember { mutableStateOf(System.currentTimeMillis()) }
-
-    var selectedCustomer by remember { mutableStateOf<CustomerFirm?>(null) }
-    var items by remember { mutableStateOf<List<QuotationItemEntity>>(emptyList()) }
-    var discountPercent by remember { mutableStateOf(0.0) }
-
-    val formattedDate = remember(issueDateMillis) {
-        val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        formatter.format(Date(issueDateMillis))
-    }
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        AnimatedContent(
-            targetState = mode,
-            transitionSpec = {
-                slideInHorizontally { it } togetherWith
-                        slideOutHorizontally { -it }
-            },
-            label = "CreateQuotationSheetAnimation",
-            modifier = Modifier
-                .fillMaxSize()
-              
-        ) { target ->
-
-            when (target) {
-
-                CreateQuotationMode.FORM -> {
-
-                    QuotationForm(
-                        quotationNumber = quotationNumber,
-                        issueDate = formattedDate,
-                        selectedCustomer = selectedCustomer,
-                        items = items,
-                        discountPercent = discountPercent,
-                        onQuotationNumberChange = { quotationNumber = it },
-                        onIssueDateChange = { newString ->
-                            val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                            issueDateMillis = formatter.parse(newString)?.time ?: issueDateMillis
-                        },
-                        onSelectCustomerClick = {
-                            mode = CreateQuotationMode.CUSTOMER_SELECTION
-                        },
-                        onSelectProductClick = {
-                            mode = CreateQuotationMode.PRODUCT_SELECTION
-                        },
-                        onQtyChange = { id, qty ->
-                            items = items.map {
-                                if (it.id == id) it.copy(quantity = qty)
-                                else it
-                            }
-                        },
-                        onRateChange = { id, rate ->
-                            items = items.map {
-                                if (it.id == id) it.copy(rate = rate)
-                                else it
-                            }
-                        },
-                        onItemDelete = { id ->
-                            items = items.filterNot { it.id == id }
-                        },
-                        onDiscountChange = { discountPercent = it }
-                    )
-                }
-
-                CreateQuotationMode.PRODUCT_SELECTION -> {
-
-                    ProductListSheetWrapper(
-                        onConfirmSelection = { selectedProducts ->
-
-                            val newItems = selectedProducts.map { product ->
-                                QuotationItemEntity(
-                                    id = UUID.randomUUID().toString(),
-                                    quotationId = "",
-                                    productId = product.id,
-                                    name = product.name,
-                                    hsn = product.hsn,
-                                    unit = product.unit,
-                                    quantity = 1.0,
-                                    rate = product.sellingPrice,
-                                    discountPercent = 0.0,
-                                    taxableAmount = product.sellingPrice
-                                )
-                            }
-
-                            items = items + newItems
-                            mode = CreateQuotationMode.FORM
-                        },
-                        onBack = {
-                            mode = CreateQuotationMode.FORM
-                        }
-                    )
-                }
-
-
-                CreateQuotationMode.CUSTOMER_SELECTION -> {
-                    CustomerListSheetWrapper(
-                        onConfirmSelection = {
-                            selectedCustomer = it
-                            mode = CreateQuotationMode.FORM
-                        },
-                        onBack = {
-                            mode = CreateQuotationMode.FORM
-                        }
-                    )
-
-                }
-            }
-        }
-
-        // Bottom Save Button (Fixed)
-        if (mode == CreateQuotationMode.FORM) {
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-            ) {
-
-                Divider()
-
-                Button(
-                    onClick = {
-                        val quotationId = UUID.randomUUID().toString()
-
-                        val updatedItems = items.map { item ->
-                            val gross = item.quantity * item.rate
-                            val discountAmount = gross * item.discountPercent / 100
-                            val taxable = gross - discountAmount
-
-                            item.copy(
-                                quotationId = quotationId,
-                                taxableAmount = taxable
-                            )
-                        }
-                        val gstRate = 18.0
-
-                        val totalTaxable = updatedItems.sumOf { it.taxableAmount }
-                        val totalTax = totalTaxable * gstRate / 100
-                        val totalAmount = totalTaxable + totalTax
-
-                        val quotation = QuotationEntity(
-                            id = quotationId,
-                            quotationNo = quotationNumber,
-                            sellerId = sellerId,
-                            customerId = selectedCustomer?.id ?: return@Button,
-                            issueDate = issueDateMillis,
-                            placeOfSupply = selectedCustomer?.stateCode ?: "",
-                            totalTaxableAmount = totalTaxable,
-                            taxRate = gstRate,
-                            totalTax = totalTax,
-                            totalAmount = totalAmount,
-                            totalDiscountAmount = updatedItems.sumOf {
-                                it.quantity * it.rate * it.discountPercent / 100
-                            },
-                            amountInWords = totalAmount.toString()
-
-                        )
-
-                        onCreate(quotation, updatedItems)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    enabled = selectedCustomer != null && items.isNotEmpty()
-                ) {
-                    Text("Save Quotation")
-                }
-            }
-        }
-    }
-}
+//@OptIn(ExperimentalAnimationApi::class)
+//@Composable
+//fun CreateQuotationSheetContent(
+//    sellerId: String,
+//    onCreate: (QuotationEntity, List<QuotationItemEntity>) -> Unit
+//) {
+//
+//    var mode by remember { mutableStateOf(CreateQuotationMode.FORM) }
+//
+//    var quotationNumber by remember { mutableStateOf("Q-${System.currentTimeMillis()}") }
+//    var issueDateMillis by remember { mutableStateOf(System.currentTimeMillis()) }
+//
+//    var selectedCustomer by remember { mutableStateOf<CustomerFirm?>(null) }
+//    var items by remember { mutableStateOf<List<QuotationItemEntity>>(emptyList()) }
+//    var discountPercent by remember { mutableStateOf(0.0) }
+//
+//    val formattedDate = remember(issueDateMillis) {
+//        val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+//        formatter.format(Date(issueDateMillis))
+//    }
+//    Box(
+//        modifier = Modifier.fillMaxSize()
+//    ) {
+//        AnimatedContent(
+//            targetState = mode,
+//            transitionSpec = {
+//                slideInHorizontally { it } togetherWith
+//                        slideOutHorizontally { -it }
+//            },
+//            label = "CreateQuotationSheetAnimation",
+//            modifier = Modifier
+//                .fillMaxSize()
+//
+//        ) { target ->
+//
+//            when (target) {
+//
+//                CreateQuotationMode.FORM -> {
+//
+//                    QuotationForm(
+//                        quotationNumber = quotationNumber,
+//                        issueDate = formattedDate,
+//                        selectedCustomer = selectedCustomer,
+//                        items = items,
+//                        discountPercent = discountPercent,
+//                        onQuotationNumberChange = { quotationNumber = it },
+//                        onIssueDateChange = { newString ->
+//                            val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+//                            issueDateMillis = formatter.parse(newString)?.time ?: issueDateMillis
+//                        },
+//                        onSelectCustomerClick = {
+//                            mode = CreateQuotationMode.CUSTOMER_SELECTION
+//                        },
+//                        onSelectProductClick = {
+//                            mode = CreateQuotationMode.PRODUCT_SELECTION
+//                        },
+//                        onQtyChange = { id, qty ->
+//                            items = items.map {
+//                                if (it.id == id) it.copy(quantity = qty)
+//                                else it
+//                            }
+//                        },
+//                        onRateChange = { id, rate ->
+//                            items = items.map {
+//                                if (it.id == id) it.copy(rate = rate)
+//                                else it
+//                            }
+//                        },
+//                        onItemDelete = { id ->
+//                            items = items.filterNot { it.id == id }
+//                        },
+//                        onDiscountChange = { discountPercent = it }
+//                    )
+//                }
+//
+//                CreateQuotationMode.PRODUCT_SELECTION -> {
+//
+//                    ProductListSheetWrapper(
+//                        onConfirmSelection = { selectedProducts ->
+//
+//                            val newItems = selectedProducts.map { product ->
+//                                QuotationItemEntity(
+//                                    id = UUID.randomUUID().toString(),
+//                                    quotationId = "",
+//                                    productId = product.id,
+//                                    name = product.name,
+//                                    hsn = product.hsn,
+//                                    unit = product.unit,
+//                                    quantity = 1.0,
+//                                    rate = product.sellingPrice,
+//                                    discountPercent = 0.0,
+//                                    taxableAmount = product.sellingPrice
+//                                )
+//                            }
+//
+//                            items = items + newItems
+//                            mode = CreateQuotationMode.FORM
+//                        },
+//                        onBack = {
+//                            mode = CreateQuotationMode.FORM
+//                        }
+//                    )
+//                }
+//
+//
+//                CreateQuotationMode.CUSTOMER_SELECTION -> {
+//                    CustomerListSheetWrapper(
+//                        onConfirmSelection = {
+//                            selectedCustomer = it
+//                            mode = CreateQuotationMode.FORM
+//                        },
+//                        onBack = {
+//                            mode = CreateQuotationMode.FORM
+//                        }
+//                    )
+//
+//                }
+//            }
+//        }
+//
+//        // Bottom Save Button (Fixed)
+//        if (mode == CreateQuotationMode.FORM) {
+//
+//            Column(
+//                modifier = Modifier
+//                    .align(Alignment.BottomCenter)
+//                    .fillMaxWidth()
+//                    .background(MaterialTheme.colorScheme.surface)
+//            ) {
+//
+//                Divider()
+//
+//                Button(
+//                    onClick = {
+//                        val quotationId = UUID.randomUUID().toString()
+//
+//                        val updatedItems = items.map { item ->
+//                            val gross = item.quantity * item.rate
+//                            val discountAmount = gross * item.discountPercent / 100
+//                            val taxable = gross - discountAmount
+//
+//                            item.copy(
+//                                quotationId = quotationId,
+//                                taxableAmount = taxable
+//                            )
+//                        }
+//                        val gstRate = 18.0
+//
+//                        val totalTaxable = updatedItems.sumOf { it.taxableAmount }
+//                        val totalTax = totalTaxable * gstRate / 100
+//                        val totalAmount = totalTaxable + totalTax
+//
+//                        val quotation = QuotationEntity(
+//                            id = quotationId,
+//                            quotationNo = quotationNumber,
+//                            sellerId = sellerId,
+//                            customerId = selectedCustomer?.id ?: return@Button,
+//                            issueDate = issueDateMillis,
+//                            placeOfSupply = selectedCustomer?.stateCode ?: "",
+//                            totalTaxableAmount = totalTaxable,
+//                            taxRate = gstRate,
+//                            totalTax = totalTax,
+//                            totalAmount = totalAmount,
+//                            totalDiscountAmount = updatedItems.sumOf {
+//                                it.quantity * it.rate * it.discountPercent / 100
+//                            },
+//                            amountInWords = totalAmount.toString()
+//
+//                        )
+//
+//                        onCreate(quotation, updatedItems)
+//                    },
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .padding(16.dp),
+//                    enabled = selectedCustomer != null && items.isNotEmpty()
+//                ) {
+//                    Text("Save Quotation")
+//                }
+//            }
+//        }
+//    }
+//}
 
 
 

@@ -22,6 +22,9 @@
       <SelectionState runConfigName="AnimatedHeaderScrollViewPreview">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
+      <SelectionState runConfigName="InvoiceFlowPreview">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
     </selectionStates>
   </component>
 </project>

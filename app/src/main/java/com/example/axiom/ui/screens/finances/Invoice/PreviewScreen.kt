@@ -1,5 +1,6 @@
 package com.example.axiom.ui.screens.finances.Invoice
 
+//import com.example.axiom.data.finances.InvoiceViewModelFactory
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,8 +36,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,12 +48,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.axiom.data.finances.CustomerFirm
+import com.example.axiom.data.finances.GstBreakdown
 import com.example.axiom.data.finances.Invoice
 import com.example.axiom.data.finances.InvoiceItem
-import com.example.axiom.data.finances.InvoiceViewModel
-import com.example.axiom.data.finances.InvoiceViewModelFactory
+import com.example.axiom.data.finances.InvoiceStatus
+import com.example.axiom.data.finances.SupplyType
 import com.example.axiom.ui.components.shared.button.AppIconButton
 import com.example.axiom.ui.components.shared.button.AppIcons
 import java.text.SimpleDateFormat
@@ -82,29 +81,77 @@ fun InvoicePreviewScreen(
 
 ) {
     val context = LocalContext.current
-    val invoiceViewModel: InvoiceViewModel = viewModel(
-        factory = InvoiceViewModelFactory(context)
+//    val invoiceViewModel: InvoiceViewModel = viewModel(
+//        factory = InvoiceViewModelFactory(context)
+//    )
+
+    val currentInvoice = Invoice(
+        id = "INV_ID_001",
+        invoiceNo = "INV-2026-0001",
+        date = "01-02-2026",
+        sellerId = "SELLER_001",
+        customerDetails = CustomerFirm(
+            id = "CUST_001",
+            name = "Sharma Traders",
+            gstin = "22AAAAA0000A1Z5",
+            address = "MG Road, Raipur, Chhattisgarh - 492001",
+            contactNumber = "9876543210",
+            email = "sharma.traders@gmail.com",
+            stateCode = "22",
+            image = null,
+            createdAt = System.currentTimeMillis(),
+            updatedAt = null,
+            active = true
+        ),
+        supplyType = SupplyType.INTRA_STATE,
+        vehicleNumber = "CG04AB1234",
+        shippedTo = "Raipur Warehouse",
+        items = listOf(
+            InvoiceItem(
+                id = "ITEM_001",
+                productId = "PROD_001",
+                name = "Cement Bag",
+                unit = "BAG",
+                price = 500.0,
+                quantity = 100.0,
+                hsn = "2523",
+                total = 50000.0
+            ),
+
+            ),
+        totalBeforeTax = 50000.0,
+        gst = GstBreakdown(
+            cgstRate = 9.0,
+            sgstRate = 9.0,
+            cgstAmount = 4500.0,
+            sgstAmount = 4500.0,
+            totalTax = 9000.0
+        ),
+        shippingCharge = 1000.0,
+        totalAmount = 60000.0,
+        amountInWords = "Sixty Thousand Rupees Only",
+        status = InvoiceStatus.DRAFT,
+        createdAt = System.currentTimeMillis(),
+        version = 1
     )
+//    val currentInvoice by invoiceViewModel.invoiceById.collectAsStateWithLifecycle()
+//    val pdfUri by invoiceViewModel.pdfUri.collectAsStateWithLifecycle()
+//
+//    LaunchedEffect(pdfUri) {
+//        pdfUri?.let {
+//            onNavigateToPdfViewer(it)
+//            invoiceViewModel.clearPdf()
+//        }
+//    }
 
-
-    val currentInvoice by invoiceViewModel.invoiceById.collectAsStateWithLifecycle()
-    val pdfUri by invoiceViewModel.pdfUri.collectAsStateWithLifecycle()
-
-    LaunchedEffect(pdfUri) {
-        pdfUri?.let {
-            onNavigateToPdfViewer(it)
-            invoiceViewModel.clearPdf()
-        }
-    }
-
-    LaunchedEffect(invoiceId) {
-        if (invoiceId != null) {
-            invoiceViewModel.getInvoiceById(invoiceId)
-        }
-    }
+//    LaunchedEffect(invoiceId) {
+//        if (invoiceId != null) {
+//            invoiceViewModel.getInvoiceById(invoiceId)
+//        }
+//    }
 
     fun deleteInvoice(id: String) {
-        invoiceViewModel.deleteById(id)
+//        invoiceViewModel.deleteById(id)
         onBack()
     }
 
@@ -133,7 +180,7 @@ fun InvoicePreviewScreen(
                     logoUri = "",
 
                     onGetPdfClick = {
-                        invoiceViewModel.generatePdf(nonNullInvoice, "")
+//                        invoiceViewModel.generatePdf(nonNullInvoice, "")
                     }
                 )
             }

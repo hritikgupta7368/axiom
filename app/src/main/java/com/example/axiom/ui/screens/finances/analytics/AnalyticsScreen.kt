@@ -1,6 +1,7 @@
 package com.example.axiom.ui.screens.finances.analytics
 
 
+//import com.example.axiom.data.finances.BusinessAnalyticsViewModelFactory
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -18,17 +19,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -43,16 +41,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,15 +54,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.data.finances.BusinessAnalyticsViewModel
-import com.example.axiom.data.finances.BusinessAnalyticsViewModelFactory
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -157,107 +146,107 @@ fun GSTAnalyticsScreen(
 
 ) {
 
-    val context = LocalContext.current
-    val analyticsViewModel: BusinessAnalyticsViewModel = viewModel(
-        factory = BusinessAnalyticsViewModelFactory(context)
-    )
-    val totalSales by analyticsViewModel.totalSales.collectAsState()
-    val totalPurchases by analyticsViewModel.totalPurchases.collectAsState()
-
-    val outputTax = totalSales * 0.18
-    val inputTax = totalPurchases * 0.18
-    val pendingItc = inputTax * 0.15
-
-    val summary = GstSummary(
-        outputTax = outputTax,
-        inputTax = inputTax,
-        pendingItc = pendingItc
-    )
-
-    val slabs = listOf(
-        TaxSlab("5%", totalSales * 0.05, Color(0xFF4ADE80)),
-        TaxSlab("12%", totalSales * 0.12, Color(0xFFFACC15)),
-        TaxSlab("18%", totalSales * 0.18, Color(0xFF3B82F6))
-    )
-
-    val filings = listOf(
-        FilingStatus(
-            title = "GSTR-1",
-            dueDate = "11th",
-            status = "Data Ready",
-            isCompleted = true
-        ),
-        FilingStatus(
-            title = "GSTR-3B",
-            dueDate = "20th",
-            status = "Estimated Pay",
-            isCompleted = false,
-            estimatedPay = outputTax - inputTax
-        )
-    )
-
-    val complianceStatus =
-        if (outputTax > inputTax) "Action Required" else "Safe"
-
-
-    // Animation Trigger State
-    var isVisible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        isVisible = true
-    }
-
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            // --- Sticky Header ---
-            stickyHeader {
-                GSTHeader(
-                    month = "Current Month",
-                    status = complianceStatus,
-                    onBack = onBack
-                )
-            }
-
-            // --- Section 1: Cash Flow Trio ---
-            item {
-                StaggeredEntry(visible = isVisible, index = 0) {
-                    CashFlowSection(summary = summary)
-                }
-            }
-
-            // --- Section 2: ITC Visualizer ---
-            item {
-                StaggeredEntry(visible = isVisible, index = 1) {
-                    ITCVisualizerSection(summary = summary)
-
-                }
-            }
-
-            // --- Section 3: Slab Distribution ---
-            item {
-                StaggeredEntry(visible = isVisible, index = 2) {
-                    SlabDistributionSection(slabs = slabs)
-
-                }
-            }
-
-            // --- Section 4: Filing Timeline ---
-            item {
-                StaggeredEntry(visible = isVisible, index = 3) {
-                    FilingTimelineSection(filings = filings)
-
-                }
-            }
-        }
-    }
+//    val context = LocalContext.current
+//    val analyticsViewModel: BusinessAnalyticsViewModel = viewModel(
+//        factory = BusinessAnalyticsViewModelFactory(context)
+//    )
+//    val totalSales by analyticsViewModel.totalSales.collectAsState()
+//    val totalPurchases by analyticsViewModel.totalPurchases.collectAsState()
+//
+//    val outputTax = totalSales * 0.18
+//    val inputTax = totalPurchases * 0.18
+//    val pendingItc = inputTax * 0.15
+//
+//    val summary = GstSummary(
+//        outputTax = outputTax,
+//        inputTax = inputTax,
+//        pendingItc = pendingItc
+//    )
+//
+//    val slabs = listOf(
+//        TaxSlab("5%", totalSales * 0.05, Color(0xFF4ADE80)),
+//        TaxSlab("12%", totalSales * 0.12, Color(0xFFFACC15)),
+//        TaxSlab("18%", totalSales * 0.18, Color(0xFF3B82F6))
+//    )
+//
+//    val filings = listOf(
+//        FilingStatus(
+//            title = "GSTR-1",
+//            dueDate = "11th",
+//            status = "Data Ready",
+//            isCompleted = true
+//        ),
+//        FilingStatus(
+//            title = "GSTR-3B",
+//            dueDate = "20th",
+//            status = "Estimated Pay",
+//            isCompleted = false,
+//            estimatedPay = outputTax - inputTax
+//        )
+//    )
+//
+//    val complianceStatus =
+//        if (outputTax > inputTax) "Action Required" else "Safe"
+//
+//
+//    // Animation Trigger State
+//    var isVisible by remember { mutableStateOf(false) }
+//
+//    LaunchedEffect(Unit) {
+//        isVisible = true
+//    }
+//
+//    Scaffold(
+//        containerColor = MaterialTheme.colorScheme.background,
+//    ) { paddingValues ->
+//        LazyColumn(
+//            modifier = Modifier
+//                .padding(paddingValues)
+//                .fillMaxSize(),
+//            contentPadding = PaddingValues(bottom = 32.dp),
+//            verticalArrangement = Arrangement.spacedBy(24.dp)
+//        ) {
+//            // --- Sticky Header ---
+//            stickyHeader {
+//                GSTHeader(
+//                    month = "Current Month",
+//                    status = complianceStatus,
+//                    onBack = onBack
+//                )
+//            }
+//
+//            // --- Section 1: Cash Flow Trio ---
+//            item {
+//                StaggeredEntry(visible = isVisible, index = 0) {
+//                    CashFlowSection(summary = summary)
+//                }
+//            }
+//
+//            // --- Section 2: ITC Visualizer ---
+//            item {
+//                StaggeredEntry(visible = isVisible, index = 1) {
+//                    ITCVisualizerSection(summary = summary)
+//
+//                }
+//            }
+//
+//            // --- Section 3: Slab Distribution ---
+//            item {
+//                StaggeredEntry(visible = isVisible, index = 2) {
+//                    SlabDistributionSection(slabs = slabs)
+//
+//                }
+//            }
+//
+//            // --- Section 4: Filing Timeline ---
+//            item {
+//                StaggeredEntry(visible = isVisible, index = 3) {
+//                    FilingTimelineSection(filings = filings)
+//
+//                }
+//            }
+//        }
+//    }
 }
 
 // -----------------------------------------------------------------------------

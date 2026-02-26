@@ -1,17 +1,17 @@
 package com.example.axiom.ui.screens.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
@@ -19,21 +19,30 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.axiom.BuildConfig
 import com.example.axiom.ui.components.shared.ThemeToggle
-import com.example.axiom.ui.components.shared.button.AppIconButton
-import com.example.axiom.ui.components.shared.button.AppIcons
+import com.example.axiom.ui.components.shared.header.AnimatedHeaderScrollView
 
+
+private val CardBackground = Color(0xFF1C1C1E)
+private val BorderColor = Color(0xFF2C2C2E)
+private val TextGray = Color(0xFF666666)
+private val IconBgColor = Color(0x260A84FF)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,80 +50,89 @@ fun SettingsScreen(
     onOpenBackup: () -> Unit,
     onOpenRestore: () -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Settings") }
-            )
+    AnimatedHeaderScrollView(
+        largeTitle = "Settings",
+        subtitle = "Manage your preferences",
+    ) {
+
+        // --- APPEARANCE SECTION ---
+        item { SettingsSectionTitle("APPEARANCE") }
+        item {
+            SettingsCardContainer {
+                SettingsRow(
+                    icon = Icons.Default.Star, // Replace with a moon/sun icon
+                    title = "Dark Mode",
+                    subtitle = "Toggle application theme",
+                    isLast = true,
+                    trailingContent = {
+                        ThemeToggle(showText = false) // <--- Just the switch!
+                    }
+                )
+            }
         }
-    ) { padding ->
 
-        LazyColumn(
-            modifier = Modifier
-                .padding(padding) // Apply padding from the scaffold
-                .fillMaxSize(), // Ensure it takes up the available space
-            contentPadding = PaddingValues(16.dp), // Inner padding for the content
-            verticalArrangement = Arrangement.spacedBy(20.dp) // Space between items
-        ) {
-            item {
-                SettingsSection(title = "Appearance") {
-                }
+        // --- ACCOUNT SECTION ---
+        item { SettingsSectionTitle("ACCOUNT") }
+        item {
+            SettingsCardContainer {
+                SettingsRow(
+                    icon = Icons.Default.Person,
+                    title = "Profile",
+                    subtitle = "Manage your account",
+                    isLast = false
+                )
+                SettingsRow(
+                    icon = Icons.Default.Lock,
+                    title = "Security",
+                    subtitle = "Password, biometrics",
+                    isLast = true
+                )
             }
-            item {
-                ThemeToggle()
-            }
-            item {
-                SettingsSection(title = "Account") {
-                    SettingsRow(
-                        icon = Icons.Default.Person,
-                        title = "Profile",
-                        subtitle = "Manage your account"
-                    )
-                    SettingsRow(
-                        icon = Icons.Default.Lock,
-                        title = "Security",
-                        subtitle = "Password, biometrics"
-                    )
-                }
-            }
-            item {
-                SettingsSection(title = "Data") {
-                    // BACKUP
-                    SettingsRow(
-                        icon = Icons.Default.Check,
-                        title = "Backup",
-                        subtitle = "Export vault data to file",
-                        onClick = onOpenBackup
-                    )
+        }
 
-                    // RESTORE
-                    SettingsRow(
-                        icon = Icons.Default.Build,
-                        title = "Restore",
-                        subtitle = "Import vault data from file",
-                        onClick = onOpenRestore
-                    )
-
-                }
+        // --- DATA SECTION ---
+        item { SettingsSectionTitle("DATA") }
+        item {
+            SettingsCardContainer {
+                SettingsRow(
+                    icon = Icons.Default.Check,
+                    title = "Backup",
+                    subtitle = "Export vault data to file",
+                    onClick = onOpenBackup,
+                    isLast = false
+                )
+                SettingsRow(
+                    icon = Icons.Default.Build,
+                    title = "Restore",
+                    subtitle = "Import vault data from file",
+                    onClick = onOpenRestore,
+                    isLast = true
+                )
             }
-            item {
-                SettingsSection(title = "About") {
-                    SettingsRow(
-                        icon = Icons.Default.Info,
-                        title = "App Version",
-                        subtitle = BuildConfig.VERSION_NAME
-                    )
-                    SettingsRow(
-                        icon = Icons.Default.Info,
-                        title = "DB Version",
-                        subtitle = (BuildConfig.DB_VERSION).toString()
-                    )
-                    SettingsRow(
-                        icon = Icons.Default.Info,
-                        title = "Terms & Privacy",
-                        subtitle = "Legal information"
-                    )
-                }
+        }
+
+        // --- ABOUT SECTION ---
+        item { SettingsSectionTitle("ABOUT") }
+        item {
+            SettingsCardContainer {
+                SettingsRow(
+                    icon = Icons.Default.Info,
+                    title = "App Version",
+                    subtitle = BuildConfig.VERSION_NAME,
+                    isLast = false
+                )
+                SettingsRow(
+                    icon = Icons.Default.Info,
+                    title = "DB Version",
+                    subtitle = BuildConfig.DB_VERSION.toString(),
+                    isLast = false
+                )
+                SettingsRow(
+                    icon = Icons.Default.Info,
+                    title = "Terms & Privacy",
+                    subtitle = "Legal information",
+                    isLast = true
+                )
             }
         }
     }
@@ -122,60 +140,164 @@ fun SettingsScreen(
 
 
 @Composable
-private fun SettingsSection(
-    title: String,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary
-        )
+private fun SettingsSectionTitle(title: String) {
+    Text(
+        text = title,
+        color = TextGray,
+        fontSize = 13.sp,
+        letterSpacing = 0.5.sp,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier.padding(start = 20.dp, top = 24.dp, bottom = 10.dp)
+    )
+}
 
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            tonalElevation = 2.dp
-        ) {
-            Column(
-                modifier = Modifier.padding(vertical = 4.dp)
-            ) {
-                content()
-            }
-        }
+@Composable
+private fun SettingsCardContainer(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(CardBackground)
+    ) {
+        content()
     }
 }
 
 @Composable
 private fun SettingsRow(
-    icon: Any,
+    icon: ImageVector,
     title: String,
-    subtitle: String,
-    onClick: (() -> Unit)? = null
+    subtitle: String? = null,
+    onClick: (() -> Unit)? = null,
+    isLast: Boolean = false,
+    trailingContent: (@Composable () -> Unit)? = {
+        Icon(
+            imageVector = Icons.Rounded.KeyboardArrowRight,
+            contentDescription = "Navigate",
+            tint = Color(0xFF444444),
+            modifier = Modifier.size(20.dp)
+        )
+    }
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = onClick != null) {
-                onClick?.invoke()
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = onClick != null) { onClick?.invoke() }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            // Leading Icon Box
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(IconBgColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color(0xFF0A84FF), // iOS Blue tint
+                    modifier = Modifier.size(20.dp)
+                )
             }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
 
-        AppIconButton(AppIcons.ArrowForward, contentDescription = "settings item", onClick = {})
+            Spacer(modifier = Modifier.width(16.dp))
 
-        Spacer(Modifier.width(16.dp))
+            // Title and Subtitle
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontSize = 17.sp,
+                    letterSpacing = (-0.4).sp
+                )
+                if (subtitle != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        color = TextGray,
+                        fontSize = 13.sp
+                    )
+                }
+            }
 
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Trailing Content (Chevron by default)
+            if (trailingContent != null) {
+                trailingContent()
+            }
         }
 
-
+        // Bottom Divider
+        if (!isLast) {
+            HorizontalDivider(
+                color = BorderColor,
+                thickness = 1.dp,
+                modifier = Modifier.padding(start = 68.dp) // Aligns with text start
+            )
+        }
     }
 }
+
+
+//@Composable
+//private fun SettingsSection(
+//    title: String,
+//    content: @Composable ColumnScope.() -> Unit
+//) {
+//    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+//        Text(
+//            text = title,
+//            style = MaterialTheme.typography.titleSmall,
+//            color = MaterialTheme.colorScheme.primary
+//        )
+//
+//        Surface(
+//            shape = RoundedCornerShape(16.dp),
+//            tonalElevation = 2.dp
+//        ) {
+//            Column(
+//                modifier = Modifier.padding(vertical = 4.dp)
+//            ) {
+//                content()
+//            }
+//        }
+//    }
+//}
+//
+//@Composable
+//private fun SettingsRow(
+//    icon: Any,
+//    title: String,
+//    subtitle: String,
+//    onClick: (() -> Unit)? = null
+//) {
+//    Row(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .clickable(enabled = onClick != null) {
+//                onClick?.invoke()
+//            }
+//            .padding(horizontal = 16.dp, vertical = 14.dp),
+//        verticalAlignment = Alignment.CenterVertically
+//    ) {
+//
+//        AppIconButton(AppIcons.ArrowForward, contentDescription = "settings item", onClick = {})
+//
+//        Spacer(Modifier.width(16.dp))
+//
+//        Column(Modifier.weight(1f)) {
+//            Text(title, style = MaterialTheme.typography.bodyLarge)
+//            Text(
+//                subtitle,
+//                style = MaterialTheme.typography.bodySmall,
+//                color = MaterialTheme.colorScheme.onSurfaceVariant
+//            )
+//        }
+//
+//
+//    }
+//}

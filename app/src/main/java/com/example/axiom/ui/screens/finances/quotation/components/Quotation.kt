@@ -1,8 +1,6 @@
 package com.example.axiom.ui.screens.finances.quotation.components
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.room.Dao
 import androidx.room.Embedded
@@ -16,7 +14,6 @@ import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
 import androidx.room.Update
-import com.example.axiom.DB.AppDatabase
 import com.example.axiom.data.finances.CustomerFirmEntity
 import com.example.axiom.data.finances.SellerFirmEntity
 import kotlinx.coroutines.flow.Flow
@@ -228,19 +225,19 @@ class QuotationViewModel(
 
 // factory
 
-class QuotationViewModelFactory(
-    private val context: Context
-) : ViewModelProvider.Factory {
-
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(QuotationViewModel::class.java)) {
-
-            val db = AppDatabase.get(context.applicationContext)
-            val dao = db.quotationDao()
-
-            return QuotationViewModel(dao) as T
-        }
-
-        throw IllegalArgumentException("Unknown ViewModel")
-    }
-}
+//class QuotationViewModelFactory(
+//    private val context: Context
+//) : ViewModelProvider.Factory {
+//
+//    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+//        if (modelClass.isAssignableFrom(QuotationViewModel::class.java)) {
+//
+//            val db = AppDatabase.get(context.applicationContext)
+//            val dao = db.quotationDao()
+//
+//            return QuotationViewModel(dao) as T
+//        }
+//
+//        throw IllegalArgumentException("Unknown ViewModel")
+//    }
+//}

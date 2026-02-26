@@ -35,22 +35,22 @@ class BackupManager(
             if (scope.events) db.calendarDao().exportEvents().map { it.toBackup() } else emptyList()
         val notes = if (scope.notes) db.noteDao().exportAll().map { it.toBackup() } else emptyList()
 
-        val products: List<ProductBackup> =
-            if (scope.finances) db.productDao().exportAll().map { it.toBackup() } else emptyList()
-        val customers: List<CustomerFirmBackup> =
-            if (scope.finances) db.customerFirmDao().exportAll()
-                .map { it.toBackup() } else emptyList()
-        val sellers: List<SellerFirmBackup> =
-            if (scope.finances) db.sellerFirmDao().exportAll()
-                .map { it.toBackup() } else emptyList()
-        val suppliers: List<SupplierFirmBackup> =
-            if (scope.finances) db.supplierFirmDao().exportAll()
-                .map { it.toBackup() } else emptyList()
-        val purchases: List<PurchaseRecordBackup> =
-            if (scope.finances) db.purchaseRecordDao().exportAll()
-                .map { it.toBackup() } else emptyList()
-        val invoices =
-            if (scope.finances) db.invoiceDao().exportAll().map { it.toBackup() } else emptyList()
+//        val products: List<ProductBackup> =
+//            if (scope.finances) db.productDao().exportAll().map { it.toBackup() } else emptyList()
+//        val customers: List<CustomerFirmBackup> =
+//            if (scope.finances) db.customerFirmDao().exportAll()
+//                .map { it.toBackup() } else emptyList()
+//        val sellers: List<SellerFirmBackup> =
+//            if (scope.finances) db.sellerFirmDao().exportAll()
+//                .map { it.toBackup() } else emptyList()
+//        val suppliers: List<SupplierFirmBackup> =
+//            if (scope.finances) db.supplierFirmDao().exportAll()
+//                .map { it.toBackup() } else emptyList()
+//        val purchases: List<PurchaseRecordBackup> =
+//            if (scope.finances) db.purchaseRecordDao().exportAll()
+//                .map { it.toBackup() } else emptyList()
+//        val invoices =
+//            if (scope.finances) db.invoiceDao().exportAll().map { it.toBackup() } else emptyList()
 
 
         AppBackup(
@@ -65,12 +65,12 @@ class BackupManager(
             notes = notes,
 
             // Finances
-            products = products,
-            customers = customers,
-            sellers = sellers,
-            suppliers = suppliers,
-            purchases = purchases,
-            invoices = invoices
+//            products = products,
+//            customers = customers,
+//            sellers = sellers,
+//            suppliers = suppliers,
+//            purchases = purchases,
+//            invoices = invoices
         )
     }
 
@@ -92,12 +92,12 @@ class BackupManager(
                     db.noteDao().restore(backup.notes.map { it.toEntity() })
 
                     // Restore Finances
-                    db.productDao().restore(backup.products.map { it.toEntity() })
-                    db.customerFirmDao().restore(backup.customers.map { it.toEntity() })
-                    db.sellerFirmDao().restore(backup.sellers.map { it.toEntity() })
-                    db.supplierFirmDao().restore(backup.suppliers.map { it.toEntity() })
-                    db.purchaseRecordDao().restore(backup.purchases.map { it.toEntity() })
-                    db.invoiceDao().restore(backup.invoices.map { it.toEntity() })
+//                    db.productDao().restore(backup.products.map { it.toEntity() })
+//                    db.customerFirmDao().restore(backup.customers.map { it.toEntity() })
+//                    db.sellerFirmDao().restore(backup.sellers.map { it.toEntity() })
+//                    db.supplierFirmDao().restore(backup.suppliers.map { it.toEntity() })
+//                    db.purchaseRecordDao().restore(backup.purchases.map { it.toEntity() })
+//                    db.invoiceDao().restore(backup.invoices.map { it.toEntity() })
                 }
                 true
             } catch (e: Exception) {

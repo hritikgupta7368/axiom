@@ -45,7 +45,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.axiom.BuildConfig
-import com.example.axiom.ui.components.shared.Aurora // Ensure this import points to your new Aurora component
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,11 +70,11 @@ fun HomeScreen() {
 
             // Background Layer: Aurora for API 33+, Circles for older devices
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                Aurora(
-                    modifier = Modifier.fillMaxSize(), // Fills entire screen including status bar
-                    speed = 0.5f,
-                    intensity = 1f
-                )
+//                Aurora(
+//                    modifier = Modifier.fillMaxSize(), // Fills entire screen including status bar
+//                    speed = 0.5f,
+//                    intensity = 1f
+//                )
             } else {
                 // Fallback gradient base + animated circles
                 val fallbackGradient = Brush.linearGradient(
@@ -90,7 +89,7 @@ fun HomeScreen() {
                         .fillMaxSize()
                         .background(fallbackGradient)
                 ) {
-                    AnimatedGradientCircles()
+//                    AnimatedGradientCircles()
                 }
             }
 

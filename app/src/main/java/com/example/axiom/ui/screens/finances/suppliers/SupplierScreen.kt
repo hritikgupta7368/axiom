@@ -1,11 +1,6 @@
 package com.example.axiom.ui.screens.finances.suppliers
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+//import com.example.axiom.data.finances.SupplierFirmViewModelFactory
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,31 +8,20 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
@@ -48,237 +32,222 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.axiom.data.finances.SupplierFirm
-import com.example.axiom.data.finances.SupplierFirmViewModel
-import com.example.axiom.data.finances.SupplierFirmViewModelFactory
-import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SupplierScreen(onBack: () -> Unit) {
 
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-    val viewModel: SupplierFirmViewModel = viewModel(
-        factory = SupplierFirmViewModelFactory(context)
-    )
-
-    val suppliers by viewModel.suppliers.collectAsState(initial = emptyList())
-
-
-    // Selection State
-    var selectedSupplierId by remember { mutableStateOf<String?>(null) }
-
-    // Animation State
-    val deletedItemIds = remember { mutableStateListOf<String>() }
-
-    // Bottom Sheet State
-    var showSheet by remember { mutableStateOf(false) }
-    var isEditing by remember { mutableStateOf(false) }
-
-    // Form State Holder
-    var formData by remember { mutableStateOf(SupplierFirm()) }
-
-    // --- Helpers ---
-    fun openCreateSheet() {
-        formData = SupplierFirm() // Reset form
-        isEditing = false
-        selectedSupplierId = null
-        showSheet = true
-    }
-
-    fun openEditSheet() {
-        val selected = suppliers.find { it.id == selectedSupplierId }
-        if (selected != null) {
-            formData = selected
-            isEditing = true
-            showSheet = true
-        }
-    }
-
-    fun deleteSelected() {
-        val idToDelete = selectedSupplierId
-        if (idToDelete != null) {
-            // Clear selection immediately for UI feedback
-            selectedSupplierId = null
-
-            scope.launch {
-                // Trigger animation
-                deletedItemIds.add(idToDelete)
-
-                // Wait for animation to complete
-                delay(500)
-
-                // Perform actual soft delete in DB
-                viewModel.deleteById(idToDelete)
-
-                // Cleanup ID from tracking
-                deletedItemIds.remove(idToDelete)
-            }
-        }
-    }
-
-    fun saveSupplier(updatedData: SupplierFirm) {
-        if (isEditing) {
-            viewModel.update(updatedData)
-        } else {
-            viewModel.insert(updatedData)
-        }
-        showSheet = false
-        selectedSupplierId = null
-    }
-
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            if (selectedSupplierId == null) {
-                // Default Top Bar
-                TopAppBar(
-                    title = { Text("SupplierFirms", fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { openCreateSheet() }) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = "Add Supplier",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MaterialTheme.colorScheme.onBackground,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onBackground
-                    )
-                )
-            } else {
-                // Selection Mode Top Bar
-                TopAppBar(
-                    title = { Text("1 Selected", fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        IconButton(onClick = { selectedSupplierId = null }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear Selection")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { openEditSheet() }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit")
-                        }
-                        IconButton(onClick = { deleteSelected() }) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Delete",
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-            }
-        }
-    ) { paddingValues ->
-
-        // --- Content ---
-        if (suppliers.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No suppliers found", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .padding(
-                        start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
-                        top = paddingValues.calculateTopPadding(),
-                        end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
-                        bottom = 0.dp // Forced to zero
-                    )
-                    .fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(suppliers, key = { it.id }) { supplier ->
-                    val isVisible = !deletedItemIds.contains(supplier.id)
-                    AnimatedVisibility(
-                        visible = isVisible,
-                        exit = shrinkVertically(animationSpec = tween(500)) + fadeOut(
-                            animationSpec = tween(
-                                500
-                            )
-                        ),
-                        enter = expandVertically() + fadeIn()
-                    ) {
-                        SupplierCard(
-                            supplier = supplier,
-                            isSelected = supplier.id == selectedSupplierId,
-                            onSelect = {
-                                selectedSupplierId =
-                                    if (selectedSupplierId == supplier.id) null else supplier.id
-                            }
-                        )
-                    }
-                }
-            }
-        }
-
-        // --- Bottom Sheet ---
-        AppBottomSheet(
-            showSheet = showSheet,
-            onDismiss = { showSheet = false }
-        ) {
-            SupplierForm(
-                formData = formData,
-                isEditing = isEditing,
-                onSave = { saveSupplier(it) },
-                onCancel = { showSheet = false }
-            )
-        }
-    }
+//    val scope = rememberCoroutineScope()
+//    val context = LocalContext.current
+//    val viewModel: SupplierFirmViewModel = viewModel(
+//        factory = SupplierFirmViewModelFactory(context)
+//    )
+//
+//    val suppliers by viewModel.suppliers.collectAsState(initial = emptyList())
+//
+//
+//    // Selection State
+//    var selectedSupplierId by remember { mutableStateOf<String?>(null) }
+//
+//    // Animation State
+//    val deletedItemIds = remember { mutableStateListOf<String>() }
+//
+//    // Bottom Sheet State
+//    var showSheet by remember { mutableStateOf(false) }
+//    var isEditing by remember { mutableStateOf(false) }
+//
+//    // Form State Holder
+//    var formData by remember { mutableStateOf(SupplierFirm()) }
+//
+//    // --- Helpers ---
+//    fun openCreateSheet() {
+//        formData = SupplierFirm() // Reset form
+//        isEditing = false
+//        selectedSupplierId = null
+//        showSheet = true
+//    }
+//
+//    fun openEditSheet() {
+//        val selected = suppliers.find { it.id == selectedSupplierId }
+//        if (selected != null) {
+//            formData = selected
+//            isEditing = true
+//            showSheet = true
+//        }
+//    }
+//
+//    fun deleteSelected() {
+//        val idToDelete = selectedSupplierId
+//        if (idToDelete != null) {
+//            // Clear selection immediately for UI feedback
+//            selectedSupplierId = null
+//
+//            scope.launch {
+//                // Trigger animation
+//                deletedItemIds.add(idToDelete)
+//
+//                // Wait for animation to complete
+//                delay(500)
+//
+//                // Perform actual soft delete in DB
+//                viewModel.deleteById(idToDelete)
+//
+//                // Cleanup ID from tracking
+//                deletedItemIds.remove(idToDelete)
+//            }
+//        }
+//    }
+//
+//    fun saveSupplier(updatedData: SupplierFirm) {
+//        if (isEditing) {
+//            viewModel.update(updatedData)
+//        } else {
+//            viewModel.insert(updatedData)
+//        }
+//        showSheet = false
+//        selectedSupplierId = null
+//    }
+//
+//    Scaffold(
+//        containerColor = MaterialTheme.colorScheme.background,
+//        topBar = {
+//            if (selectedSupplierId == null) {
+//                // Default Top Bar
+//                TopAppBar(
+//                    title = { Text("SupplierFirms", fontWeight = FontWeight.Bold) },
+//                    navigationIcon = {
+//                        IconButton(onClick = onBack) {
+//                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+//                        }
+//                    },
+//                    actions = {
+//                        IconButton(onClick = { openCreateSheet() }) {
+//                            Icon(
+//                                Icons.Default.Add,
+//                                contentDescription = "Add Supplier",
+//                                tint = MaterialTheme.colorScheme.primary
+//                            )
+//                        }
+//                    },
+//                    colors = TopAppBarDefaults.topAppBarColors(
+//                        containerColor = MaterialTheme.colorScheme.background,
+//                        titleContentColor = MaterialTheme.colorScheme.onBackground,
+//                        navigationIconContentColor = MaterialTheme.colorScheme.onBackground
+//                    )
+//                )
+//            } else {
+//                // Selection Mode Top Bar
+//                TopAppBar(
+//                    title = { Text("1 Selected", fontWeight = FontWeight.Bold) },
+//                    navigationIcon = {
+//                        IconButton(onClick = { selectedSupplierId = null }) {
+//                            Icon(Icons.Default.Close, contentDescription = "Clear Selection")
+//                        }
+//                    },
+//                    actions = {
+//                        IconButton(onClick = { openEditSheet() }) {
+//                            Icon(Icons.Default.Edit, contentDescription = "Edit")
+//                        }
+//                        IconButton(onClick = { deleteSelected() }) {
+//                            Icon(
+//                                Icons.Default.Delete,
+//                                contentDescription = "Delete",
+//                                tint = MaterialTheme.colorScheme.error
+//                            )
+//                        }
+//                    },
+//                    colors = TopAppBarDefaults.topAppBarColors(
+//                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+//                        titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+//                        navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+//                        actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+//                    )
+//                )
+//            }
+//        }
+//    ) { paddingValues ->
+//
+//        // --- Content ---
+//        if (suppliers.isEmpty()) {
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxSize()
+//                    .padding(paddingValues),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                Text("No suppliers found", color = MaterialTheme.colorScheme.onSurfaceVariant)
+//            }
+//        } else {
+//            LazyColumn(
+//                modifier = Modifier
+//                    .padding(
+//                        start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
+//                        top = paddingValues.calculateTopPadding(),
+//                        end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
+//                        bottom = 0.dp // Forced to zero
+//                    )
+//                    .fillMaxSize(),
+//                contentPadding = PaddingValues(16.dp),
+//                verticalArrangement = Arrangement.spacedBy(12.dp)
+//            ) {
+//                items(suppliers, key = { it.id }) { supplier ->
+//                    val isVisible = !deletedItemIds.contains(supplier.id)
+//                    AnimatedVisibility(
+//                        visible = isVisible,
+//                        exit = shrinkVertically(animationSpec = tween(500)) + fadeOut(
+//                            animationSpec = tween(
+//                                500
+//                            )
+//                        ),
+//                        enter = expandVertically() + fadeIn()
+//                    ) {
+//                        SupplierCard(
+//                            supplier = supplier,
+//                            isSelected = supplier.id == selectedSupplierId,
+//                            onSelect = {
+//                                selectedSupplierId =
+//                                    if (selectedSupplierId == supplier.id) null else supplier.id
+//                            }
+//                        )
+//                    }
+//                }
+//            }
+//        }
+//
+//        // --- Bottom Sheet ---
+//        AppBottomSheet(
+//            showSheet = showSheet,
+//            onDismiss = { showSheet = false }
+//        ) {
+//            SupplierForm(
+//                formData = formData,
+//                isEditing = isEditing,
+//                onSave = { saveSupplier(it) },
+//                onCancel = { showSheet = false }
+//            )
+//        }
+//    }
 }
 
 // --- List Item Component ---

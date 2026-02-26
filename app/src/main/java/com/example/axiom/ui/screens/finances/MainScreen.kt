@@ -1,5 +1,7 @@
 package com.example.axiom.ui.screens.finances
 
+//import com.example.axiom.data.finances.BusinessAnalyticsViewModelFactory
+//import com.example.axiom.data.finances.SellerFirmViewModelFactory
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -75,17 +77,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.data.finances.BusinessAnalyticsViewModel
-import com.example.axiom.data.finances.BusinessAnalyticsViewModelFactory
 import com.example.axiom.data.finances.SellerFirm
-import com.example.axiom.data.finances.SellerFirmViewModel
-import com.example.axiom.data.finances.SellerFirmViewModelFactory
 import com.example.axiom.data.finances.dataStore.FinancePreferences
 import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
 import com.example.axiom.ui.navigation.BillsActions
-import kotlinx.coroutines.launch
 
 
 data class QuickAction(
@@ -100,11 +95,11 @@ fun MainScreen(navActions: BillsActions) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
 
-    val viewModel: SellerFirmViewModel = viewModel(
-        factory = SellerFirmViewModelFactory(context)
-    )
-
-    val sellerFirms by viewModel.sellers.collectAsStateWithLifecycle()
+//    val viewModel: SellerFirmViewModel = viewModel(
+//        factory = SellerFirmViewModelFactory(context)
+//    )
+//
+//    val sellerFirms by viewModel.sellers.collectAsStateWithLifecycle()
 
     // DataStore Integration
     val financePreferences = remember { FinancePreferences(context) }
@@ -123,11 +118,11 @@ fun MainScreen(navActions: BillsActions) {
     }
 
 
-    val analyticsViewModel: BusinessAnalyticsViewModel = viewModel(
-        factory = BusinessAnalyticsViewModelFactory(context)
-    )
-    val totalSales by analyticsViewModel.totalSales.collectAsState()
-    val totalPurchases by analyticsViewModel.totalPurchases.collectAsState()
+//    val analyticsViewModel: BusinessAnalyticsViewModel = viewModel(
+//        factory = BusinessAnalyticsViewModelFactory(context)
+//    )
+//    val totalSales by analyticsViewModel.totalSales.collectAsState()
+//    val totalPurchases by analyticsViewModel.totalPurchases.collectAsState()
 
 
     val actions = listOf(
@@ -273,10 +268,10 @@ fun MainScreen(navActions: BillsActions) {
             Spacer(modifier = Modifier.height(32.dp))
 
             // Stats Cards
-            StatsCardsSection(
-                totalSales = totalSales,
-                totalPurchases = totalPurchases
-            )
+//            StatsCardsSection(
+//                totalSales = totalSales,
+//                totalPurchases = totalPurchases
+//            )
 
             Spacer(modifier = Modifier.height(32.dp))
 
@@ -295,31 +290,31 @@ fun MainScreen(navActions: BillsActions) {
 
                 }
             ) {
-                OrganizationBottomSheetContent(
-                    sellerFirms = sellerFirms,
-                    onFirmSelected = { seller ->
-                        scope.launch {
-                            financePreferences.saveSelectedSellerFirm(
-                                seller.id,
-                                seller.name,
-                                seller.stateCode
-                            )
-                        }
-                        showSheet = false // Close after selection
-                    },
-                    onAddFirm = { firm ->
-                        viewModel.insert(firm)
-                        // Optionally auto-select the new firm
-                        scope.launch {
-                            financePreferences.saveSelectedSellerFirm(
-                                firm.id,
-                                firm.name,
-                                firm.stateCode
-                            )
-                        }
-                        showSheet = false // Close after creation
-                    }
-                )
+//                OrganizationBottomSheetContent(
+//                    sellerFirms = sellerFirms,
+//                    onFirmSelected = { seller ->
+//                        scope.launch {
+//                            financePreferences.saveSelectedSellerFirm(
+//                                seller.id,
+//                                seller.name,
+//                                seller.stateCode
+//                            )
+//                        }
+//                        showSheet = false // Close after selection
+//                    },
+//                    onAddFirm = { firm ->
+//                        viewModel.insert(firm)
+//                        // Optionally auto-select the new firm
+//                        scope.launch {
+//                            financePreferences.saveSelectedSellerFirm(
+//                                firm.id,
+//                                firm.name,
+//                                firm.stateCode
+//                            )
+//                        }
+//                        showSheet = false // Close after creation
+//                    }
+//                )
             }
         }
     }

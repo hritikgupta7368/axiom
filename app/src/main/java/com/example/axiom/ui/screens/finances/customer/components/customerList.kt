@@ -5,197 +5,606 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.Divider
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.data.finances.CustomerFirm
+import com.example.axiom.ui.components.shared.bottomSheet.SearchBar
+import com.example.axiom.ui.components.shared.bottomSheet.SheetHeadingText
+import com.example.axiom.ui.components.shared.button.AppIconButton
+import com.example.axiom.ui.components.shared.button.AppIcons
+import java.util.UUID
 
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CustomerListSheet(
-    customers: List<CustomerFirm>,
-    onConfirmSelection: (CustomerFirm) -> Unit,
+    customers: List<PartyEntity>,
+    searchQuery: String,
+    onSearchChange: (String) -> Unit,
+    selectedIds: Set<String>,
+    onToggleSelection: (String) -> Unit,
+    onConfirmSelection: () -> Unit,
     onCreateClick: () -> Unit,
     onBack: () -> Unit
 ) {
-
-    var query by remember { mutableStateOf("") }
-    var selectedId by remember { mutableStateOf<String?>(null) }
-
-    val filteredCustomers = remember(query, customers) {
-        if (query.isBlank()) customers
-        else customers.filter {
-            it.name.contains(query, true) ||
-                    (it.gstin?.contains(query, true) == true) ||
-                    (it.contactNumber?.contains(query, true) == true)
-        }
-    }
-
-    val selectedCustomer = remember(selectedId, customers) {
-        customers.firstOrNull { it.id == selectedId }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 400.dp, max = 700.dp)
+            .fillMaxHeight()
             .padding(16.dp)
     ) {
-
-        // Top Bar
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            SheetHeadingText("Select Customer", modifier = Modifier.weight(1f))
 
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-            }
-
-            Text(
-                text = "Select Customer",
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f)
+            AppIconButton(
+                icon = AppIcons.Add,
+                contentDescription = "Add",
+                onClick = onCreateClick,
+                enclosedInCircle = true
             )
-
-            if (selectedId != null) {
-                Text(
-                    text = "1 Selected",
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
         }
 
         Spacer(Modifier.height(12.dp))
 
-        // Search
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search name, GSTIN or phone") },
-            singleLine = true,
-            leadingIcon = {
-                Icon(Icons.Default.Search, null)
-            }
+        SearchBar(
+            containerWidth = 350.dp,
+            tint = Color.White,
+            value = searchQuery,
+            onValueChange = onSearchChange,
+            placeholder = "Search Customers",
         )
 
         Spacer(Modifier.height(12.dp))
 
-        // Customer List
         LazyColumn(
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             items(
-                items = filteredCustomers,
+                items = customers,
                 key = { it.id }
             ) { customer ->
+                val isSelected = selectedIds.contains(customer.id)
+                val borderColor =
+                    if (isSelected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.outline
 
-                val isSelected = selectedId == customer.id
+                val backgroundColor =
+                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    else MaterialTheme.colorScheme.surface
 
-                Row(
+                Card(
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            selectedId =
-                                if (isSelected) null
-                                else customer.id
-                        }
-                        .padding(vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .clip(RoundedCornerShape(12.dp))
+                        .combinedClickable(
+                            onClick = { onToggleSelection(customer.id) },
+                            onLongClick = { }
+                        )
+                        .background(backgroundColor)
+                        .border(1.dp, borderColor, RoundedCornerShape(12.dp))
                 ) {
-
-                    RadioButton(
-                        selected = isSelected,
-                        onClick = {
-                            selectedId =
-                                if (isSelected) null
-                                else customer.id
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
                         }
-                    )
+                        Spacer(modifier = Modifier.width(16.dp))
 
-                    Spacer(Modifier.width(8.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(customer.name, fontWeight = FontWeight.Medium)
-
-                        if (!customer.gstin.isNullOrBlank()) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "GSTIN: ${customer.gstin}",
-                                style = MaterialTheme.typography.bodySmall
+                                text = customer.businessName.ifBlank { "Unknown Business" },
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            Text(
+                                text = if (!customer.gstNumber.isNullOrBlank()) "GST: ${customer.gstNumber}" else "Unregistered",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
 
-                        if (!customer.contactNumber.isNullOrBlank()) {
+                        Column(horizontalAlignment = Alignment.End) {
                             Text(
-                                "Phone: ${customer.contactNumber}",
-                                style = MaterialTheme.typography.bodySmall
+                                text = customer.city ?: "N/A",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
+                            if ((customer.openingBalance) > 0) {
+                                Text(
+                                    text = "Bal: ₹${customer.openingBalance}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                 }
-
-                Divider()
             }
         }
 
         Spacer(Modifier.height(12.dp))
 
-        // Bottom Actions
+        // Bottom buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
-            OutlinedButton(onClick = onCreateClick) {
-                Text("Create Customer")
+            Button(
+                onClick = onBack,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Cancel")
             }
 
             Button(
-                onClick = {
-                    selectedCustomer?.let { onConfirmSelection(it) }
-                },
-                enabled = selectedCustomer != null
+                onClick = onConfirmSelection,
+                enabled = selectedIds.isNotEmpty(),
+                modifier = Modifier.weight(1f)
             ) {
-                Text("Select")
+                Text("Add (${selectedIds.size})")
             }
         }
     }
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CustomerForm(
+    customerId: String? = null,
+    partyWithContacts: PartyWithContacts?,
+    isEditing: Boolean,
+    loadCustomer: (suspend (String) -> PartyEntity?)? = null,
+    onSave: (PartyEntity, List<PartyContactEntity>) -> Unit,
+    onCancel: () -> Unit
+) {
+
+
+    // Local state for form fields
+//    var currentData by remember {
+//        mutableStateOf(
+//            PartyEntity(
+//                id = customerId ?: UUID.randomUUID().toString(),
+//                partyType = PartyType.CUSTOMER // Defaulting strictly to CUSTOMER
+//            )
+//        )
+//    }
+//    var contacts by remember {
+//        mutableStateOf(
+//            mutableListOf<PartyContactEntity>()
+//        )
+//    }
+//
+//
+//    LaunchedEffect(customerId) {
+//        if (isEditing && customerId != null && loadCustomer != null) {
+//            val loaded = loadCustomer(customerId)
+//            if (loaded != null) {
+//                currentData = loaded
+//            }
+//        }
+//    }
+
+    var currentData by remember {
+        mutableStateOf(
+            partyWithContacts?.party
+                ?: PartyEntity(
+                    id = UUID.randomUUID().toString(),
+                    partyType = PartyType.CUSTOMER
+                )
+        )
+    }
+
+    val contacts = remember { mutableStateListOf<PartyContactEntity>() }
+
+    LaunchedEffect(partyWithContacts) {
+        if (partyWithContacts != null) {
+            currentData = partyWithContacts.party
+            contacts.clear()
+            contacts.addAll(partyWithContacts.contacts)
+        }
+    }
+    // Double conversion states
+    var creditLimitText by remember(currentData.creditLimit) {
+        mutableStateOf(if (currentData.creditLimit == 0.0 && !isEditing) "" else currentData.creditLimit.toString())
+    }
+    var openingBalanceText by remember(currentData.openingBalance) {
+        mutableStateOf(if (currentData.openingBalance == 0.0 && !isEditing) "" else currentData.openingBalance.toString())
+    }
+
+
+    // Validation
+    var nameError by remember { mutableStateOf<String?>(null) }
+
+    fun validate(): Boolean {
+        var isValid = true
+
+        if (currentData.businessName.isBlank()) {
+            nameError = "Business Name is required"
+            isValid = false
+        } else {
+            nameError = null
+        }
+
+        // Apply string-to-double conversions before saving
+        val credit = creditLimitText.toDoubleOrNull() ?: 0.0
+        val opening = openingBalanceText.toDoubleOrNull() ?: 0.0
+        currentData = currentData.copy(creditLimit = credit, openingBalance = opening)
+
+        return isValid
+    }
+
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    val maxHeight = screenHeight * 0.85f
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = maxHeight)
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+            .padding(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = if (isEditing) "Edit Customer" else "Add New Customer",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+        // Business Name
+        OutlinedTextField(
+            value = currentData.businessName,
+            onValueChange = {
+                currentData =
+                    currentData.copy(businessName = it); if (nameError != null) nameError = null
+            },
+            label = { Text("Business Name *") },
+            isError = nameError != null,
+            supportingText = { if (nameError != null) Text(nameError!!) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        Row {
+            FilterChip(
+                selected = currentData.registrationType == GstRegistrationType.REGISTERED,
+                onClick = {
+                    currentData = currentData.copy(
+                        registrationType = GstRegistrationType.REGISTERED
+                    )
+                },
+                label = { Text("Registered (B2B)") }
+            )
+
+            FilterChip(
+                selected = currentData.registrationType == GstRegistrationType.UNREGISTERED,
+                onClick = {
+                    currentData = currentData.copy(
+                        registrationType = GstRegistrationType.UNREGISTERED,
+                        gstNumber = null
+                    )
+                },
+                label = { Text("Unregistered (B2C)") }
+            )
+        }
+
+        // GST Number
+        OutlinedTextField(
+            value = currentData.gstNumber ?: "",
+            onValueChange = { currentData = currentData.copy(gstNumber = it) },
+            label = { Text("GST Number (Optional)") },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        // ---------------- CONTACT SECTION ----------------
+
+        Text(
+            text = "Contacts",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        Button(
+            onClick = {
+                contacts.add(
+                    PartyContactEntity(
+                        id = UUID.randomUUID().toString(),
+                        partyId = currentData.id,
+                        contactType = ContactType.PHONE,
+                        value = "",
+                        isPrimary = contacts.isEmpty()
+                    )
+                )
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Add Contact")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        contacts.forEachIndexed { index, contact ->
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+
+                    // Contact Type Dropdown
+                    var expanded by remember { mutableStateOf(false) }
+
+                    ExposedDropdownMenuBox(
+                        expanded = expanded,
+                        onExpandedChange = { expanded = !expanded }
+                    ) {
+                        OutlinedTextField(
+                            value = contact.contactType.name,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Contact Type") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded)
+                            },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            ContactType.values().forEach { type ->
+                                DropdownMenuItem(
+                                    text = { Text(type.name) },
+                                    onClick = {
+                                        contacts[index] =
+                                            contact.copy(contactType = type)
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // Contact Value Field
+                    OutlinedTextField(
+                        value = contact.value,
+                        onValueChange = {
+                            contacts[index] =
+                                contact.copy(value = it)
+                        },
+                        label = { Text("Contact Value") },
+                        keyboardOptions = when (contact.contactType) {
+                            ContactType.PHONE ->
+                                KeyboardOptions(keyboardType = KeyboardType.Phone)
+
+                            ContactType.EMAIL ->
+                                KeyboardOptions(keyboardType = KeyboardType.Email)
+
+                            ContactType.WEBSITE ->
+                                KeyboardOptions(keyboardType = KeyboardType.Uri)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = contact.isPrimary,
+                            onCheckedChange = { checked ->
+                                contacts.replaceAll {
+                                    it.copy(isPrimary = false)
+                                }
+                                contacts[index] =
+                                    contacts[index].copy(isPrimary = checked)
+                            }
+                        )
+                        Text("Primary Contact")
+                    }
+
+                    TextButton(
+                        onClick = {
+                            contacts.removeAt(index)
+                        }
+                    ) {
+                        Text("Remove Contact")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        // Location Info
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(
+                value = currentData.city ?: "",
+                onValueChange = { currentData = currentData.copy(city = it) },
+                label = { Text("City") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            OutlinedTextField(
+                value = currentData.state ?: "",
+                onValueChange = { currentData = currentData.copy(state = it) },
+                label = { Text("State") },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            )
+        }
+
+        // Address
+        OutlinedTextField(
+            value = currentData.billingAddress ?: "",
+            onValueChange = { currentData = currentData.copy(billingAddress = it) },
+            label = { Text("Billing Address") },
+            minLines = 2,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        // Balances
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(
+                value = openingBalanceText,
+                onValueChange = {
+                    if (it.all { char -> char.isDigit() || char == '.' }) openingBalanceText = it
+                },
+                label = { Text("Opening Balance") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            OutlinedTextField(
+                value = creditLimitText,
+                onValueChange = {
+                    if (it.all { char -> char.isDigit() || char == '.' }) creditLimitText = it
+                },
+                label = { Text("Credit Limit") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Action Buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = onCancel,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Cancel")
+            }
+
+            Button(
+                onClick = {
+                    if (validate()) {
+                        val finalData = if (isEditing) {
+                            currentData.copy(updatedAt = System.currentTimeMillis())
+                        } else {
+                            currentData
+                        }
+                        onSave(currentData, contacts.toList())
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (isEditing) "Update" else "Save")
+            }
+        }
+    }
+}
 
 enum class CustomerSheetMode {
     LIST,
@@ -206,57 +615,62 @@ enum class CustomerSheetMode {
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun CustomerListSheetWrapper(
-    onConfirmSelection: (CustomerFirm) -> Unit,
+    onConfirmSelection: (List<PartyEntity>) -> Unit,
     onBack: () -> Unit
 ) {
 
     val context = LocalContext.current
 
-    val viewModel: CustomerViewModel = viewModel(
-        factory = CustomerFirmViewModelFactory(context)
+    val viewModel: CustomerListViewModel = viewModel(
+        factory = CustomerListViewModelFactory(context)
     )
 
     val customers by viewModel.customers.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
 
+    var selectedIds by remember { mutableStateOf(setOf<String>()) }
     var mode by remember { mutableStateOf(CustomerSheetMode.LIST) }
 
     AnimatedContent(
         targetState = mode,
         transitionSpec = {
-            slideInHorizontally { it } togetherWith
-                    slideOutHorizontally { -it }
+            slideInHorizontally { it } togetherWith slideOutHorizontally { -it }
         },
         label = "CustomerSheetSwitch"
     ) { currentMode ->
-
         when (currentMode) {
-
             CustomerSheetMode.LIST -> {
-
                 CustomerListSheet(
                     customers = customers,
+                    searchQuery = searchQuery,
+                    selectedIds = selectedIds,
+                    onSearchChange = viewModel::updateSearchQuery,
+                    onToggleSelection = { id ->
+                        selectedIds = if (selectedIds.contains(id)) {
+                            selectedIds - id
+                        } else {
+                            selectedIds + id
+                        }
+                    },
                     onConfirmSelection = {
-                        onConfirmSelection(it)
+                        val selected = customers.filter { selectedIds.contains(it.id) }
+                        onConfirmSelection(selected)
+                        selectedIds = emptySet()
                     },
-                    onCreateClick = {
-//                        mode = CustomerSheetMode.CREATE
-                    },
+                    onCreateClick = { mode = CustomerSheetMode.CREATE },
                     onBack = onBack
                 )
             }
 
             CustomerSheetMode.CREATE -> {
-
-                CustomerListSheet(
-                    customers = customers,
-                    onConfirmSelection = { customer ->
-                        onConfirmSelection(customer)
-                    },
-                    onCreateClick = {
-//                        mode = CustomerSheetMode.CREATE
-                    },
-                    onBack = onBack
-                )
+//                CustomerForm(
+//                    isEditing = false,
+//                    onSave = { customer ->
+//                        viewModel.insertCustomer(customer)
+//                        mode = CustomerSheetMode.LIST
+//                    },
+//                    onCancel = { mode = CustomerSheetMode.LIST }
+//                )
             }
         }
     }

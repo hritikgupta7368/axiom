@@ -10,52 +10,24 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -67,224 +39,177 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.axiom.data.finances.CustomerFirm
-import com.example.axiom.data.finances.CustomerFirmViewModel
-import com.example.axiom.data.finances.CustomerFirmViewModelFactory
 import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
-import com.example.axiom.ui.components.shared.button.AppIconButton
-import com.example.axiom.ui.components.shared.button.AppIcons
+import com.example.axiom.ui.components.shared.header.AnimatedHeaderScrollView
+import com.example.axiom.ui.screens.finances.customer.components.CustomerForm
+import com.example.axiom.ui.screens.finances.customer.components.CustomerListViewModel
+import com.example.axiom.ui.screens.finances.customer.components.CustomerListViewModelFactory
+import com.example.axiom.ui.screens.finances.customer.components.PartyContactEntity
+import com.example.axiom.ui.screens.finances.customer.components.PartyEntity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerScreen(onBack: () -> Unit) {
-    // --- ViewModel Integration ---
     val scope = rememberCoroutineScope()
-
     val context = LocalContext.current
-    val customerViewModel: CustomerFirmViewModel = viewModel(
-        factory = CustomerFirmViewModelFactory(context)
+    val viewModel: CustomerListViewModel = viewModel(
+        factory = CustomerListViewModelFactory(context)
     )
-    val customers by customerViewModel.customers.collectAsState(initial = emptyList())
+    val customers by viewModel.customers.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
 
-    // Selection State
     var selectedCustomerId by remember { mutableStateOf<String?>(null) }
-
-    // Animation State
     val deletedItemIds = remember { mutableStateListOf<String>() }
 
     // Bottom Sheet State
     var showSheet by remember { mutableStateOf(false) }
     var isEditing by remember { mutableStateOf(false) }
 
-    // Form State Holder
-    var formData by remember { mutableStateOf(CustomerFirm()) }
-
     // --- Helpers ---
+//    fun openCreateSheet() {
+//        isEditing = false
+//        selectedCustomerId = null
+//        showSheet = true
+//    }
+
     fun openCreateSheet() {
-        formData = CustomerFirm() // Reset form with new ID
         isEditing = false
         selectedCustomerId = null
+        viewModel.clearSelection()   // you must implement this
         showSheet = true
     }
 
+//    fun openEditSheet() {
+//        val selected = customers.find { it.id == selectedCustomerId }
+//        if (selected != null) {
+//            isEditing = true
+//            showSheet = true
+//        }
+//    }
+
     fun openEditSheet() {
-        val selected = customers.find { it.id == selectedCustomerId }
-        if (selected != null) {
-            formData = selected
-            isEditing = true
-            showSheet = true
-        }
+        val id = selectedCustomerId ?: return
+        isEditing = true
+        viewModel.loadCustomer(id)
+        showSheet = true
     }
 
     fun deleteSelected() {
         val idToDelete = selectedCustomerId
         if (idToDelete != null) {
-            // Clear selection immediately for UI feedback (TopBar reverts)
             selectedCustomerId = null
 
             scope.launch {
-                // Trigger animation
                 deletedItemIds.add(idToDelete)
-
-                // Wait for animation to complete
                 delay(500)
-
-                // Perform actual soft delete in DB
-                customerViewModel.deleteById(idToDelete)
-
-                // Cleanup ID from tracking (optional as item will leave list)
+                viewModel.deleteCustomer(idToDelete)
                 deletedItemIds.remove(idToDelete)
             }
         }
     }
 
-    fun saveCustomer(updatedData: CustomerFirm) {
-        if (isEditing) {
-            customerViewModel.update(updatedData)
-        } else {
-            customerViewModel.insert(updatedData)
-        }
+    val selectedParty by viewModel.selectedParty.collectAsState()
+
+//    fun saveCustomer(updatedData: PartyEntity) {
+//        if (isEditing) {
+//            viewModel.updateCustomer(updatedData)
+//        } else {
+//            viewModel.insertCustomer(updatedData)
+//        }
+//        showSheet = false
+//        selectedCustomerId = null
+//    }
+
+
+    fun saveCustomer(
+        party: PartyEntity,
+        contacts: List<PartyContactEntity>
+    ) {
+        viewModel.saveCustomer(party, contacts)
         showSheet = false
         selectedCustomerId = null
     }
-
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            if (selectedCustomerId == null) {
-                // Default Top Bar
-                TopAppBar(
-                    title = { Text("Customers", fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        AppIconButton(
-                            icon = AppIcons.Back,
-                            contentDescription = "Send",
-                            onClick = onBack
-                        )
-
-                    },
-                    actions = {
-                        AppIconButton(
-                            icon = AppIcons.Add,
-                            contentDescription = "Add Customer",
-                            onClick = { openCreateSheet() }
-                        )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background,
-                        titleContentColor = MaterialTheme.colorScheme.onBackground,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onBackground
-                    )
-                )
-            } else {
-                // Selection Mode Top Bar
-                TopAppBar(
-                    title = { Text("1 Selected", fontWeight = FontWeight.Bold) },
-                    navigationIcon = {
-                        IconButton(onClick = { selectedCustomerId = null }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear Selection")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { openEditSheet() }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit")
-                        }
-                        IconButton(onClick = { deleteSelected() }) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Delete",
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant, // Highlight header
-                        titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-            }
-        }
-    ) { paddingValues ->
-
-        // --- Content ---
+    AnimatedHeaderScrollView(
+        largeTitle = "Customers",
+        onAddClick = { openCreateSheet() },
+        onEditClick = { openEditSheet() },
+        onDeleteClick = { deleteSelected() },
+    ) {
         if (customers.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No customers found", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .padding(
-                        start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
-                        top = paddingValues.calculateTopPadding(),
-                        end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
-                        bottom = 0.dp // Forced to zero
-                    )
-                    .fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(customers, key = { it.id }) { customer ->
-                    val isVisible = !deletedItemIds.contains(customer.id)
-                    AnimatedVisibility(
-                        visible = isVisible,
-                        exit = shrinkVertically(animationSpec = tween(500)) + fadeOut(
-                            animationSpec = tween(
-                                500
-                            )
-                        ),
-                        enter = expandVertically() + fadeIn()
-                    ) {
-                        CustomerCard(
-                            customer = customer,
-                            isSelected = customer.id == selectedCustomerId,
-                            onSelect = {
-                                selectedCustomerId =
-                                    if (selectedCustomerId == customer.id) null else customer.id
-                            }
-                        )
-                    }
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No customers found", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+        } else {
+
+            // PRODUCTS UNDER CATEGORY
+            items(
+                customers,
+                key = { it.id }
+            ) { customer ->
+
+                val isVisible = !deletedItemIds.contains(customer.id)
+
+                AnimatedVisibility(
+                    visible = isVisible,
+                    exit = shrinkVertically(animationSpec = tween(500)) +
+                            fadeOut(animationSpec = tween(500)),
+                    enter = expandVertically() + fadeIn()
+                ) {
+                    CustomerCard(
+                        customer = customer,
+                        isSelected = customer.id == selectedCustomerId,
+                        onSelect = {
+                            selectedCustomerId =
+                                if (selectedCustomerId == customer.id) null else customer.id
+                        }
+                    )
+                }
+            }
+
         }
 
-        // --- Bottom Sheet Form ---
-        AppBottomSheet(
-            showSheet = showSheet,
-            onDismiss = { showSheet = false }
-        ) {
-            CustomerForm(
-                formData = formData,
-                isEditing = isEditing,
-                onSave = { saveCustomer(it) },
-                onCancel = { showSheet = false }
-            )
-        }
+
     }
+    // --- Bottom Sheet ---
+    AppBottomSheet(
+        showSheet = showSheet,
+        onDismiss = { showSheet = false }
+    ) {
+        CustomerForm(
+            customerId = selectedCustomerId,
+            isEditing = isEditing,
+            partyWithContacts = selectedParty,
+//            loadCustomer = { id -> viewModel.getCustomerById(id) },
+            onSave = { party, contacts ->
+                saveCustomer(party, contacts)
+            },
+            onCancel = { showSheet = false }
+        )
+    }
+
+
 }
+
 
 // --- List Item Component ---
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CustomerCard(
-    customer: CustomerFirm,
+    customer: PartyEntity,
     isSelected: Boolean,
     onSelect: () -> Unit
 ) {
@@ -322,7 +247,7 @@ fun CustomerCard(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
-                        text = if (customer.name.isNotEmpty()) customer.name.take(1)
+                        text = if (customer.businessName.isNotEmpty()) customer.businessName.take(1)
                             .uppercase() else "?",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
@@ -336,7 +261,7 @@ fun CustomerCard(
             // Details
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = customer.name,
+                    text = customer.businessName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
@@ -344,17 +269,17 @@ fun CustomerCard(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                if (!customer.gstin.isNullOrBlank()) {
+                if (!customer.gstNumber.isNullOrBlank()) {
                     Text(
-                        text = "GSTIN: ${customer.gstin}",
+                        text = "GSTIN: ${customer.gstNumber}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                if (!customer.contactNumber.isNullOrBlank()) {
+                if (!customer.stateCode.isNullOrBlank()) {
                     Text(
-                        text = customer.contactNumber,
+                        text = customer.stateCode,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -364,303 +289,5 @@ fun CustomerCard(
     }
 }
 
-// --- Form Content Component ---
-@Composable
-fun CustomerForm(
-    formData: CustomerFirm,
-    isEditing: Boolean,
-    onSave: (CustomerFirm) -> Unit,
-    onCancel: () -> Unit
-) {
-    // Local state for form fields to handle validation updates immediately
-    var currentData by remember(formData.id) {
-        mutableStateOf(formData)
-    }
 
 
-    // Validation Errors
-    var nameError by remember { mutableStateOf<String?>(null) }
-    var gstinError by remember { mutableStateOf<String?>(null) }
-    var phoneError by remember { mutableStateOf<String?>(null) }
-    var stateCodeError by remember { mutableStateOf<String?>(null) }
-    var addressError by remember { mutableStateOf<String?>(null) }
-    var emailError by remember { mutableStateOf<String?>(null) }
-
-    fun validate(): Boolean {
-        var isValid = true
-
-        // Name Validation
-        if (currentData.name.isBlank()) {
-            nameError = "Name is required"
-            isValid = false
-        } else {
-            nameError = null
-        }
-
-        // GSTIN Validation (Mandatory)
-        if (currentData.gstin.isNullOrBlank()) {
-            gstinError = "GSTIN is required"
-            isValid = false
-        } else if (!currentData.gstin!!.matches(Regex("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$"))) {
-            gstinError = "Invalid GSTIN format"
-            isValid = false
-        } else {
-            gstinError = null
-        }
-
-        // Phone Validation (Indian: 10 digits starting with 6-9)
-        if (currentData.contactNumber.isNullOrBlank()) {
-            phoneError = "Phone number is required"
-            isValid = false
-        } else if (!currentData.contactNumber!!.matches(Regex("^[6-9]\\d{9}$"))) {
-            phoneError = "Invalid Indian phone number"
-            isValid = false
-        } else {
-            phoneError = null
-        }
-
-        // State Code Validation (Mandatory, 2 digits)
-        if (currentData.stateCode.isNullOrBlank()) {
-            stateCodeError = "State code is required"
-            isValid = false
-        } else if (currentData.stateCode!!.length != 2 || !currentData.stateCode!!.all { it.isDigit() }) {
-            stateCodeError = "Invalid Code (2 digits)"
-            isValid = false
-        } else {
-            stateCodeError = null
-        }
-
-        // Address Validation (Mandatory)
-        if (currentData.address.isBlank()) {
-            addressError = "Address is required"
-            isValid = false
-        } else {
-            addressError = null
-        }
-
-        // Email Validation (Optional)
-        if (!currentData.email.isNullOrBlank() && !android.util.Patterns.EMAIL_ADDRESS.matcher(
-                currentData.email!!
-            ).matches()
-        ) {
-            emailError = "Invalid email format"
-            isValid = false
-        } else {
-            emailError = null
-        }
-
-        return isValid
-    }
-
-
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-            .padding(bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = if (isEditing) "Edit Customer" else "Add New Customer",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-
-        // Name
-        CustomerInput(
-            value = currentData.name,
-            onValueChange = {
-                currentData = currentData.copy(name = it); if (nameError != null) nameError = null
-            },
-            label = "Firm / Customer Name *",
-            icon = Icons.Default.Person,
-            isError = nameError != null,
-            errorMessage = nameError
-        )
-
-        // GSTIN
-        CustomerInput(
-            value = currentData.gstin ?: "",
-            onValueChange = {
-                currentData = currentData.copy(gstin = it); if (gstinError != null) gstinError =
-                null
-            },
-            label = "GSTIN *",
-            placeholder = "29ABCDE1234F1Z5",
-            allCaps = true,
-            isError = gstinError != null,
-            errorMessage = gstinError
-        )
-
-        // Contact
-        CustomerInput(
-            value = currentData.contactNumber ?: "",
-            onValueChange = {
-                // Only allow numeric input
-                if (it.all { char -> char.isDigit() } && it.length <= 10) {
-                    currentData = currentData.copy(contactNumber = it)
-                    if (phoneError != null) phoneError = null
-                }
-            },
-            label = "Contact Number",
-            icon = Icons.Default.Phone,
-            keyboardType = KeyboardType.Phone,
-            placeholder = "9876543210",
-            isError = phoneError != null,
-            errorMessage = phoneError
-        )
-
-        // Email
-        CustomerInput(
-            value = currentData.email ?: "",
-            onValueChange = {
-                currentData = currentData.copy(email = it); if (emailError != null) emailError =
-                null
-            },
-            label = "Email Address",
-            icon = Icons.Default.Email,
-            keyboardType = KeyboardType.Email,
-            isError = emailError != null,
-            errorMessage = emailError
-        )
-
-        // State Code
-        CustomerInput(
-            value = currentData.stateCode ?: "",
-            onValueChange = {
-                if (it.length <= 2 && it.all { char -> char.isDigit() }) {
-                    currentData = currentData.copy(stateCode = it)
-                    if (stateCodeError != null) stateCodeError = null
-                }
-            },
-            label = "State Code *",
-            placeholder = "29",
-            keyboardType = KeyboardType.Number,
-            isError = stateCodeError != null,
-            errorMessage = stateCodeError
-        )
-
-        // Address
-        CustomerInput(
-            value = currentData.address,
-            onValueChange = {
-                currentData =
-                    currentData.copy(address = it); if (addressError != null) addressError = null
-            },
-            label = "Address *",
-            singleLine = false,
-            minLines = 3,
-            isError = addressError != null,
-            errorMessage = addressError
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Action Buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OutlinedButton(
-                onClick = onCancel,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Cancel")
-            }
-
-            Button(
-                onClick = {
-                    if (validate()) {
-                        onSave(currentData)
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(if (isEditing) "Update" else "Save")
-            }
-        }
-    }
-}
-
-@Composable
-fun CustomerInput(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    placeholder: String? = null,
-    icon: ImageVector? = null,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    singleLine: Boolean = true,
-    minLines: Int = 1,
-    allCaps: Boolean = false,
-    isError: Boolean = false,
-    errorMessage: String? = null
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = { if (allCaps) onValueChange(it.uppercase()) else onValueChange(it) },
-            label = { Text(label) },
-            placeholder = if (placeholder != null) {
-                { Text(placeholder) }
-            } else null,
-            leadingIcon = if (icon != null) {
-                {
-                    Icon(
-                        icon,
-                        contentDescription = null,
-                        tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else null,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = singleLine,
-            minLines = minLines,
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            isError = isError,
-            trailingIcon = if (isError) {
-                {
-                    Icon(
-                        Icons.Default.Warning,
-                        contentDescription = "Error",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
-            } else null,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                cursorColor = MaterialTheme.colorScheme.primary,
-                errorBorderColor = MaterialTheme.colorScheme.error,
-                errorLabelColor = MaterialTheme.colorScheme.error,
-                errorCursorColor = MaterialTheme.colorScheme.error
-            )
-        )
-        if (isError && errorMessage != null) {
-            Text(
-                text = errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-            )
-        }
-    }
-}

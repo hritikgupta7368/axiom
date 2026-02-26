@@ -35,12 +35,12 @@ data class AppBackup(
     val notes: List<NoteBackup>,
 
     // Finances
-    val products: List<ProductBackup>,
-    val customers: List<CustomerFirmBackup>,
-    val sellers: List<SellerFirmBackup>,
-    val suppliers: List<SupplierFirmBackup>,
-    val purchases: List<PurchaseRecordBackup>,
-    val invoices: List<InvoiceBackup>
+//    val products: List<ProductBackup>,
+//    val customers: List<CustomerFirmBackup>,
+//    val sellers: List<SellerFirmBackup>,
+//    val suppliers: List<SupplierFirmBackup>,
+//    val purchases: List<PurchaseRecordBackup>,
+//    val invoices: List<InvoiceBackup>
 )
 
 

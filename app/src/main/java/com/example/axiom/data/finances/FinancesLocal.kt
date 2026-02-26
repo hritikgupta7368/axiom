@@ -1469,123 +1469,123 @@ class BusinessAnalyticsViewModel(
 /* ---------- VIEWMODEL FACTORIES ---------- */
 
 
-class BusinessAnalyticsViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(BusinessAnalyticsViewModel::class.java)) {
-            val db = AppDatabase.get(context)
-            val purchaseRepo = PurchaseRecordRepository(db.purchaseRecordDao())
-            val invoiceRepo = InvoiceRepository(db.invoiceDao())
-            return BusinessAnalyticsViewModel(invoiceRepo, purchaseRepo) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel")
-    }
-}
+//class BusinessAnalyticsViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+//    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+//        if (modelClass.isAssignableFrom(BusinessAnalyticsViewModel::class.java)) {
+//            val db = AppDatabase.get(context)
+//            val purchaseRepo = PurchaseRecordRepository(db.purchaseRecordDao())
+//            val invoiceRepo = InvoiceRepository(db.invoiceDao())
+//            return BusinessAnalyticsViewModel(invoiceRepo, purchaseRepo) as T
+//        }
+//        throw IllegalArgumentException("Unknown ViewModel")
+//    }
+//}
 
+//
+//class CreateInvoiceViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+//    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+//        if (modelClass.isAssignableFrom(CreateInvoiceViewModel::class.java)) {
+//            val db = AppDatabase.get(context)
+//            val productRepo = ProductRepository(db.productDao())
+//            val customerRepo = CustomerFirmRepository(db.customerFirmDao())
+//            val invoiceRepo = InvoiceRepository(db.invoiceDao())
+//            return CreateInvoiceViewModel(productRepo, invoiceRepo, customerRepo) as T
+//        }
+//        throw IllegalArgumentException("Unknown ViewModel")
+//    }
+//}
 
-class CreateInvoiceViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(CreateInvoiceViewModel::class.java)) {
-            val db = AppDatabase.get(context)
-            val productRepo = ProductRepository(db.productDao())
-            val customerRepo = CustomerFirmRepository(db.customerFirmDao())
-            val invoiceRepo = InvoiceRepository(db.invoiceDao())
-            return CreateInvoiceViewModel(productRepo, invoiceRepo, customerRepo) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel")
-    }
-}
+//class ProductViewModelFactory(
+//    private val context: Context
+//) : ViewModelProvider.Factory {
+//    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+//        if (modelClass.isAssignableFrom(ProductViewModel::class.java)) {
+//            val db = AppDatabase.get(context)
+//            val dao = db.productDao()
+//            val repo = ProductRepository(dao)
+//            return ProductViewModel(repo) as T
+//        }
+//        throw IllegalArgumentException("Unknown ViewModel")
+//    }
+//}
 
-class ProductViewModelFactory(
-    private val context: Context
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(ProductViewModel::class.java)) {
-            val db = AppDatabase.get(context)
-            val dao = db.productDao()
-            val repo = ProductRepository(dao)
-            return ProductViewModel(repo) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel")
-    }
-}
+//class SupplierFirmViewModelFactory(
+//    private val context: Context
+//) : ViewModelProvider.Factory {
+//    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+//        if (modelClass.isAssignableFrom(SupplierFirmViewModel::class.java)) {
+//            val db = AppDatabase.get(context)
+//            val dao = db.supplierFirmDao()
+//            val repo = SupplierFirmRepository(dao)
+//            return SupplierFirmViewModel(repo) as T
+//        }
+//        throw IllegalArgumentException("Unknown ViewModel")
+//    }
+//}
 
-class SupplierFirmViewModelFactory(
-    private val context: Context
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(SupplierFirmViewModel::class.java)) {
-            val db = AppDatabase.get(context)
-            val dao = db.supplierFirmDao()
-            val repo = SupplierFirmRepository(dao)
-            return SupplierFirmViewModel(repo) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel")
-    }
-}
+//class PurchaseRecordViewModelFactory(
+//    private val context: Context
+//) : ViewModelProvider.Factory {
+//    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+//        if (modelClass.isAssignableFrom(PurchaseRecordViewModel::class.java)) {
+//            val db = AppDatabase.get(context)
+//            val productRepo = ProductRepository(db.productDao())
+//            val supplierRepo = SupplierFirmRepository(db.supplierFirmDao())
+//            val purchaseRepo = PurchaseRecordRepository(db.purchaseRecordDao())
+//
+//
+//            return PurchaseRecordViewModel(productRepo, purchaseRepo, supplierRepo) as T
+//        }
+//        throw IllegalArgumentException("Unknown ViewModel")
+//    }
+//}
 
-class PurchaseRecordViewModelFactory(
-    private val context: Context
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(PurchaseRecordViewModel::class.java)) {
-            val db = AppDatabase.get(context)
-            val productRepo = ProductRepository(db.productDao())
-            val supplierRepo = SupplierFirmRepository(db.supplierFirmDao())
-            val purchaseRepo = PurchaseRecordRepository(db.purchaseRecordDao())
-
-
-            return PurchaseRecordViewModel(productRepo, purchaseRepo, supplierRepo) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel")
-    }
-}
-
-class SellerFirmViewModelFactory(
-    private val context: Context
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(SellerFirmViewModel::class.java)) {
-            val db = AppDatabase.get(context)
-            val dao = db.sellerFirmDao()
-            val prefs = FinancePreferences(context.applicationContext)
-            val repo = SellerFirmRepository(dao)
-            return SellerFirmViewModel(repo) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel")
-    }
-}
-
-class CustomerFirmViewModelFactory(
-    private val context: Context
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(CustomerFirmViewModel::class.java)) {
-            val db = AppDatabase.get(context)
-            val dao = db.customerFirmDao()
-            val repo = CustomerFirmRepository(dao)
-            return CustomerFirmViewModel(repo) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel")
-    }
-}
-
-class InvoiceViewModelFactory(
-    private val context: Context
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(InvoiceViewModel::class.java)) {
-
-            val app = context.applicationContext as Application
-            val db = AppDatabase.get(context)
-            val dao = db.invoiceDao()
+//class SellerFirmViewModelFactory(
+//    private val context: Context
+//) : ViewModelProvider.Factory {
+//    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+//        if (modelClass.isAssignableFrom(SellerFirmViewModel::class.java)) {
+//            val db = AppDatabase.get(context)
+//            val dao = db.sellerFirmDao()
 //            val prefs = FinancePreferences(context.applicationContext)
-            val repo = InvoiceRepository(dao)
+//            val repo = SellerFirmRepository(dao)
+//            return SellerFirmViewModel(repo) as T
+//        }
+//        throw IllegalArgumentException("Unknown ViewModel")
+//    }
+//}
+//
+//class CustomerFirmViewModelFactory(
+//    private val context: Context
+//) : ViewModelProvider.Factory {
+//    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+//        if (modelClass.isAssignableFrom(CustomerFirmViewModel::class.java)) {
+//            val db = AppDatabase.get(context)
+//            val dao = db.customerFirmDao()
+//            val repo = CustomerFirmRepository(dao)
+//            return CustomerFirmViewModel(repo) as T
+//        }
+//        throw IllegalArgumentException("Unknown ViewModel")
+//    }
+//}
 
-            return InvoiceViewModel(application = app, repo = repo) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel")
-    }
-}
+//class InvoiceViewModelFactory(
+//    private val context: Context
+//) : ViewModelProvider.Factory {
+//    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+//        if (modelClass.isAssignableFrom(InvoiceViewModel::class.java)) {
+//
+//            val app = context.applicationContext as Application
+//            val db = AppDatabase.get(context)
+//            val dao = db.invoiceDao()
+////            val prefs = FinancePreferences(context.applicationContext)
+//            val repo = InvoiceRepository(dao)
+//
+//            return InvoiceViewModel(application = app, repo = repo) as T
+//        }
+//        throw IllegalArgumentException("Unknown ViewModel")
+//    }
+//}
 
 // util fxns
 fun CustomerFirm.ensureId(): CustomerFirm {
