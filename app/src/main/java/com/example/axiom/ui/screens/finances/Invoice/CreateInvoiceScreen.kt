@@ -294,11 +294,6 @@ fun CreateInvoiceScreen(
             }
 
 
-            // Case B: Missing Vehicle Number (Part B of E-Way Bill)
-            if (formState.entity.vehicleNumber.isNullOrBlank()) {
-                Toast.makeText(context, "Vehicle Number is required for E-Way Bill generation", Toast.LENGTH_LONG).show()
-                return false
-            }
         }
 
         // 7. Payment Validation (Optional: Prevent negative received amounts)

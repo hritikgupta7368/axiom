@@ -55,6 +55,7 @@ import com.example.axiom.ui.components.shared.cards.PurchaseRecordCard
 import com.example.axiom.ui.components.shared.header.AnimatedHeaderScrollView
 import com.example.axiom.ui.screens.finances.Invoice.PrimaryBlue
 import com.example.axiom.ui.screens.finances.Invoice.components.SupplyType
+import com.example.axiom.ui.screens.finances.Invoice.formatCurrency
 import com.example.axiom.ui.screens.finances.purchase.components.PurchaseRecordEntity
 import com.example.axiom.ui.screens.finances.purchase.components.PurchaseViewModel
 import com.example.axiom.ui.screens.finances.purchase.components.PurchaseViewModelFactory
@@ -442,24 +443,29 @@ fun PurchaseInsightsSheet(
         // --- 3. Financial Waterfall ---
         SectionTitle("Amount Breakdown")
         DetailCard {
-            AmountRow("Item Subtotal", entity.itemSubTotal)
+            AmountRow("Item Subtotal", formatCurrency(entity.itemSubTotal))
 
-            if (entity.deliveryCharge > 0) AmountRow("Shipping Charges", entity.deliveryCharge)
-            if (entity.extraCharges > 0) AmountRow("Extra Charges", entity.extraCharges)
-            if (entity.globalDiscountAmount > 0) AmountRow("Discount", -entity.globalDiscountAmount, isDiscount = true)
-
-            Divider(modifier = Modifier.padding(vertical = 8.dp), color = AxiomTheme.components.card.subtitle.copy(alpha = 0.2f))
-
-            AmountRow("Taxable Amount", entity.totalTaxableAmount, isBold = true)
-
-            if (entity.cgstAmount > 0) AmountRow("CGST", entity.cgstAmount)
-            if (entity.sgstAmount > 0) AmountRow("SGST", entity.sgstAmount)
-            if (entity.igstAmount > 0) AmountRow("IGST", entity.igstAmount)
-            if (entity.roundOff != 0.0) AmountRow("Round Off", entity.roundOff)
+            if (entity.deliveryCharge > 0) AmountRow("Shipping Charges", formatCurrency(entity.deliveryCharge))
+            if (entity.extraCharges > 0) AmountRow("Extra Charges", formatCurrency(entity.extraCharges))
+            if (entity.globalDiscountAmount > 0) AmountRow("Discount", "- ${formatCurrency(entity.globalDiscountAmount)}", isDiscount = true)
 
             Divider(modifier = Modifier.padding(vertical = 8.dp), color = AxiomTheme.components.card.subtitle.copy(alpha = 0.2f))
 
-            AmountRow("Grand Total", entity.grandTotal, isBold = true, color = Color(0xFF0D9488)) // Teal accent for total
+            AmountRow("Taxable Amount", formatCurrency(entity.totalTaxableAmount), isBold = true)
+
+            if (entity.supplyType == SupplyType.INTER_STATE || entity.igstAmount > 0) {
+                AmountRow("IGST", formatCurrency(entity.igstAmount))
+            } else {
+                AmountRow("CGST", formatCurrency(entity.cgstAmount))
+                AmountRow("SGST", formatCurrency(entity.sgstAmount))
+            }
+
+
+            if (entity.roundOff != 0.0) AmountRow("Round Off", formatCurrency(entity.roundOff))
+
+            Divider(modifier = Modifier.padding(vertical = 8.dp), color = AxiomTheme.components.card.subtitle.copy(alpha = 0.2f))
+
+            AmountRow("Grand Total", formatCurrency(entity.grandTotal), isBold = true, color = Color(0xFF0D9488)) // Teal accent for total
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -539,13 +545,12 @@ fun DetailRow(label: String, value: String) {
 @Composable
 fun AmountRow(
     label: String,
-    amount: Double,
+    amount: String,
     isBold: Boolean = false,
     isDiscount: Boolean = false,
     color: Color = Color.Unspecified
 ) {
-    val displayAmount = if (isDiscount) "- ₹ ${String.format(Locale.US, "%,.2f", Math.abs(amount))}"
-    else "₹ ${String.format(Locale.US, "%,.2f", amount)}"
+    val displayAmount = if (isDiscount) amount else amount
 
     val textColor = if (color != Color.Unspecified) color
     else if (isDiscount) Color(0xFFEF4444) // Red for negative

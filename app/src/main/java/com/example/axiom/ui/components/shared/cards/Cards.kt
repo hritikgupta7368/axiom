@@ -251,7 +251,7 @@ fun MetricCard(
                                     // Use max(0.01f) so Compose doesn't crash on exactly 0 height in some edge cases
                                     .fillMaxHeight(animatedHeight.coerceAtLeast(0.01f))
                                     .clip(RoundedCornerShape(2.dp))
-                                    .background(if (isLast) chartActiveColor else chartBarColor)
+                                    .background(chartActiveColor)
                             )
                             if (!isLast) Spacer(modifier = Modifier.width(4.dp))
                         }

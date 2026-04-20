@@ -58,6 +58,7 @@ import com.example.axiom.data.finances.dataStore.SelectedSellerPref
 import com.example.axiom.ui.components.Accordion.Accordion
 import com.example.axiom.ui.components.DatePicker.DateFieldPicker
 import com.example.axiom.ui.components.shared.Switch.AnimatedSwitch
+import com.example.axiom.ui.components.shared.Switch.SwitchSize
 import com.example.axiom.ui.components.shared.TextInput.Input
 import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
 import com.example.axiom.ui.components.shared.button.Button
@@ -68,8 +69,10 @@ import com.example.axiom.ui.navigation.PurchaseFormMode
 import com.example.axiom.ui.screens.finances.Invoice.BorderDark
 import com.example.axiom.ui.screens.finances.Invoice.PrimaryBlue
 import com.example.axiom.ui.screens.finances.Invoice.SurfaceDark
+import com.example.axiom.ui.screens.finances.Invoice.TextGray
 import com.example.axiom.ui.screens.finances.Invoice.TextWhite
 import com.example.axiom.ui.screens.finances.Invoice.components.BillingCalculator
+import com.example.axiom.ui.screens.finances.Invoice.components.SupplyType
 import com.example.axiom.ui.screens.finances.Invoice.components.extractStateCodeFromGst
 import com.example.axiom.ui.screens.finances.Invoice.components.resolveSupplyType
 import com.example.axiom.ui.screens.finances.customer.components.PartyWithContacts
@@ -234,11 +237,12 @@ fun CreatePurchaseScreen(mode: PurchaseFormMode, onBack: () -> Unit) {
                 return false
             }
 
-            // Case B: Missing Vehicle Number (Part B of E-Way Bill)
-            if (formState.vehicleNumber.isNullOrBlank()) {
-                Toast.makeText(context, "Vehicle Number is required for E-Way Bill generation", Toast.LENGTH_LONG).show()
+            if (formState.eWayBillDate == null) {
+                Toast.makeText(context, "E-Way Bill Date is required", Toast.LENGTH_LONG).show()
                 return false
             }
+
+
         }
 
 
@@ -248,6 +252,7 @@ fun CreatePurchaseScreen(mode: PurchaseFormMode, onBack: () -> Unit) {
     // ─── 5. SUBMISSION LOGIC ───────────────────────────────────────────────
     fun saveRecord() {
         if (!validateInvoice()) return
+        val hasEwayBill = !formState.eWayBillNumber.isNullOrBlank()
 
         // 2. Apply calculated math to the final entity
         val finalRecord = formState.copy(
@@ -255,11 +260,11 @@ fun CreatePurchaseScreen(mode: PurchaseFormMode, onBack: () -> Unit) {
             customerId = selectedCustomer.id,
             supplierId = selectedSupplier!!.party.id,
 
-            vehicleNumber = formState.vehicleNumber,
+            vehicleNumber = if (hasEwayBill) formState.vehicleNumber else null,
             deliveryCharge = formState.deliveryCharge,
             shippedToAddress = formState.shippedToAddress,
-            eWayBillNumber = formState.eWayBillNumber, // Added
-            eWayBillDate = formState.eWayBillDate,     // Added
+            eWayBillNumber = if (hasEwayBill) formState.eWayBillNumber else null,
+            eWayBillDate = if (hasEwayBill) formState.eWayBillDate else null,
 
 
             // Output from BillingCalculator
@@ -597,26 +602,48 @@ fun CreatePurchaseScreen(mode: PurchaseFormMode, onBack: () -> Unit) {
 
                 SummaryRow("Total Taxable Amount", billingSummary.totalTaxableAmount, isBold = true)
 
+                val globalRate = formState.globalGstRate
 
-                if (billingSummary.cgstAmount > 0) SummaryRow("CGST", billingSummary.cgstAmount, "blue")
-                if (billingSummary.sgstAmount > 0) SummaryRow("SGST", billingSummary.sgstAmount, "blue")
-                if (billingSummary.igstAmount > 0) SummaryRow("IGST", billingSummary.igstAmount, "blue")
+                if (formState.supplyType == SupplyType.INTRA_STATE) {
+                    val halfRate = (globalRate / 2).toInt()
+
+                    if (billingSummary.cgstAmount > 0) {
+                        SummaryRow("CGST ($halfRate%)", billingSummary.cgstAmount, "blue")
+                    }
+                    if (billingSummary.sgstAmount > 0) {
+                        SummaryRow("SGST ($halfRate%)", billingSummary.sgstAmount, "blue")
+                    }
+                } else {
+                    if (billingSummary.igstAmount > 0) {
+                        SummaryRow("IGST (${globalRate.toInt()}%)", billingSummary.igstAmount, "blue")
+                    }
+                }
 
                 Divider(color = Color(0xFF333333))
+
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Row {
                         Text("Round Off", color = AxiomTheme.colors.textPrimary, fontSize = 13.sp)
-                        AnimatedSwitch(checked = isRoundOffEnabled, onCheckedChange = { isRoundOffEnabled = it })
+                        AnimatedSwitch(checked = isRoundOffEnabled, onCheckedChange = { isRoundOffEnabled = it }, size = SwitchSize.SM)
                     }
-                    Text(Amount.format(-billingSummary.roundOff), color = Color.Gray, fontSize = 13.sp)
+                    Text(
+                        Amount.format(-billingSummary.roundOff),
+                        color = if (billingSummary.roundOff != 0.0) PrimaryBlue else TextGray,
+                        fontSize = 13.sp
+                    )
                 }
 
                 Divider(color = Color(0xFF333333))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Grand Total", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text(Amount.format(billingSummary.grandTotal), fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("Grand Total", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = AxiomTheme.components.card.title)
+                    Text(
+                        Amount.format(billingSummary.grandTotal),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = AxiomTheme.components.card.title
+                    )
                 }
             }
         }

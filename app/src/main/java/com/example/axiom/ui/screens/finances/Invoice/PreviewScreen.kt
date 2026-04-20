@@ -315,9 +315,11 @@ fun AddressSection(invoice: InvoiceEntity, customer: PartyEntity?) {
 
 @Composable
 fun ProductDetailsSection(items: List<InvoiceItemEntity>, isCancelled: Boolean) {
-    Column(modifier = Modifier
-        .padding(horizontal = 16.dp, vertical = 8.dp)
-        .alpha(if (isCancelled) 0.6f else 1f)) {
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .alpha(if (isCancelled) 0.6f else 1f)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -337,9 +339,11 @@ fun ProductDetailsSection(items: List<InvoiceItemEntity>, isCancelled: Boolean) 
                 .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(12.dp))
                 .padding(16.dp)
         ) {
-            Row(modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            ) {
                 Text("ITEM & HSN", modifier = Modifier.weight(5f), style = headerStyle())
                 Text("QTY", modifier = Modifier.weight(2f), style = headerStyle(), textAlign = TextAlign.Center)
                 Text("TOTAL", modifier = Modifier.weight(3f), style = headerStyle(), textAlign = TextAlign.End)
@@ -430,9 +434,11 @@ fun PaymentBreakdownCard(invoice: InvoiceEntity, isCancelled: Boolean) {
 
         HorizontalDivider(color = AxiomTheme.components.card.border, modifier = Modifier.padding(vertical = 8.dp))
 
-        Row(modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Text("Taxable Amount", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = AxiomTheme.components.card.title)
             Text(
                 formatCurrency(invoice.totalTaxableAmount),
@@ -612,9 +618,11 @@ private fun headerStyle() = androidx.compose.ui.text.TextStyle(
 
 @Composable
 fun BreakdownRow(label: String, value: String, valueColor: Color = AxiomTheme.components.card.title) {
-    Row(modifier = Modifier
-        .fillMaxWidth()
-        .padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween
+    ) {
         Text(label, fontSize = 14.sp, color = AxiomTheme.components.card.subtitle)
         Text(value, fontSize = 14.sp, color = valueColor, fontWeight = FontWeight.SemiBold)
     }
@@ -640,9 +648,11 @@ fun InfoCard(icon: ImageVector, iconColor: Color, iconBg: Color, title: String, 
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Box(modifier = Modifier
-            .background(iconBg, RoundedCornerShape(8.dp))
-            .padding(8.dp)) {
+        Box(
+            modifier = Modifier
+                .background(iconBg, RoundedCornerShape(8.dp))
+                .padding(8.dp)
+        ) {
             Icon(icon, null, tint = iconColor, modifier = Modifier.size(20.dp))
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -652,7 +662,7 @@ fun InfoCard(icon: ImageVector, iconColor: Color, iconBg: Color, title: String, 
     }
 }
 
-private fun formatCurrency(amount: Double): String {
+fun formatCurrency(amount: Double): String {
     val format = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
     format.maximumFractionDigits = 2 // Keeps decimals for invoice precision
     return format.format(amount)
