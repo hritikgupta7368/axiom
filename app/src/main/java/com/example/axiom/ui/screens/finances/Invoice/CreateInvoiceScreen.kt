@@ -2,101 +2,95 @@ package com.example.axiom.ui.screens.finances.Invoice
 
 //import com.example.axiom.data.finances.CreateInvoiceViewModelFactory
 //import com.example.axiom.ui.screens.finances.product.UnitSelectionDialog
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.Divider
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.ShoppingCart
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.Badge
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.axiom.data.finances.CustomerFirm
-import com.example.axiom.data.finances.GstBreakdown
-import com.example.axiom.data.finances.InvoiceItem
-import com.example.axiom.data.finances.Product
-import com.example.axiom.data.finances.SupplyType
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.axiom.data.finances.dataStore.FinancePreferences
+import com.example.axiom.data.finances.dataStore.SelectedSellerPref
+import com.example.axiom.ui.components.Accordion.Accordion
+import com.example.axiom.ui.components.DatePicker.DateFieldPicker
+import com.example.axiom.ui.components.shared.Switch.AnimatedSwitch
+import com.example.axiom.ui.components.shared.Switch.SwitchSize
+import com.example.axiom.ui.components.shared.TextInput.Input
+import com.example.axiom.ui.components.shared.bottomSheet.AppBottomSheet
+import com.example.axiom.ui.components.shared.button.Button
+import com.example.axiom.ui.components.shared.button.ButtonVariant
+import com.example.axiom.ui.components.shared.header.AnimatedHeaderScrollView
 import com.example.axiom.ui.navigation.InvoiceFormMode
-import com.example.axiom.ui.screens.finances.product.components.UnitSelectionDialog
+import com.example.axiom.ui.screens.finances.Invoice.components.BillingCalculator
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceEntity
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceItemEntity
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceStatus
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceViewModel
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceViewModelFactory
+import com.example.axiom.ui.screens.finances.Invoice.components.PaymentMode
+import com.example.axiom.ui.screens.finances.Invoice.components.PaymentStatus
+import com.example.axiom.ui.screens.finances.Invoice.components.PaymentTransactionEntity
+import com.example.axiom.ui.screens.finances.Invoice.components.SupplyType
+import com.example.axiom.ui.screens.finances.Invoice.components.TransactionType
+import com.example.axiom.ui.screens.finances.Invoice.components.extractStateCodeFromGst
+import com.example.axiom.ui.screens.finances.Invoice.components.resolveSupplyType
+import com.example.axiom.ui.screens.finances.customer.components.CustomerListSheetWrapper
+import com.example.axiom.ui.screens.finances.customer.components.PartyWithContacts
+import com.example.axiom.ui.screens.finances.product.components.ProductListSheetWrapper
+import com.example.axiom.ui.screens.finances.purchase.SummaryRow
+import com.example.axiom.ui.theme.AxiomTheme
+import com.example.axiom.ui.utils.Amount
+import com.example.axiom.ui.utils.numberToWords
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.UUID
-import kotlin.math.roundToLong
 
 
-// Round to exactly 2 decimal places using banker's rounding (standard for money)
-fun Double.toMoney(): Double {
-    return (this * 100).roundToLong() / 100.0
-}
-
-// Safe parse from text input (TextField)
-fun String?.toSafeMoney(default: Double = 0.0): Double {
-    if (this.isNullOrBlank()) return default
-    return this.trim()
-        .replace(",", "")           // tolerate 1,234.56
-        .toDoubleOrNull()
-        ?.toMoney()
-        ?: default
-}
-
-// For display in Text / labels
-fun Double.formatMoney(): String = String.format("%.2f", this)
-// or locale-aware: "₹ ${"%,.2f".format(this)}" if you prefer
-
-// --- Colors from your React Native Design ---
-val BgDark = Color(0xFF000000)
 val SurfaceDark = Color(0xFF1C1D27)
 val BorderDark = Color(0xFF334155)
 val TextWhite = Color(0xFFFFFFFF)
@@ -104,12 +98,13 @@ val TextGray = Color(0xFF94A3B8)
 val PrimaryBlue = Color(0xFF3B82F6)
 
 
-enum class SheetType { NONE, CUSTOMER, PRODUCT }
-enum class ProductSheetMode { LIST, CREATE }
-enum class PaymentMode { CASH, UPI, CHEQUE, BANK_TRANSFER }
-enum class PaymentStatus { UNPAID, PARTIAL, PAID }
+enum class SheetType {
+    PRODUCT,
+    CUSTOMER,
+    NONE
+}
 
-private const val DEFAULT_GST_RATE = 0.18
+
 private const val INVOICE_NUMBER_MIN = 1L
 private const val INVOICE_NUMBER_MAX = 99999999L  // reasonable upper limit
 private const val INVOICE_NUMBER_PADDING = 3
@@ -122,50 +117,16 @@ private fun Long.toPaddedInvoiceNumber(): String {
     }
 }
 
-// ────────────────────────────────────────────────
-// GST Calculation
-// ────────────────────────────────────────────────
 
-fun calculateGst(taxableAmount: Double, supplyType: SupplyType): GstBreakdown {
-    val amt = taxableAmount.toMoney()
-    if (amt <= 0.0) return GstBreakdown()
+data class InvoiceFormState(
+    // The core database entity
+    val entity: InvoiceEntity,
 
-    val rate = DEFAULT_GST_RATE
-
-    return when (supplyType) {
-        SupplyType.INTRA_STATE -> {
-            val halfRate = rate / 2
-            val halfAmount = (taxableAmount * halfRate).toMoney()
-            GstBreakdown(
-                cgstRate = halfRate * 100,
-                sgstRate = halfRate * 100,
-                cgstAmount = halfAmount,
-                sgstAmount = halfAmount,
-                totalTax = (halfAmount * 2).toMoney()
-            )
-        }
-
-        SupplyType.INTER_STATE -> {
-            val igst = (taxableAmount * rate).toMoney()
-            GstBreakdown(
-                igstRate = rate * 100,
-                igstAmount = igst,
-                totalTax = igst
-            )
-        }
-
-        else -> GstBreakdown()
-    }
-}
-
-fun resolveSupplyType(
-    sellerStateCode: String?,
-    customerStateCode: String?
-): SupplyType = when {
-    sellerStateCode.isNullOrBlank() || customerStateCode.isNullOrBlank() -> SupplyType.INTER_STATE
-    sellerStateCode == customerStateCode -> SupplyType.INTRA_STATE
-    else -> SupplyType.INTER_STATE
-}
+    // UI-specific payment fields (which will be converted to PaymentTransactionEntity on save)
+    val receivedAmount: Double = 0.0,
+    val paymentMode: PaymentMode = PaymentMode.CASH,
+    val paymentNotes: String = ""
+)
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -175,1273 +136,818 @@ fun CreateInvoiceScreen(
     onBack: () -> Unit,
     onInvoicePreview: (String) -> Unit
 ) {
-//    val context = LocalContext.current
-//    val viewModel: CreateInvoiceViewModel = viewModel(
-//        factory = CreateInvoiceViewModelFactory(context)
-//    )
-//    val scope = rememberCoroutineScope()
-//
-//    // Collected flows
-//    val customers by viewModel.customers.collectAsState(initial = emptyList())
-//    val products by viewModel.products.collectAsState(initial = emptyList())
-//    val invoiceById by viewModel.invoiceById.collectAsState()
-//
-//    val financePreferences = remember { FinancePreferences(context) }
-//    val lastInvoiceNo by financePreferences.lastInvoiceNumber.collectAsState(initial = 0L)
-//    val selectedSeller by financePreferences.selectedSeller.collectAsState(
-//        initial = SelectedSellerPref(null, null, null)
-//    )
-//
-//    // ─── Invoice number logic ───────────────────────────────
-//    var invoiceNo by remember { mutableStateOf("") }
-//    var suggestedInvoiceNo by remember { mutableStateOf("") }
-//    var userEditedInvoiceNo by remember { mutableStateOf(false) }
-//
-//    LaunchedEffect(lastInvoiceNo) {
-//        val nextNumber = (lastInvoiceNo + 1)
-//            .coerceIn(INVOICE_NUMBER_MIN, INVOICE_NUMBER_MAX)
-//        val padded = nextNumber.toPaddedInvoiceNumber()
-//        suggestedInvoiceNo = padded
-//
-//        if (!userEditedInvoiceNo) {
-//            invoiceNo = padded
-//        }
-//    }
-//
-//    // ─── Core invoice state ────────────────────────────────
-//    val invoiceId = remember(mode) {
-//        when (mode) {
-//            is InvoiceFormMode.Create -> UUID.randomUUID().toString()
-//            is InvoiceFormMode.Edit -> mode.invoiceId
-//        }
-//    }
-//
-//    var selectedCustomer by remember { mutableStateOf<CustomerFirm?>(null) }
-//    val invoiceItems = remember { mutableStateListOf<InvoiceItem>() }
-//
-//    var shippingCharges by remember { mutableDoubleStateOf(0.0.toMoney()) }
-//    var shippedTo by remember { mutableStateOf("") }
-//    var vehicleNumber by remember { mutableStateOf("") }
-//
-//    var isRoundOffEnabled by remember { mutableStateOf(true) }
-//    var isInvoiceNoEditable by remember { mutableStateOf(false) }
-//
-//    // Payment related (you can expand later)
-//    var paymentMode by remember { mutableStateOf<PaymentMode?>(null) }
-//    var paymentStatus by remember { mutableStateOf(PaymentStatus.UNPAID) }
-//    var receivedAmount by remember { mutableDoubleStateOf(0.0.toMoney()) }
-//    var paymentDateMillis by remember { mutableStateOf<Long?>(null) }
-//
-//    // ─── Date picker ───────────────────────────────────────
-//    val datePickerState = rememberDatePickerState(
-//        initialSelectedDateMillis = when (mode) {
-//            is InvoiceFormMode.Edit -> invoiceById?.date?.toLongOrNull()
-//            else -> System.currentTimeMillis()
-//        } ?: System.currentTimeMillis()
-//    )
-//    var showDatePicker by remember { mutableStateOf(false) }
-//    val selectedDateMillis = datePickerState.selectedDateMillis ?: System.currentTimeMillis()
-//
-//    val formattedDate = remember(selectedDateMillis) {
-//        SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-//            .format(Date(selectedDateMillis))
-//    }
-//
-//    // ─── Business logic ────────────────────────────────────
-//    val sellerStateCode = selectedSeller.stateCode
-//    val supplyType = resolveSupplyType(sellerStateCode, selectedCustomer?.stateCode)
-//
-//    val itemsTotal = invoiceItems.sumOf { it.total }.toMoney()
-//    val taxableAmount = (itemsTotal + shippingCharges).toMoney()
-//
-//    val gstBreakdown = calculateGst(taxableAmount, supplyType)
-//
-//    val totalBeforeTax = taxableAmount
-//    val totalWithTax = (totalBeforeTax + gstBreakdown.totalTax).toMoney()
-//
-//    val totalAmount = if (isRoundOffEnabled) {
-//        totalWithTax.roundToInt().toDouble()
-//    } else {
-//        totalWithTax
-//    }
-//
-//    val gst = calculateGst(
-//        taxableAmount = taxableAmount,
-//        supplyType = supplyType
-//    )
-//    val roundOffDifference = totalAmount - totalWithTax
-//
-//
-//    // ─── Load existing invoice (edit mode) ─────────────────
-//    LaunchedEffect(mode) {
-//        if (mode is InvoiceFormMode.Edit) {
-//            viewModel.getInvoiceById(mode.invoiceId)
-//        }
-//    }
-//
-//    LaunchedEffect(invoiceById) {
-//        val invoice = invoiceById ?: return@LaunchedEffect
-//
-//        invoiceNo = invoice.invoiceNo
-//        userEditedInvoiceNo = true
-//
-//        selectedCustomer = invoice.customerDetails
-//        vehicleNumber = invoice.vehicleNumber.orEmpty()
-//        shippingCharges = invoice.shippingCharge ?: 0.0
-//        shippedTo = invoice.shippedTo.orEmpty()
-//        isRoundOffEnabled = true   // or load from DB if you store it
-//
-//        invoiceItems.clear()
-//        invoiceItems.addAll(invoice.items)
-//    }
-//
-//    // ─── Bottom sheets control ─────────────────────────────
-//    var activeSheet by remember { mutableStateOf(SheetType.NONE) }
-//    var productSheetMode by remember { mutableStateOf(ProductSheetMode.LIST) }
-//
-//    // ─── Dialog control ─────────────────────────────
-//    var activeDialog by remember { mutableStateOf(false) }
-//
-//
-//    val savedSellerId by financePreferences.selectedSellerFirmId.collectAsState(initial = null)
-//    val savedSellerName by financePreferences.selectedSellerFirmName.collectAsState(initial = null)
-//
-//
-//    // ─── Main generation logic ─────────────────────────────
-//
-//    fun canGenerateInvoice(): Boolean = when {
-//        selectedSeller.id == null -> false
-//        selectedCustomer == null -> false
-//        invoiceItems.isEmpty() -> false
-//        invoiceNo.isBlank() -> false
-//        else -> true
-//    }
-//
-//    fun generateInvoice() {
-//
-//        if (!canGenerateInvoice()) {
-//            Toast.makeText(context, "Please fill all required fields", Toast.LENGTH_LONG).show()
-//            return
-//        }
-//
-//        val invoice = Invoice(
-//            id = invoiceId,
-//            invoiceNo = invoiceNo.trim(),
-//            date = selectedDateMillis.toString(),
-//            sellerId = selectedSeller.id?.toString() ?: return,
-//            customerDetails = selectedCustomer ?: return,
-//            supplyType = supplyType,
-//            vehicleNumber = vehicleNumber.trim(),
-//            items = invoiceItems.toList(),
-//            shippingCharge = shippingCharges.takeIf { it > 0 },
-//            shippedTo = shippedTo.trim(),
-//            totalBeforeTax = totalBeforeTax,
-//            gst = gstBreakdown,
-//            totalAmount = totalAmount,
-//            amountInWords = numberToWords(totalAmount),
-//            status = InvoiceStatus.FINAL
-//            // payment fields can be added here when implemented
-//        )
-//
-//        scope.launch {
-//            when (mode) {
-//                is InvoiceFormMode.Create -> {
-//                    viewModel.insertInvoice(invoice)
-//
-//                    // Only increment if user kept the auto-suggested value
-//                    // (this avoids incrementing when user typed custom like "2025-001")
-//                    val wasAutoUsed = !userEditedInvoiceNo &&
-//                            invoiceNo.trim() == suggestedInvoiceNo
-//
-//                    if (wasAutoUsed) {
-//                        val nextNumeric = (lastInvoiceNo + 1)
-//                            .coerceIn(INVOICE_NUMBER_MIN, INVOICE_NUMBER_MAX)
-//                        financePreferences.saveLastInvoiceNumber(nextNumeric)
-//                    }
-//                }
-//
-//                is InvoiceFormMode.Edit -> {
-//                    viewModel.updateInvoice(invoice)
-//                }
-//            }
-//
-//            // increment ONLY if auto-suggested invoice number was used
-//            val autoNumberUsed =
-//                !userEditedInvoiceNo && invoiceNo == (lastInvoiceNo + 1).toString()
-//
-//            if (autoNumberUsed) {
-//                financePreferences.saveLastInvoiceNumber(lastInvoiceNo + 1)
-//            }
-//
-//            Toast.makeText(
-//                context,
-//                "Invoice generated successfully",
-//                Toast.LENGTH_LONG
-//            ).show()
-//
-//            delay(400) // UX stability
-//            invoiceNo = ""
-//            suggestedInvoiceNo = ""
-//            userEditedInvoiceNo = false
-//            onInvoicePreview(invoiceId)
-//        }
-//    }
-//
-//
-//
-//
-//    Scaffold(
-//        containerColor = BgDark,
-//        topBar = {
-//            TopAppBar(
-//                title = {
-//                    Text(
-//                        if (mode is InvoiceFormMode.Edit) "Edit Invoice" else "New GST Invoice",
-//                        color = TextWhite,
-//                        fontWeight = FontWeight.Bold
-//                    )
-//                },
-//                navigationIcon = {
-//                    IconButton(onClick = onBack) {
-//                        Icon(
-//                            Icons.AutoMirrored.Filled.ArrowBack,
-//                            contentDescription = "Back",
-//                            tint = TextWhite
-//                        )
-//                    }
-//                },
-//                actions = {
-//                    if (mode is InvoiceFormMode.Create) {
-//                        TextButton(onClick = { /* Save Draft */ }) {
-//                            Text(
-//                                "Save as Draft",
-//                                color = PrimaryBlue,
-//                                fontWeight = FontWeight.Bold
-//                            )
-//                        }
-//                    }
-//                },
-//                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF0D1117))
-//            )
-//        },
-//        bottomBar = {
-//            BottomActionSection(
-//                totalAmount = "₹ ${String.format("%.2f", totalAmount)}",
-//                onGenerate = { generateInvoice() },
-//                mode = mode
-//            )
-//        }
-//    ) { paddingValues ->
-//
-//        Box(modifier = Modifier.padding(paddingValues)) {
-//            Column(
-//                modifier = Modifier
-//                    .fillMaxSize()
-//                    .verticalScroll(rememberScrollState())
-//                    .padding(16.dp)
-//                    .padding(bottom = 100.dp), // Extra padding for bottom bar
-//                verticalArrangement = Arrangement.spacedBy(20.dp)
-//            ) {
-//                // --- Invoice Details Section ---
-//                SectionGroup(title = "Invoice Details") {
-//                    // Invoice No
-//                    CustomTextField(
-//                        value = invoiceNo,
-//                        onValueChange = {
-//                            invoiceNo = it
-//                            userEditedInvoiceNo = true
-//                        },
-//                        placeholder = "001",
-//                        enabled = isInvoiceNoEditable,
-//                        highlightWhenEditable = true,
-//                        trailingIcon = {
-//                            IconButton(onClick = {
-//                                isInvoiceNoEditable = !isInvoiceNoEditable
-//                            }) {
-//                                Icon(
-//                                    Icons.Outlined.Edit,
-//                                    contentDescription = null,
-//                                    tint = if (isInvoiceNoEditable) PrimaryBlue else TextGray,
-//                                    modifier = Modifier.size(20.dp)
-//                                )
-//                            }
-//                        }
-//                    )
-//                }
-//
-//                // --- Date & Customer Row ---
-//                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-//                    // Date
-//                    Column(
-//                        modifier = Modifier.weight(1f),
-//                        verticalArrangement = Arrangement.spacedBy(8.dp)
-//                    ) {
-//                        Text(
-//                            "Date",
-//                            color = TextGray,
-//                            fontSize = 14.sp,
-//                            fontWeight = FontWeight.Medium
-//                        )
-//                        CustomTextField(
-//                            value = formattedDate,
-//                            onValueChange = {},
-//                            enabled = false, // Read only, click triggers picker
-//                            trailingIcon = {
-//                                Icon(
-//                                    Icons.Default.DateRange,
-//                                    null,
-//                                    tint = TextGray,
-//                                    modifier = Modifier.size(18.dp)
-//                                )
-//                            },
-//                            onClick = { showDatePicker = true }
-//                        )
-//                    }
-//
-//                    // Customer
-//                    Column(
-//                        modifier = Modifier.weight(1.2f),
-//                        verticalArrangement = Arrangement.spacedBy(8.dp)
-//                    ) {
-//                        Text(
-//                            "Customer",
-//                            color = TextGray,
-//                            fontSize = 14.sp,
-//                            fontWeight = FontWeight.Medium
-//                        )
-//                        CustomTextField(
-//                            value = selectedCustomer?.name ?: "",
-//                            onValueChange = {},
-//                            placeholder = "Select Customer",
-//                            enabled = false,
-//                            trailingIcon = {
-//                                Icon(
-//                                    Icons.Default.KeyboardArrowDown,
-//                                    null,
-//                                    tint = TextGray,
-//                                    modifier = Modifier.size(22.dp)
-//                                )
-//                            },
-//                            onClick = { activeSheet = SheetType.CUSTOMER }
-//                        )
-//                    }
-//                }
-//
-//                HorizontalDivider(color = Color(0xFF1E293B))
-//
-//                // --- Products Section ---
-//                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-//                    Row(
-//                        modifier = Modifier.fillMaxWidth(),
-//                        horizontalArrangement = Arrangement.SpaceBetween,
-//                        verticalAlignment = Alignment.CenterVertically
-//                    ) {
-//                        Text(
-//                            "Products",
-//                            fontSize = 18.sp,
-//                            fontWeight = FontWeight.Bold,
-//                            color = TextWhite
-//                        )
-//                        Badge(
-//                            containerColor = PrimaryBlue.copy(alpha = 0.2f),
-//                            contentColor = PrimaryBlue
-//                        ) {
-//                            Text("${invoiceItems.size} Items", modifier = Modifier.padding(4.dp))
-//                        }
-//                    }
-//
-//                    // Product List
-//                    invoiceItems.forEachIndexed { index, item ->
-//                        ProductItemCard(
-//                            item = item,
-//                            onDelete = { invoiceItems.remove(item) },
-//
-//                            onQtyChange = { newQty ->
-//                                val updated = item.copy(
-//                                    quantity = newQty,
-//                                    total = newQty * item.price
-//                                )
-//                                invoiceItems[index] = updated
-//                            },
-//                            onPriceChange = { newPrice ->
-//                                val updated = item.copy(
-//                                    price = newPrice,
-//                                    total = newPrice * item.quantity
-//                                )
-//                                invoiceItems[index] = updated
-//                            }
-//                        )
-//                    }
-//
-//                    // Add Product Button
-//                    Box(
-//                        modifier = Modifier
-//                            .fillMaxWidth()
-//                            .border(
-//                                1.dp,
-//                                Color(0xFF475569),
-//                                RoundedCornerShape(12.dp)
-//                            ) // Dashed border simulated
-//                            .clip(RoundedCornerShape(12.dp))
-//                            .clickable { activeSheet = SheetType.PRODUCT }
-//                            .padding(12.dp),
-//                        contentAlignment = Alignment.Center
-//                    ) {
-//                        Row(
-//                            verticalAlignment = Alignment.CenterVertically,
-//                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-//                        ) {
-//                            Icon(
-//                                Icons.Default.Add,
-//                                null,
-//                                tint = PrimaryBlue,
-//                                modifier = Modifier.size(20.dp)
-//                            )
-//                            Text(
-//                                "Add Product",
-//                                color = PrimaryBlue,
-//                                fontWeight = FontWeight.SemiBold
-//                            )
-//                        }
-//                    }
-//                }
-//
-//                // --- Additional Charges ---
-//                SectionGroup(title = "Additional Charges") {
-//                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-//                        // Delivery
-//                        Column(
-//                            modifier = Modifier.weight(1f),
-//                            verticalArrangement = Arrangement.spacedBy(8.dp)
-//                        ) {
-//                            Text("Delivery", color = TextGray, fontSize = 12.sp)
-//                            CustomTextField(
-//                                value = if (shippingCharges == 0.0) "" else shippingCharges.toString(),
-//                                onValueChange = { shippingCharges = it.toDoubleOrNull() ?: 0.0 },
-//                                placeholder = "0.00",
-//                                prefix = {
-//                                    Text(
-//                                        "₹ ",
-//                                        color = Color(0xFF64748B),
-//                                        fontSize = 14.sp
-//                                    )
-//                                },
-//                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-//                            )
-//                        }
-//                        // Extra Charges
-//                        Column(
-//                            modifier = Modifier.weight(1f),
-//                            verticalArrangement = Arrangement.spacedBy(8.dp)
-//                        ) {
-//                            Text("Extra Charges", color = TextGray, fontSize = 12.sp)
-//                            CustomTextField(
-//                                value = "",
-//                                onValueChange = {},
-//                                placeholder = "0.00",
-//                                prefix = {
-//                                    Text(
-//                                        "Rs ",
-//                                        color = Color(0xFF64748B),
-//                                        fontSize = 14.sp
-//                                    )
-//                                },
-//                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-//                            )
-//                        }
-//                    }
-//                }
-//
-//
-//                // --- Tax Breakdown ---
-//                Card(
-//                    colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-//                    border = CardDefaults.outlinedCardBorder().copy(
-//                        brush = SolidColor(Color(0xFF1F2937))
-//                    ),
-//                    shape = RoundedCornerShape(12.dp)
-//                ) {
-//                    Column(
-//                        modifier = Modifier.padding(16.dp),
-//                        verticalArrangement = Arrangement.spacedBy(10.dp)
-//                    ) {
-//
-//                        Text(
-//                            "TAX BREAKDOWN",
-//                            fontSize = 12.sp,
-//                            fontWeight = FontWeight.Bold,
-//                            color = TextWhite,
-//                            letterSpacing = 1.sp
-//                        )
-//
-//                        // Base rows
-//                        TaxRow(
-//                            label = "Items Total",
-//                            value = "₹ ${"%.2f".format(itemsTotal)}"
-//                        )
-//
-//                        TaxRow(
-//                            label = "Shipping Charges",
-//                            value = "₹ ${"%.2f".format(shippingCharges)}"
-//                        )
-//
-//                        HorizontalDivider(color = BorderDark)
-//
-//                        TaxRow(
-//                            label = "Taxable Amount",
-//                            value = "₹ ${"%.2f".format(taxableAmount)}",
-//                            isTotal = true
-//                        )
-//
-//                        HorizontalDivider(color = BorderDark)
-//
-//                        // GST rows
-//                        if (supplyType == SupplyType.INTRA_STATE) {
-//
-//                            TaxRow(
-//                                label = "CGST (${gst.cgstRate.toInt()}%)",
-//                                value = "₹ ${"%.2f".format(gst.cgstAmount)}"
-//                            )
-//
-//                            TaxRow(
-//                                label = "SGST (${gst.sgstRate.toInt()}%)",
-//                                value = "₹ ${"%.2f".format(gst.sgstAmount)}"
-//                            )
-//
-//                        } else {
-//
-//                            TaxRow(
-//                                label = "IGST (${gst.igstRate.toInt()}%)",
-//                                value = "₹ ${"%.2f".format(gst.igstAmount)}"
-//                            )
-//                        }
-//
-//                        HorizontalDivider(color = BorderDark)
-//
-//                        // Round Off Toggle
-//                        Row(
-//                            modifier = Modifier.fillMaxWidth(),
-//                            horizontalArrangement = Arrangement.SpaceBetween,
-//                            verticalAlignment = Alignment.CenterVertically
-//                        ) {
-//                            Text(
-//                                text = "Round Off",
-//                                color = TextGray,
-//                                fontSize = 14.sp
-//                            )
-//                            Row(verticalAlignment = Alignment.CenterVertically) {
-//                                if (isRoundOffEnabled && roundOffDifference != 0.0) {
-//                                    Text(
-//                                        text = "${if (roundOffDifference > 0) "+" else ""}${
-//                                            "%.2f".format(
-//                                                roundOffDifference
-//                                            )
-//                                        }",
-//                                        color = if (roundOffDifference != 0.0) PrimaryBlue else TextGray,
-//                                        fontSize = 12.sp,
-//                                        modifier = Modifier.padding(end = 8.dp)
-//                                    )
-//                                }
-//                                Switch(
-//                                    checked = isRoundOffEnabled,
-//                                    onCheckedChange = { isRoundOffEnabled = it },
-//                                    colors = SwitchDefaults.colors(
-//                                        checkedThumbColor = TextWhite,
-//                                        checkedTrackColor = PrimaryBlue,
-//                                        uncheckedThumbColor = TextGray,
-//                                        uncheckedTrackColor = SurfaceDark,
-//                                        uncheckedBorderColor = BorderDark
-//                                    ),
-//                                    modifier = Modifier.scale(0.8f)
-//                                )
-//                            }
-//                        }
-//
-//                        HorizontalDivider(color = BorderDark)
-//
-//                        TaxRow(
-//                            label = "Total Amount",
-//                            value = "₹ ${"%.2f".format(totalAmount)}",
-//                            isTotal = true
-//                        )
-//                    }
-//                }
-//
-//
-//                // --- Optional Triggers ---
-//                Column(
-//                    modifier = Modifier
-//                        .clip(RoundedCornerShape(12.dp))
-//                        .border(1.dp, BorderDark, RoundedCornerShape(12.dp))
-//                ) {
-//                    SettingItem(icon = Icons.Outlined.AccountBox, title = "Bank Details")
-//                    HorizontalDivider(color = BorderDark)
-//                    SettingItem(
-//                        icon = Icons.Outlined.Edit,
-//                        title = "Select Signature",
-//                        badge = "Selected"
-//                    )
-//                    HorizontalDivider(color = BorderDark)
-//                    SettingItem(icon = Icons.Outlined.Info, title = "Notes & Terms")
-//                    HorizontalDivider(color = BorderDark)
-//                    SettingItem(
-//                        icon = Icons.Outlined.PlayArrow,
-//                        title = "Shipping Address",
-//                        subtitle = shippedTo.takeIf { it.isNotBlank() },
-//                        badge = if (shippedTo.isBlank()) "Add" else null,
-//                        onClick = { activeDialog = true },
-//                        onClear = if (shippedTo.isNotBlank()) {
-//                            { shippedTo = "" }
-//                        } else null
-//                    )
-//
-//
-//                }
-//
-//                //payment
-//                SectionGroup(title = "Payment") {
-//                    Column(
-//                        modifier = Modifier
-//                            .clip(RoundedCornerShape(12.dp))
-//                            .border(1.dp, BorderDark, RoundedCornerShape(12.dp))
-//                    ) {
-//                        SettingItem(
-//                            icon = Icons.Outlined.CheckCircle,
-//                            title = "Payment Status",
-//                            subtitle = paymentStatus.name.replace("_", " "),
-//                            onClick = {
-//                                paymentStatus = when (paymentStatus) {
-//                                    PaymentStatus.UNPAID -> PaymentStatus.PARTIAL
-//                                    PaymentStatus.PARTIAL -> PaymentStatus.PAID
-//                                    PaymentStatus.PAID -> PaymentStatus.UNPAID
-//                                }
-//                            }
-//                        )
-//
-//                        HorizontalDivider(color = BorderDark)
-//
-//                        // Payment Mode
-//                        SettingItem(
-//                            icon = Icons.Outlined.Email,
-//                            title = "Payment Mode",
-//                            subtitle = paymentMode?.name ?: "Select",
-//                            badge = if (paymentMode == null) "Add" else null,
-//                            onClick = {
-//                                // open dialog / bottom sheet later
-//                            }
-//                        )
-//
-//                        HorizontalDivider(color = BorderDark)
-//
-//                        // Received Amount
-//                        SettingItem(
-//                            icon = Icons.Outlined.ShoppingCart,
-//                            title = "Amount Received",
-//                            subtitle = if (receivedAmount > 0) "₹ ${"%.2f".format(receivedAmount)}" else null,
-//                            badge = if (receivedAmount == 0.0) "Add" else null,
-//                            onClick = {
-//                                // open input dialog
-//                            }
-//                        )
-//
-//                        HorizontalDivider(color = BorderDark)
-//
-//                        // Payment Date
-//                        SettingItem(
-//                            icon = Icons.Outlined.DateRange,
-//                            title = "Payment Date",
-//                            subtitle = paymentDateMillis?.let {
-//                                SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-//                                    .format(Date(it))
-//                            },
-//                            badge = if (paymentDateMillis == null) "Add" else null,
-//                            onClick = {
-//                                // date picker later
-//                            }
-//                        )
-//                    }
-//                }
-//            }
-//        }
-//    }
-//
-//    // --- Date Picker Dialog ---
-//    if (showDatePicker) {
-//        DatePickerDialog(
-//            onDismissRequest = { showDatePicker = false },
-//            confirmButton = {
-//                TextButton(onClick = { showDatePicker = false }) { Text("OK") }
-//            },
-//            dismissButton = {
-//                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
-//            }
-//        ) {
-//            DatePicker(state = datePickerState)
-//        }
-//    }
-//
-//    // --- Bottom Sheets ---
-//    AppBottomSheet(
-//        showSheet = activeSheet != SheetType.NONE,
-//        onDismiss = {
-//            activeSheet = SheetType.NONE
-//            productSheetMode = ProductSheetMode.LIST
-//        }
-//    ) {
-//        when (activeSheet) {
-//            SheetType.CUSTOMER -> {
-//                SelectionSheetContent(
-//                    title = "Select Customer",
-//                    items = customers,
-//                    searchPredicate = { c, q ->
-//                        c.name.contains(q, true) || (c.gstin?.contains(q, true) == true)
-//                    },
-//                    rowContent = { CustomerRow(it) },
-//                    onSelect = {
-//                        selectedCustomer = it
-//                        activeSheet = SheetType.NONE
-//                    }
-//                )
-//
-//            }
-//
-//            SheetType.PRODUCT -> {
-//                AnimatedContent(
-//                    targetState = productSheetMode,
-//                    transitionSpec = {
-//                        slideInHorizontally { it } + fadeIn() togetherWith
-//                                slideOutHorizontally { -it } + fadeOut()
-//                    },
-//                    label = "ProductSheetAnimation"
-//                ) { mode ->
-//                    when (mode) {
-//
-//                        ProductSheetMode.LIST -> {
-//                            ProductListSheet(
-//                                products = products,
-//                                onAddClick = {
-//                                    productSheetMode = ProductSheetMode.CREATE
-//                                },
-//                                onSelect = { product ->
-//                                    invoiceItems.add(
-//                                        InvoiceItem(
-//                                            id = UUID.randomUUID().toString(),
-//                                            productId = product.id,
-//                                            name = product.name,
-//                                            unit = product.unit,
-//                                            price = product.sellingPrice,
-//                                            quantity = 1.0,
-//                                            hsn = product.hsn,
-//                                            total = product.sellingPrice
-//                                        )
-//                                    )
-//                                    activeSheet = SheetType.NONE
-//                                }
-//                            )
-//                        }
-//
-//                        ProductSheetMode.CREATE -> {
-//                            CreateProductSheet(
-//                                onCreate = { newProduct ->
-//                                    viewModel.insertProduct(newProduct)
-//                                    productSheetMode = ProductSheetMode.LIST
-//                                },
-//                                onBack = {
-//                                    productSheetMode = ProductSheetMode.LIST
-//                                }
-//                            )
-//                        }
-//                    }
-//                }
-//            }
-//
-//            else -> {}
-//        }
-//    }
-//    // for shipped to input
-//    AppDialog(
-//        show = activeDialog,
-//        title = "Enter Shipping Address",
-//        message = "Provide the shipping address for the invoice.",
-//        showInput = true,
-//        inputLabel = "Shipping Address",
-//        confirmText = "Add",
-//        onConfirm = { address ->
-//            shippedTo = address.orEmpty()
-//            activeDialog = false
-//        },
-//        onDismiss = { activeDialog = false }
-//    )
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-}
+    val viewModel: InvoiceViewModel = viewModel(
+        factory = InvoiceViewModelFactory(context)
+    )
 
-@Composable
-fun ProductListSheet(
-    products: List<Product>,
-    onAddClick: () -> Unit,
-    onSelect: (Product) -> Unit
-) {
-    var query by remember { mutableStateOf("") }
+    val financePreferences = remember { FinancePreferences(context) }
+    val lastInvoiceNo by financePreferences.lastInvoiceNumber.collectAsState(initial = 0L)
+    val selectedSeller by financePreferences.selectedSeller.collectAsState(
+        initial = SelectedSellerPref(null, null, null)
+    )
 
-    val filteredProducts = remember(query, products) {
-        if (query.isBlank()) products
-        else products.filter {
-            it.name.contains(query, ignoreCase = true) ||
-                    it.hsn.contains(query, ignoreCase = true)
+
+    var formState by remember {
+        mutableStateOf(
+            InvoiceFormState(
+                entity = InvoiceEntity(
+                    id = if (mode is InvoiceFormMode.Edit) mode.invoiceId else UUID.randomUUID().toString(),
+                    invoiceDate = System.currentTimeMillis(),
+                    status = InvoiceStatus.ACTIVE,
+                    globalGstRate = 18.0, // Default GST Rate
+                    eWayBillDate = null
+                )
+            )
+        )
+    }
+
+    // Relational/Complex UI States
+    val invoiceItems = remember { mutableStateListOf<InvoiceItemEntity>() }
+    var selectedCustomer by remember { mutableStateOf<PartyWithContacts?>(null) }
+    var isRoundOffEnabled by remember { mutableStateOf(true) }
+
+    var suggestedInvoiceNo by remember { mutableStateOf("") }
+    var userEditedInvoiceNo by remember { mutableStateOf(false) }
+
+    // ─── 2. AUTO-INVOICE GENERATION ────────────────────────────────────────
+    LaunchedEffect(lastInvoiceNo) {
+        if (mode is InvoiceFormMode.Create) {
+            val nextNumber = (lastInvoiceNo + 1).coerceIn(INVOICE_NUMBER_MIN, INVOICE_NUMBER_MAX)
+            val padded = nextNumber.toPaddedInvoiceNumber()
+            suggestedInvoiceNo = padded
+            if (!userEditedInvoiceNo) {
+                // Update the entity inside our single state
+                formState = formState.copy(
+                    entity = formState.entity.copy(invoiceNumber = padded)
+                )
+            }
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 300.dp, max = 600.dp)
-            .padding(16.dp)
-    ) {
+    // ─── 3. EDIT MODE POPULATION ───────────────────────────────────────────
+    LaunchedEffect(mode) {
+        if (mode is InvoiceFormMode.Edit) {
+            val existingData = viewModel.getInvoiceByIdSync(mode.invoiceId)
+            existingData?.let { data ->
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Select Product", fontWeight = FontWeight.Bold)
+                val existingPayment = data.payments.firstOrNull()
 
-            IconButton(onClick = onAddClick) {
-                Icon(Icons.Default.Add, contentDescription = null)
+                // Boom. The entire form and entity populates in one go.
+                formState = formState.copy(
+                    entity = data.invoice,
+                    receivedAmount = existingPayment?.amount ?: 0.0,
+                    paymentMode = existingPayment?.paymentMode ?: PaymentMode.CASH,
+                    paymentNotes = existingPayment?.notes ?: ""
+                )
+                userEditedInvoiceNo = true
+
+                // Populate Customer Data (Assuming you have a fetch method)
+                selectedCustomer = data.customer
+
+                invoiceItems.clear()
+                invoiceItems.addAll(data.items)
+            }
+        }
+    }
+
+    // ─── 4. REACTIVE BUSINESS LOGIC ────────────────────────────────────────
+    // Supply type updates automatically based on seller vs customer states
+    val currentSupplyType = resolveSupplyType(selectedSeller.stateCode, selectedCustomer?.party?.stateCode)
+
+    LaunchedEffect(currentSupplyType) {
+        if (formState.entity.supplyType != currentSupplyType) {
+            formState = formState.copy(
+                entity = formState.entity.copy(supplyType = currentSupplyType)
+            )
+        }
+    }
+
+    // Shared Math engine (Zero manual math in this file!)
+    val billingSummary by remember {
+        derivedStateOf {
+            BillingCalculator.calculate(
+                itemSubTotal = invoiceItems.sumOf { it.taxableAmount },
+                discountAmount = formState.entity.globalDiscountAmount,
+                shippingCharges = formState.entity.deliveryCharge,
+                extraCharges = formState.entity.extraCharges,
+                globalGstRate = formState.entity.globalGstRate,
+                supplyType = formState.entity.supplyType,
+                isRoundOffEnabled = isRoundOffEnabled
+            )
+        }
+    }
+
+    // Dynamic Payment Status tracking
+    val currentPaymentStatus by remember(formState.receivedAmount, billingSummary.grandTotal) {
+        derivedStateOf {
+            when {
+                formState.receivedAmount <= 0.0 -> PaymentStatus.UNPAID
+                formState.receivedAmount >= billingSummary.grandTotal -> PaymentStatus.PAID
+                else -> PaymentStatus.PARTIAL
+            }
+        }
+    }
+
+    val isEWayBillRequired = billingSummary.grandTotal > 50000.0
+    var activeSheet by remember { mutableStateOf<SheetType?>(null) }
+
+
+    fun validateInvoice(): Boolean {
+        // 1. Seller Check (Internal check for firm profile)
+        if (selectedSeller.id == null) {
+            Toast.makeText(context, "Please select your Business Profile / Seller first", Toast.LENGTH_LONG).show()
+            return false
+        }
+
+        // 2. Customer Check
+        if (selectedCustomer == null) {
+            Toast.makeText(context, "Select a Customer to proceed", Toast.LENGTH_SHORT).show()
+            // Optional: Trigger a state to highlight the customer input in red
+            return false
+        }
+
+        // 3. Invoice Number Check
+        if (formState.entity.invoiceNumber.trim().isBlank()) {
+            Toast.makeText(context, "Invoice Number is required", Toast.LENGTH_SHORT).show()
+            return false
+        }
+
+        // 4. Items Check
+        if (invoiceItems.isEmpty()) {
+            Toast.makeText(context, "Please add at least one product to the invoice", Toast.LENGTH_SHORT).show()
+            return false
+        }
+
+
+        // 6. E-Way Bill Strict Validation (GST Rules)
+        if (isEWayBillRequired) {
+            if (formState.entity.eWayBillNumber.isNullOrBlank()) {
+                Toast.makeText(context, "E-Way Bill No. is mandatory for transactions over ₹50,000", Toast.LENGTH_LONG).show()
+                return false
+            }
+            if (formState.entity.eWayBillDate == null) {
+                Toast.makeText(context, "E-Way Bill Date is required", Toast.LENGTH_LONG).show()
+                return false
+            }
+
+
+            // Case B: Missing Vehicle Number (Part B of E-Way Bill)
+            if (formState.entity.vehicleNumber.isNullOrBlank()) {
+                Toast.makeText(context, "Vehicle Number is required for E-Way Bill generation", Toast.LENGTH_LONG).show()
+                return false
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        // 7. Payment Validation (Optional: Prevent negative received amounts)
+        if (formState.receivedAmount < 0) {
+            Toast.makeText(context, "Received amount cannot be negative", Toast.LENGTH_SHORT).show()
+            return false
+        }
 
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search product or HSN") },
-            singleLine = true,
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = null
-                )
-            }
+        return true
+    }
+
+    // ─── 5. SUBMISSION LOGIC ───────────────────────────────────────────────
+    fun saveInvoice() {
+        if (!validateInvoice()) return
+
+        val hasEwayBill = !formState.entity.eWayBillNumber.isNullOrBlank()
+
+        // 2. Apply calculated math to the final entity
+        val finalRecord = formState.entity.copy(
+            // invoice number added
+            sellerId = selectedSeller.id,
+            customerId = selectedCustomer!!.party.id,
+
+            vehicleNumber = if (hasEwayBill) formState.entity.vehicleNumber else null,
+            deliveryCharge = formState.entity.deliveryCharge,
+            shippedToAddress = formState.entity.shippedToAddress,
+            eWayBillNumber = if (hasEwayBill) formState.entity.eWayBillNumber else null,
+            eWayBillDate = if (hasEwayBill) formState.entity.eWayBillDate else null,
+
+
+            // Output from BillingCalculator
+            itemSubTotal = billingSummary.itemSubTotal,
+            totalTaxableAmount = billingSummary.totalTaxableAmount,
+            cgstAmount = billingSummary.cgstAmount,
+            sgstAmount = billingSummary.sgstAmount,
+            igstAmount = billingSummary.igstAmount,
+            roundOff = billingSummary.roundOff,
+            grandTotal = billingSummary.grandTotal,
+
+            // ... inside finalRecord copy block
+            placeOfSupplyCode = extractStateCodeFromGst(selectedCustomer?.party?.gstNumber) ?: "",
+
+
+            amountInWords = numberToWords(billingSummary.grandTotal),
+            paymentStatus = currentPaymentStatus,
+            isEdited = mode is InvoiceFormMode.Edit,
+            updatedAt = System.currentTimeMillis()
         )
 
-        LazyColumn {
-            items(filteredProducts) { product ->
+        val finalItems = invoiceItems.map { it.copy(invoiceId = finalRecord.id) }
+
+        // 3. Draft Payment Transaction
+        val paymentTransaction = if (formState.receivedAmount > 0) {
+            PaymentTransactionEntity(
+                id = UUID.randomUUID().toString(),
+                partyId = selectedCustomer!!.party.id,
+                documentId = finalRecord.id,
+                type = TransactionType.CREDIT,
+                amount = formState.receivedAmount,
+                paymentMode = formState.paymentMode,
+                transactionDate = System.currentTimeMillis(),
+                notes = formState.paymentNotes.takeIf { it.isNotBlank() } ?: "Payment for ${finalRecord.invoiceNumber}"
+            )
+        } else null
+
+        // 4. Execute Save
+        scope.launch {
+            if (mode is InvoiceFormMode.Create) {
+                viewModel.createInvoice(finalRecord, finalItems, paymentTransaction) // -> add payment details later
+
+                // Advance the global invoice counter only if the user didn't overwrite the auto-generated number
+                if (!userEditedInvoiceNo && finalRecord.invoiceNumber == suggestedInvoiceNo) {
+                    financePreferences.saveLastInvoiceNumber((lastInvoiceNo + 1).coerceIn(INVOICE_NUMBER_MIN, INVOICE_NUMBER_MAX))
+                }
+            } else {
+                viewModel.editInvoice(finalRecord, finalItems, paymentTransaction)
+            }
+
+            Toast.makeText(context, "Invoice Saved Successfully", Toast.LENGTH_SHORT).show()
+            delay(300)
+            onInvoicePreview(finalRecord.id)
+        }
+    }
+
+
+    AnimatedHeaderScrollView(
+        largeTitle = if (mode is InvoiceFormMode.Edit) "Edit Invoice" else "Create Invoice",
+        onBack = onBack,
+        isParentRoute = true,
+    ) {
+
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+
+                // 1st row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.weight(0.5f)) {
+                        Input(
+                            label = "Invoice Number",
+                            value = formState.entity.invoiceNumber,
+                            onValueChange = {
+                                formState = formState.copy(
+                                    entity = formState.entity.copy(invoiceNumber = it)
+                                )
+                                userEditedInvoiceNo = true
+                            },
+                            placeholder = "e.g. INV/24-25/001",
+                            singleLine = true,
+                            allCaps = true,
+                            isError = formState.entity.invoiceNumber.isEmpty()
+                        )
+                    }
+
+
+                    Box(modifier = Modifier.weight(0.5f)) {
+                        //date block
+                        DateFieldPicker(
+                            dateMillis = formState.entity.invoiceDate,
+                            onDateChange = { newDate ->
+                                // Constraint: Generally, Invoice Date shouldn't be in the future
+                                val today = System.currentTimeMillis()
+                                if (newDate <= today) {
+                                    formState = formState.copy(
+                                        entity = formState.entity.copy(invoiceDate = newDate)
+                                    )
+                                }
+                            },
+                            label = "Invoice Date",
+                            isError = formState.entity.invoiceDate == 0L
+                        )
+                    }
+
+                }
+
+// 2nd row
+                Box {
+                    Input(
+                        label = "Customer / Party",
+                        value = selectedCustomer?.party?.businessName ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        placeholder = "Select Customer",
+//                        isError = supplierError,
+                    )
+
+                    // The invisible shield that catches the click
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable { activeSheet = SheetType.CUSTOMER }
+                    )
+                }
+
+                // Product Section
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Products",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AxiomTheme.colors.textPrimary
+                        )
+                        Badge(
+                            containerColor = AxiomTheme.components.card.selectedBorder.copy(alpha = 0.2f),
+                            contentColor = AxiomTheme.components.card.selectedBorder
+                        ) {
+                            Text("${invoiceItems.size} Items", modifier = Modifier.padding(4.dp))
+                        }
+                    }
+                }
+
+            }
+        }
+
+        // Product List
+        items(invoiceItems, key = { it.id }) { item ->
+            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                ProductItemCard(
+                    item = item,
+                    onDelete = { invoiceItems.remove(item) },
+                    onQtyChange = { newQty ->
+                        val index = invoiceItems.indexOf(item)
+                        if (index != -1) {
+                            invoiceItems[index] = item.copy(
+                                quantity = newQty,
+                                taxableAmount = newQty * item.sellingPriceAtTime
+                            )
+                        }
+                    },
+                    onPriceChange = { newPrice ->
+                        val index = invoiceItems.indexOf(item)
+                        if (index != -1) {
+                            invoiceItems[index] = item.copy(
+                                sellingPriceAtTime = newPrice,
+                                taxableAmount = newPrice * item.quantity
+                            )
+                        }
+                    }
+                )
+            }
+        }
+
+        // button to add products
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Add Product Button
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onSelect(product) }
-                        .padding(vertical = 8.dp)
+                        .border(1.dp, Color(0xFF475569), RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { activeSheet = SheetType.PRODUCT } // Just set the enum
+                        .padding(12.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    ProductCard(product)
-                }
-            }
-        }
-    }
-}
-
-
-@Composable
-fun CreateProductSheet(
-    onCreate: (Product) -> Unit,
-    onBack: () -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var hsn by remember { mutableStateOf("") }
-    var price by remember { mutableStateOf("") }
-    var unit by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("") }
-
-    var showUnitDialog by remember { mutableStateOf(false) }
-
-    if (showUnitDialog) {
-        UnitSelectionDialog(
-            onDismiss = { showUnitDialog = false },
-            onUnitSelected = {
-                unit = it
-                showUnitDialog = false
-            }
-        )
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.85f)
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-
-        // Header
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
-            }
-            Text(
-                "Add New Product",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        HorizontalDivider()
-
-        // Name
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Product Name") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        // HSN
-        OutlinedTextField(
-            value = hsn,
-            onValueChange = { hsn = it },
-            label = { Text("HSN Code") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        // Price
-        OutlinedTextField(
-            value = price,
-            onValueChange = { price = it },
-            label = { Text("Selling Price") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        // Unit (clickable)
-        Box {
-            OutlinedTextField(
-                value = unit,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Unit") },
-                placeholder = { Text("Select Unit") },
-                leadingIcon = { Icon(Icons.Default.Info, null) },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clickable { showUnitDialog = true }
-            )
-        }
-
-        // Category (optional)
-        OutlinedTextField(
-            value = category,
-            onValueChange = { category = it },
-            label = { Text("Category (Optional)") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        // Actions
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OutlinedButton(
-                onClick = onBack,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Cancel")
-            }
-
-            Button(
-                onClick = {
-                    onCreate(
-                        Product(
-                            id = UUID.randomUUID().toString(),
-                            name = name,
-                            hsn = hsn,
-                            sellingPrice = price.toDoubleOrNull() ?: 0.0,
-                            unit = unit,
-                            category = category,
-                            active = true,
-                            createdAt = System.currentTimeMillis()
-                        )
-                    )
-                },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Save")
-            }
-        }
-    }
-}
-
-
-// --- Components ---
-
-@Composable
-fun <T> SelectionSheetContent(
-    title: String,
-    items: List<T>,
-    searchPredicate: (T, String) -> Boolean,
-    rowContent: @Composable (T) -> Unit,
-    onSelect: (T) -> Unit
-) {
-    var query by remember { mutableStateOf("") }
-
-    val filteredItems = remember(query, items) {
-        if (query.isBlank()) items
-        else items.filter { searchPredicate(it, query) }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 300.dp, max = 600.dp)
-            .padding(16.dp)
-    ) {
-
-        // Title
-        Text(
-            title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        // Search
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Search") },
-            singleLine = true
-        )
-
-        Spacer(Modifier.height(12.dp))
-        Divider()
-        Spacer(Modifier.height(8.dp))
-
-        // Content
-        if (filteredItems.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No results", color = TextGray)
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f)
-            ) {
-                items(filteredItems) { item ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(item) }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        rowContent(item)
+                        Icon(Icons.Default.Add, null, tint = AxiomTheme.components.card.title, modifier = Modifier.size(20.dp))
+                        Text("Add Product", color = AxiomTheme.components.card.title, fontWeight = FontWeight.SemiBold)
                     }
                 }
+
+
             }
         }
-    }
-}
 
-@Composable
-fun CustomerRow(customer: CustomerFirm) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 10.dp)
-    ) {
-        Text(
-            customer.name,
-            fontWeight = FontWeight.Medium,
-            fontSize = 14.sp
-        )
-
-        customer.gstin?.takeIf { it.isNotBlank() }?.let {
-            Spacer(Modifier.height(2.dp))
-            Text(
-                it,
-                fontSize = 12.sp,
-                color = TextGray
-            )
-        }
-    }
-    Divider()
-}
-
-@Composable
-fun ProductCard(product: Product) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        shape = RoundedCornerShape(12.dp),
-//        border = BorderStroke(1.dp, BorderDark),
-        color = SurfaceDark
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-
-            Text(
-                product.name,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp
-            )
-
-            Spacer(Modifier.height(4.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
+        //Transport & E-Way Bill
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text("HSN: ${product.hsn}", fontSize = 12.sp, color = TextGray)
-                Text("Unit: ${product.unit}", fontSize = 12.sp, color = TextGray)
-            }
+                Accordion(
+                    title = "Transport & E-Way Bill",
+                ) {
+                    // 1st row
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(modifier = Modifier.weight(0.6f)) {
+                            Input(
+                                value = formState.entity.eWayBillNumber ?: "",
+                                onValueChange = { input ->
+                                    // Constraint: Only allow numbers and limit to 12 digits
+                                    if (input.length <= 12 && input.all { it.isDigit() }) {
+                                        formState = formState.copy(
+                                            entity = formState.entity.copy(eWayBillNumber = input.takeIf { it.isNotBlank() })
+                                        )
+                                    }
+                                },
+                                label = "E-Way Bill Number",
+                                placeholder = "12-digit number",
+                                keyboardType = KeyboardType.Number,
+                                imeAction = ImeAction.Next,
+                                singleLine = true,
+                                isError = formState.entity.eWayBillNumber?.length in 1..11
+                            )
+                        }
+                        Box(modifier = Modifier.weight(0.4f)) {
+                            DateFieldPicker(
+                                dateMillis = formState.entity.eWayBillDate ?: 0L,
+                                onDateChange = { newDate ->
+                                    // FIX: Always update the state so the UI reflects the user's choice
+                                    formState = formState.copy(
+                                        entity = formState.entity.copy(eWayBillDate = newDate)
+                                    )
+                                },
+                                label = "E-Way Bill Date",
+                            )
+                        }
+                    }
 
-            Spacer(Modifier.height(6.dp))
+                    //2nd row
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            Input(
+                                value = formState.entity.vehicleNumber ?: "",
+                                onValueChange = { input ->
+                                    // 1. Force Uppercase
+                                    // 2. Remove spaces/special chars (sanitization)
+                                    // 3. Limit to 10-12 characters
+                                    val sanitized = input.uppercase().filter { it.isLetterOrDigit() }
+                                    if (sanitized.length <= 10) {
+                                        formState = formState.copy(
+                                            entity = formState.entity.copy(vehicleNumber = sanitized.takeIf { it.isNotBlank() })
+                                        )
+                                    }
+                                },
+                                label = "Vehicle Number",
+                                placeholder = "e.g DL01AB123",
+                                allCaps = true,
+                                singleLine = true,
+                                keyboardType = KeyboardType.Password,
+                                imeAction = ImeAction.Next,
+                                isError = formState.entity.vehicleNumber?.let {
+                                    it.length > 0 && !it.matches(Regex("^[A-Z]{2}[0-9]{1,2}[A-Z]{0,2}[0-9]{4}$"))
+                                } ?: false
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+//                            Input(
+//                                value = formState.entity.placeOfSupplyCode ?: "",
+//                                onValueChange = {
+//                                    formState = formState.copy(
+//                                        entity = formState.entity.copy(
+//                                            placeOfSupplyCode = it.trim()
+//                                        )
+//                                    )
+//                                },
+//                                label = "Place of Supply",
+//                                placeholder = "State/City",
+//                                keyboardType = KeyboardType.Number
+//                            )
+                        }
+                    }
 
-            Text(
-                "₹${"%.2f".format(product.sellingPrice)}",
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
-            )
-        }
-    }
-}
-
-
-@Composable
-fun SectionGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            title,
-            color = TextGray,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(start = 4.dp)
-        )
-        content()
-    }
-}
-
-@Composable
-fun CustomTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    placeholder: String = "",
-    enabled: Boolean = true,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    prefix: @Composable (() -> Unit)? = null,
-    trailingIcon: @Composable (() -> Unit)? = null,
-    onClick: (() -> Unit)? = null,
-    highlightWhenEditable: Boolean = false
-) {
-
-    val borderColor = if (highlightWhenEditable && enabled) PrimaryBlue else BorderDark
-
-    val backgroundColor =
-        if (highlightWhenEditable && enabled)
-            PrimaryBlue.copy(alpha = 0.08f)
-        else
-            SurfaceDark
-
-
-    val containerModifier = modifier
-        .fillMaxWidth()
-        .height(56.dp)
-        .clip(RoundedCornerShape(12.dp))
-        .background(backgroundColor)
-        .border(1.dp, borderColor, RoundedCornerShape(12.dp))
-        .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier)
-        .padding(horizontal = 16.dp)
-
-    Row(
-        modifier = containerModifier,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (prefix != null) {
-            prefix()
-        }
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            enabled = enabled && onClick == null, // Disable editing if it's a click-action field
-            textStyle = TextStyle(
-                color = TextWhite,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
-            ),
-            singleLine = true,
-            keyboardOptions = keyboardOptions,
-            modifier = Modifier.weight(1f),
-            decorationBox = { innerTextField ->
-                if (value.isEmpty()) {
-                    Text(placeholder, color = TextGray, fontSize = 16.sp)
+                    //3rd row
+                    Input(
+                        value = formState.entity.shippedToAddress ?: "",
+                        onValueChange = {
+                            formState = formState.copy(
+                                entity = formState.entity.copy(shippedToAddress = it.takeIf { it.isNotBlank() })
+                            )
+                        },
+                        label = "Shipped To",
+                        placeholder = "Delivery address if different",
+                        imeAction = ImeAction.Default,
+                        singleLine = false,
+                    )
                 }
-                innerTextField()
             }
-        )
-        if (trailingIcon != null) {
-            Box(modifier = Modifier.padding(start = 8.dp)) {
-                trailingIcon()
+
+
+        }
+
+        //Charges & Discounts
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Accordion(
+                    title = "Charges & Discounts",
+                ) {
+                    // 1st row
+                    // Shipping / Extra charges
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Box(modifier = Modifier.weight(1f)) {
+                            Input(
+                                value = if (formState.entity.deliveryCharge == 0.0) "" else formState.entity.deliveryCharge.toString(),
+                                onValueChange = { input ->
+                                    // Allow empty, digits, and a single decimal point
+                                    if (input.isEmpty() || input.matches(Regex("""^\d*\.?\d*$"""))) {
+                                        formState = formState.copy(
+                                            entity = formState.entity.copy(
+                                                deliveryCharge = input.toDoubleOrNull() ?: 0.0
+                                            )
+                                        )
+                                    }
+                                },
+                                label = "Shipping Charges",
+                                placeholder = "0.00",
+                                keyboardType = KeyboardType.Decimal,
+                                imeAction = ImeAction.Next
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f)) {
+                            Input(
+                                value = if (formState.entity.extraCharges == 0.0) "" else formState.entity.extraCharges.toString(),
+                                onValueChange = { input ->
+                                    if (input.isEmpty() || input.matches(Regex("""^\d*\.?\d*$"""))) {
+                                        formState = formState.copy(
+                                            entity = formState.entity.copy(
+                                                extraCharges = input.toDoubleOrNull() ?: 0.0
+                                            )
+                                        )
+                                    }
+                                },
+                                label = "Extra Charges",
+                                placeholder = "0.00",
+                                keyboardType = KeyboardType.Decimal,
+                                imeAction = ImeAction.Done
+                            )
+                        }
+                    }
+
+
+                    //3rd row
+                    Input(
+                        value = if (formState.entity.globalDiscountAmount == 0.0) "" else formState.entity.globalDiscountAmount.toString(),
+                        onValueChange = { input ->
+                            // Constraint 1: Only allow numbers and a single decimal point
+                            if (input.isEmpty() || input.matches(Regex("""^\d*\.?\d*$"""))) {
+                                val discountValue = input.toDoubleOrNull() ?: 0.0
+
+                                // Constraint 2: Prevent discount from being higher than the subtotal (Optional but recommended)
+                                // val maxAllowed = formState.entity.subTotal ?: Double.MAX_VALUE
+
+                                formState = formState.copy(
+                                    entity = formState.entity.copy(
+                                        globalDiscountAmount = discountValue
+                                    )
+                                )
+                            }
+                        },
+                        label = "Discount Amount",
+                        placeholder = "0.00",
+                        singleLine = true,
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Next,
+                        isError = formState.entity.globalDiscountAmount < 0
+                    )
+                }
+            }
+
+
+        }
+
+
+        //fields needed
+        // Signature
+        // Bank Details
+        // Notes & Terms
+        // Bank Details
+
+        // Payment Status
+        // Payment Mode
+        // Received Amount
+        // Payment Date
+
+        // --- Tax Breakdown ---
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(12.dp))
+                    .background(AxiomTheme.components.card.background, RoundedCornerShape(12.dp))
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("TAX BREAKDOWN", color = AxiomTheme.colors.textPrimary, fontSize = 15.sp)
+
+                SummaryRow("Items Total", billingSummary.itemSubTotal, "gray")
+
+                if (formState.entity.globalDiscountAmount > 0) {
+                    SummaryRow("Discount", -formState.entity.globalDiscountAmount, "red")
+                }
+
+                if (formState.entity.deliveryCharge > 0) {
+                    SummaryRow("Shipping Charges", formState.entity.deliveryCharge)
+                }
+
+                if (formState.entity.extraCharges > 0) {
+                    SummaryRow("Extra Charges", formState.entity.extraCharges)
+                }
+
+
+                Divider(color = Color(0xFF333333))
+
+                SummaryRow(
+                    "Total Taxable Amount",
+                    billingSummary.totalTaxableAmount,
+                    isBold = true
+                )
+
+                val globalRate = formState.entity.globalGstRate
+
+
+                if (formState.entity.supplyType == SupplyType.INTRA_STATE) {
+                    val halfRate = (globalRate / 2).toInt()
+
+                    if (billingSummary.cgstAmount > 0) {
+                        SummaryRow("CGST ($halfRate%)", billingSummary.cgstAmount, "blue")
+                    }
+                    if (billingSummary.sgstAmount > 0) {
+                        SummaryRow("SGST ($halfRate%)", billingSummary.sgstAmount, "blue")
+                    }
+                } else {
+                    if (billingSummary.igstAmount > 0) {
+                        SummaryRow("IGST (${globalRate.toInt()}%)", billingSummary.igstAmount, "blue")
+                    }
+                }
+
+                Divider(color = Color(0xFF333333))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row {
+                        Text("Round Off", color = AxiomTheme.colors.textPrimary, fontSize = 13.sp, modifier = Modifier.padding(end = 12.dp))
+                        AnimatedSwitch(
+                            checked = isRoundOffEnabled,
+                            onCheckedChange = { isRoundOffEnabled = it },
+                            size = SwitchSize.SM,
+                        )
+                    }
+
+                    Text(
+                        Amount.format(-billingSummary.roundOff),
+                        color = if (billingSummary.roundOff != 0.0) PrimaryBlue else TextGray,
+                        fontSize = 13.sp
+                    )
+                }
+
+                Divider(color = Color(0xFF333333))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Grand Total", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = AxiomTheme.components.card.title)
+                    Text(
+                        Amount.format(billingSummary.grandTotal),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = AxiomTheme.components.card.title
+                    )
+                }
+            }
+
+        }
+
+        //save button
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    text = "Save as Draft",
+                    onClick = {},
+                    variant = ButtonVariant.Gray,
+                    modifier = Modifier.weight(1f)
+                )
+
+                Button(
+                    text = if (mode is InvoiceFormMode.Create) "Submit" else "Update",
+                    onClick = { saveInvoice() },
+                    icon = Icons.Default.Check,
+                    variant = ButtonVariant.White,
+                    modifier = Modifier.weight(1f)
+                )
+
+            }
+        }
+
+    }
+
+
+
+
+    AppBottomSheet(
+        showSheet = activeSheet != null,
+        onDismiss = { activeSheet = null }
+    ) {
+
+        when (activeSheet) {
+
+            SheetType.PRODUCT -> {
+
+                ProductListSheetWrapper(
+                    onConfirmSelection = { selectedProducts ->
+
+                        selectedProducts.forEach { product ->
+
+                            invoiceItems.add(
+                                InvoiceItemEntity(
+                                    id = UUID.randomUUID().toString(),
+                                    productId = product.id,
+                                    productNameSnapshot = product.name,
+                                    hsnSnapshot = product.hsn,
+                                    quantity = 1.0,
+                                    sellingPriceAtTime = product.sellingPrice,
+                                    taxableAmount = product.sellingPrice,
+                                    unitSnapshot = product.unit,
+                                    costPriceAtTime = product.costPrice
+
+                                )
+                            )
+
+                        }
+                        activeSheet = null
+                    },
+                    onBack = { activeSheet = null }
+                )
+            }
+
+            SheetType.CUSTOMER -> {
+
+                CustomerListSheetWrapper(
+
+                    onConfirmSelection = { party ->
+                        selectedCustomer = party
+                        activeSheet = null
+                    },
+
+                    onBack = { activeSheet = null }
+                )
+            }
+
+            null, SheetType.NONE -> { /* Safe empty state */
             }
         }
     }
-}
 
+
+}
 
 @Composable
 fun ProductItemCard(
-    item: InvoiceItem,
+    item: InvoiceItemEntity,
     onDelete: () -> Unit,
     onQtyChange: (Double) -> Unit,
     onPriceChange: (Double) -> Unit,
-    isDark: Boolean = true
 ) {
-    val TextSlate400 = Color(0xFF94A3B8)
-    val TextSlate500 = Color(0xFF64748B)
-    val TextSlate900 = Color(0xFF0F172A)
-    val PrimaryBlue = Color(0xFF3B82F6)
-    val BlueBg = Color(0xFF1E3A8A).copy(alpha = 0.1f)
-    val BlueRing = Color(0xFF3B82F6).copy(alpha = 0.2f)
-    val InputBg = Color(0xFF15161E)
-    val InputBorder = Color.White.copy(alpha = 0.05f)
-    val GrayBg = Color(0xFFF9FAFB)
-    val GrayBorder = Color(0xFFF3F4F6)
 
-    val surfaceColor = if (isDark) SurfaceDark else Color.White
-    val borderColor = if (isDark) BorderDark else GrayBorder
-    val textPrimary = if (isDark) TextWhite else TextSlate900
-    val textSecondary = if (isDark) TextSlate500 else TextSlate400
-    val inputBackground = if (isDark) InputBg else GrayBg
-    val inputBorderColor = if (isDark) InputBorder else GrayBorder
-    val iconBg = if (isDark) BlueBg else Color(0xFFDEEBFF)
-    val iconRing = if (isDark) BlueRing else Color(0xFFBFDBFE)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(surfaceColor)
-            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+            .background(AxiomTheme.components.card.background)
+            .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(12.dp))
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -1461,14 +967,14 @@ fun ProductItemCard(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(iconBg)
-                        .border(1.dp, iconRing, RoundedCornerShape(8.dp)),
+                        .background(AxiomTheme.components.textInput.unfocusedBg)
+                        .border(1.dp, AxiomTheme.components.textInput.unfocusedBorder, RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.ShoppingCart, // Replace with web icon
                         contentDescription = null,
-                        tint = PrimaryBlue,
+                        tint = AxiomTheme.components.card.selectedBorder,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -1478,16 +984,16 @@ fun ProductItemCard(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        text = item.name,
-                        color = textPrimary,
+                        text = item.productNameSnapshot,
+                        color = AxiomTheme.components.card.title,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = item.hsn,
-                        color = textSecondary,
+                        text = item.hsnSnapshot,
+                        color = AxiomTheme.components.card.subtitle,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -1502,7 +1008,7 @@ fun ProductItemCard(
                 Icon(
                     imageVector = Icons.Outlined.Delete,
                     contentDescription = "Delete",
-                    tint = Color.Red,
+                    tint = AxiomTheme.components.card.title,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -1520,20 +1026,25 @@ fun ProductItemCard(
                     .weight(1.3f)
                     .height(40.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(inputBackground)
-                    .border(1.dp, inputBorderColor, RoundedCornerShape(8.dp))
+                    .background(AxiomTheme.components.textInput.unfocusedBg)
+                    .border(1.dp, AxiomTheme.components.textInput.unfocusedBorder, RoundedCornerShape(8.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Qty",
-                    color = TextSlate400,
+                    color = AxiomTheme.components.card.subtitle,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(end = 8.dp)
                 )
 
-                var qtyText by remember { mutableStateOf(item.quantity.toInt().toString()) }
+                var qtyText by remember(item.id) {
+                    mutableStateOf(
+                        if (item.quantity % 1.0 == 0.0) item.quantity.toInt().toString()
+                        else item.quantity.toString()
+                    )
+                }
 
                 BasicTextField(
                     value = qtyText,
@@ -1542,7 +1053,7 @@ fun ProductItemCard(
                         it.toDoubleOrNull()?.takeIf { q -> q > 0 }?.let(onQtyChange)
                     },
                     textStyle = TextStyle(
-                        color = textPrimary,
+                        color = AxiomTheme.components.card.title,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Start
@@ -1564,24 +1075,23 @@ fun ProductItemCard(
                     .weight(1.5f)
                     .height(40.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(inputBackground)
-                    .border(1.dp, inputBorderColor, RoundedCornerShape(8.dp))
+                    .background(AxiomTheme.components.textInput.unfocusedBg)
+                    .border(1.dp, AxiomTheme.components.textInput.unfocusedBorder, RoundedCornerShape(8.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Rate",
-                    color = TextSlate400,
+                    color = AxiomTheme.components.card.subtitle,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(end = 0.dp)
                 )
 
-                var priceText by remember {
+                var priceText by remember(item.id) {
                     mutableStateOf(
-                        if (item.price == 0.0) "" else "%.2f".format(
-                            item.price
-                        )
+                        if (item.sellingPriceAtTime == 0.0) ""
+                        else "%.2f".format(item.sellingPriceAtTime)
                     )
                 }
 
@@ -1592,7 +1102,7 @@ fun ProductItemCard(
                         it.toDoubleOrNull()?.takeIf { p -> p >= 0 }?.let(onPriceChange)
                     },
                     textStyle = TextStyle(
-                        color = textPrimary,
+                        color = AxiomTheme.components.card.title,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center
@@ -1624,14 +1134,14 @@ fun ProductItemCard(
             ) {
                 Text(
                     text = "TOTAL",
-                    color = TextSlate400,
+                    color = AxiomTheme.components.card.subtitle,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 1.sp
                 )
                 Text(
-                    text = "${"Rs %.2f".format(item.total)}",
-                    color = PrimaryBlue,
+                    text = "${"Rs %.2f".format(item.taxableAmount)}",
+                    color = AxiomTheme.components.card.selectedBorder,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -1643,141 +1153,6 @@ fun ProductItemCard(
 }
 
 
-@Composable
-fun TaxRow(label: String, value: String, isTotal: Boolean = false) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            color = if (isTotal) Color(0xFFCBD5E1) else TextGray,
-            fontSize = 14.sp,
-            fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal
-        )
-        Text(
-            text = value,
-            color = if (isTotal) TextWhite else TextGray,
-            fontSize = 14.sp,
-            fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal
-        )
-    }
-}
-
-@Composable
-fun SettingItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String? = null,
-    badge: String? = null,
-    onClick: (() -> Unit)? = null,
-    onClear: (() -> Unit)? = null
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (onClick != null)
-                    Modifier.clickable(onClick = onClick)
-                else
-                    Modifier
-            )
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-
-        ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(icon, null, tint = TextGray, modifier = Modifier.size(20.dp))
-            Column {
-                Text(title, color = TextWhite, fontSize = 14.sp)
-                subtitle?.let {
-                    Text(
-                        it,
-                        color = TextGray,
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-        }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            when {
-                badge != null -> {
-                    Text(
-                        badge,
-                        color = PrimaryBlue,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                onClear != null || subtitle != null -> {
-                    // no arrow when value exists
-                }
-
-                else -> {
-                    Icon(
-                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        null,
-                        tint = TextGray,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
 
 
-            if (onClear != null) {
-                Icon(
-                    imageVector = Icons.Outlined.Delete,
-                    contentDescription = "Clear",
-                    tint = TextGray,
-                    modifier = Modifier
-                        .size(18.dp)
-                        .clickable(onClick = onClear)
-                )
-            }
-        }
 
-    }
-}
-
-@Composable
-fun BottomActionSection(totalAmount: String, onGenerate: () -> Unit, mode: InvoiceFormMode) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFF0D1117))
-            .padding(16.dp)
-            .padding(bottom = 20.dp) // Handle system nav bar
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text("Total Amount", color = TextGray, fontSize = 12.sp)
-                Text(totalAmount, color = TextWhite, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            }
-
-
-            Button(
-                onClick = onGenerate,
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(if (mode is InvoiceFormMode.Edit) "Update" else "Generate", color = TextWhite)
-            }
-
-        }
-    }
-}

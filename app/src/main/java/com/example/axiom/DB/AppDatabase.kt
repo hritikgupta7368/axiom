@@ -25,6 +25,9 @@ import com.example.axiom.ui.screens.finances.product.components.ProductEntity
 import com.example.axiom.ui.screens.finances.purchase.components.PurchaseDao
 import com.example.axiom.ui.screens.finances.purchase.components.PurchaseItemEntity
 import com.example.axiom.ui.screens.finances.purchase.components.PurchaseRecordEntity
+import com.example.axiom.ui.screens.finances.quotation.components.QuotationDao
+import com.example.axiom.ui.screens.finances.quotation.components.QuotationEntity
+import com.example.axiom.ui.screens.finances.quotation.components.QuotationItemEntity
 
 
 @Database(
@@ -37,8 +40,8 @@ import com.example.axiom.ui.screens.finances.purchase.components.PurchaseRecordE
         PaymentTransactionEntity::class,
         PurchaseRecordEntity::class,
         PurchaseItemEntity::class,
-//        QuotationEntity::class,
-//        QuotationItemEntity::class,
+        QuotationEntity::class,
+        QuotationItemEntity::class,
 
 
         VaultEntryEntity::class,
@@ -64,7 +67,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun calendarDao(): CalendarDao
 
 
-//    abstract fun quotationDao(): QuotationDao
+    abstract fun quotationDao(): QuotationDao
 
 
     // and daos here

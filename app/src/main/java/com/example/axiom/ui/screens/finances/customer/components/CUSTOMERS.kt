@@ -15,7 +15,6 @@ import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 enum class ContactType { PHONE, EMAIL, WEBSITE }
-enum class GstRegistrationType { REGISTERED, COMPOSITION, UNREGISTERED }
 enum class PartyType {
     CUSTOMER,
     SUPPLIER,
@@ -32,16 +31,13 @@ data class PartyEntity(
     //common fields
     val businessName: String = "",
     val logoUrl: String? = null,
-    val registrationType: GstRegistrationType = GstRegistrationType.REGISTERED, // B2B vs B2C
+    val registrationType: String = "GST", // B2B vs B2C
     val gstNumber: String? = null,
     val stateCode: String? = null,
-    val city: String? = null,
-    val state: String? = null,
-    val pinCode: String? = null,
     val address: String? = null,
-    val notes: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long? = null,
+    val isDeleted: Boolean = false,
 
 
     //Customer related
@@ -53,10 +49,9 @@ data class PartyEntity(
 
     //seller only
     val bankName: String? = null,
-    val branchName: String? = null,
+    val branchName: String? = "Sahibabad",
     val accountNumber: String? = null,
     val ifscCode: String? = null,
-    val upiId: String? = null,
     val signatureUrl: String? = null,
     val stampUrl: String? = null,
 
@@ -102,12 +97,13 @@ interface PartyDao {
     // CREATE / UPDATE
     // -----------------------
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(party: PartyEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(parties: List<PartyEntity>)
 
+    // FIX: Standard update modifies the row without deleting it
     @Update
     suspend fun update(party: PartyEntity)
 
@@ -118,7 +114,7 @@ interface PartyDao {
     @Query(
         """
         SELECT * FROM party
-        WHERE partyType = :type
+        WHERE partyType = :type AND isDeleted = 0
         ORDER BY businessName ASC
     """
     )
@@ -136,17 +132,50 @@ interface PartyDao {
     @Query(
         """
         SELECT * FROM party
-        WHERE partyType = :type
+        WHERE partyType = :type AND isDeleted = 0
         AND businessName LIKE '%' || :query || '%'
         ORDER BY businessName ASC
     """
     )
     fun searchByType(type: PartyType, query: String): Flow<List<PartyEntity>>
 
+    @Transaction
+    @Query(
+        """
+    SELECT * FROM party
+    WHERE partyType = :type AND isDeleted = 0
+    ORDER BY businessName ASC
+"""
+    )
+    fun getByTypeWithContacts(type: PartyType): Flow<List<PartyWithContacts>>
+
+
+    @Transaction
+    @Query(
+        """
+    SELECT * FROM party
+    WHERE partyType = :type AND isDeleted = 0
+    AND businessName LIKE '%' || :query || '%'
+    ORDER BY businessName ASC
+"""
+    )
+    fun searchByTypeWithContacts(
+        type: PartyType,
+        query: String
+    ): Flow<List<PartyWithContacts>>
+
     // -----------------------
-    // DELETE
+    // DELETE (SOFT DELETE)
     // -----------------------
 
+    // FIX: Soft Delete updates the flag instead of removing the row
+    @Query("UPDATE party SET isDeleted = 1 WHERE id = :id")
+    suspend fun softDelete(id: String)
+
+    @Query("UPDATE party SET isDeleted = 1 WHERE id IN (:ids)")
+    suspend fun softDeleteAll(ids: List<String>)
+
+    // HARD DELETE: Kept just in case, but you should rarely use this
     @Query("DELETE FROM party WHERE id = :id")
     suspend fun deleteById(id: String)
 
@@ -154,8 +183,12 @@ interface PartyDao {
     suspend fun deleteAll(ids: List<String>)
 
     // -----------------------
-    // CONTACTS
+    // CONTACTS & UPSERTS
     // -----------------------
+
+    @Transaction
+    @Query("SELECT * FROM party WHERE id = :id LIMIT 1")
+    suspend fun getPartyWithContacts(id: String): PartyWithContacts?
 
 
     @Transaction
@@ -163,24 +196,27 @@ interface PartyDao {
         party: PartyEntity,
         contacts: List<PartyContactEntity>
     ) {
-        insert(party)
-        deleteAllContacts(party.id)
-        contacts.forEach { insertContact(it) }
+        upsertPartyWithContacts(party, contacts)
     }
 
-    @Transaction
-    @Query("SELECT * FROM party WHERE id = :id LIMIT 1")
-    suspend fun getPartyWithContacts(id: String): PartyWithContacts?
 
     @Transaction
     suspend fun upsertPartyWithContacts(
         party: PartyEntity,
         contacts: List<PartyContactEntity>
     ) {
-        insert(party)
+        // 1. Check if the party already exists
+        val existingParty = getById(party.id)
 
+        // 2. Safely Update or Insert without triggering REPLACE (which causes FK drops)
+        if (existingParty != null) {
+            update(party)
+        } else {
+            insert(party)
+        }
+
+        // 3. Handle Contacts (It is safe to delete/re-insert child tables like contacts)
         deleteAllContacts(party.id)
-
         contacts.forEach { contact ->
             insertContact(contact.copy(partyId = party.id))
         }
@@ -216,4 +252,21 @@ interface PartyDao {
     """
     )
     suspend fun getTotalPurchasesForSupplier(supplierId: String): Double
+
+
+    // --- EXPORT ---
+    @Query("SELECT * FROM party")
+    suspend fun exportAllParties(): List<PartyEntity>
+
+    @Query("SELECT * FROM party_contacts")
+    suspend fun exportAllContacts(): List<PartyContactEntity>
+
+    // --- RESTORE ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restoreParties(parties: List<PartyEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restoreContacts(contacts: List<PartyContactEntity>)
+
+
 }

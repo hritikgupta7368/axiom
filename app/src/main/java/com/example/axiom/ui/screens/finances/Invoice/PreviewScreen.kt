@@ -1,7 +1,6 @@
 package com.example.axiom.ui.screens.finances.Invoice
 
-//import com.example.axiom.data.finances.InvoiceViewModelFactory
-import android.net.Uri
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -13,227 +12,157 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.axiom.data.finances.CustomerFirm
-import com.example.axiom.data.finances.GstBreakdown
-import com.example.axiom.data.finances.Invoice
-import com.example.axiom.data.finances.InvoiceItem
-import com.example.axiom.data.finances.InvoiceStatus
-import com.example.axiom.data.finances.SupplyType
-import com.example.axiom.ui.components.shared.button.AppIconButton
-import com.example.axiom.ui.components.shared.button.AppIcons
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.axiom.ui.components.shared.header.AnimatedHeaderScrollView
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceEntity
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceItemEntity
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceStatus
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceViewModel
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceViewModelFactory
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceWithItems
+import com.example.axiom.ui.screens.finances.Invoice.components.PaymentStatus
+import com.example.axiom.ui.screens.finances.Invoice.components.PaymentTransactionEntity
+import com.example.axiom.ui.screens.finances.Invoice.components.SupplyType
+import com.example.axiom.ui.screens.finances.customer.components.PartyEntity
+import com.example.axiom.ui.theme.AxiomTheme
+import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// --- Colors matched from your Design ---
 
-private val SurfaceDarker = Color(0xFF111219)
+// --- Color Palette ---
+private val BgDark = Color(0xFF0F172A)
 
 private val TextDarkGray = Color(0xFF64748B)
 
-private val GreenText = Color(0xFF22C55E)
-private val GreenBg = Color(0xFF14532D) // Darker green for bg
-private val BlueBg = Color(0xFF1E3A8A) // Darker blue for bg
-private val PurpleText = Color(0xFFA855F7)
-private val PurpleBg = Color(0xFF581C87) // Darker purple for bg
+private val AccentBlue = Color(0xFF3B82F6)
+private val AccentBlueBg = Color(0xFF1E3A8A)
+private val AccentGreen = Color(0xFF10B981)
+private val AccentGreenBg = Color(0xFF064E3B)
+private val AccentOrange = Color(0xFFF59E0B)
+private val AccentOrangeBg = Color(0xFF78350F)
+
 
 @Composable
 fun InvoicePreviewScreen(
-    invoiceId: String? = null, // ID parameter as requested
+    invoiceId: String? = null,
     onBack: () -> Unit,
-    onNavigateToPdfViewer: (Uri) -> Unit,
     onEditInvoice: (String) -> Unit
-
 ) {
     val context = LocalContext.current
-//    val invoiceViewModel: InvoiceViewModel = viewModel(
-//        factory = InvoiceViewModelFactory(context)
-//    )
+    val viewModel: InvoiceViewModel = viewModel(factory = InvoiceViewModelFactory(context))
 
-    val currentInvoice = Invoice(
-        id = "INV_ID_001",
-        invoiceNo = "INV-2026-0001",
-        date = "01-02-2026",
-        sellerId = "SELLER_001",
-        customerDetails = CustomerFirm(
-            id = "CUST_001",
-            name = "Sharma Traders",
-            gstin = "22AAAAA0000A1Z5",
-            address = "MG Road, Raipur, Chhattisgarh - 492001",
-            contactNumber = "9876543210",
-            email = "sharma.traders@gmail.com",
-            stateCode = "22",
-            image = null,
-            createdAt = System.currentTimeMillis(),
-            updatedAt = null,
-            active = true
-        ),
-        supplyType = SupplyType.INTRA_STATE,
-        vehicleNumber = "CG04AB1234",
-        shippedTo = "Raipur Warehouse",
-        items = listOf(
-            InvoiceItem(
-                id = "ITEM_001",
-                productId = "PROD_001",
-                name = "Cement Bag",
-                unit = "BAG",
-                price = 500.0,
-                quantity = 100.0,
-                hsn = "2523",
-                total = 50000.0
-            ),
+    var currentInvoiceWithItems by remember { mutableStateOf<InvoiceWithItems?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    val pdfUri by viewModel.pdfUri.collectAsStateWithLifecycle()
 
-            ),
-        totalBeforeTax = 50000.0,
-        gst = GstBreakdown(
-            cgstRate = 9.0,
-            sgstRate = 9.0,
-            cgstAmount = 4500.0,
-            sgstAmount = 4500.0,
-            totalTax = 9000.0
-        ),
-        shippingCharge = 1000.0,
-        totalAmount = 60000.0,
-        amountInWords = "Sixty Thousand Rupees Only",
-        status = InvoiceStatus.DRAFT,
-        createdAt = System.currentTimeMillis(),
-        version = 1
-    )
-//    val currentInvoice by invoiceViewModel.invoiceById.collectAsStateWithLifecycle()
-//    val pdfUri by invoiceViewModel.pdfUri.collectAsStateWithLifecycle()
-//
-//    LaunchedEffect(pdfUri) {
-//        pdfUri?.let {
-//            onNavigateToPdfViewer(it)
-//            invoiceViewModel.clearPdf()
-//        }
-//    }
+    LaunchedEffect(pdfUri) {
+        pdfUri?.let { uri ->
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "application/pdf"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(Intent.createChooser(intent, "Share Invoice"))
+            viewModel.clearPdf()
+        }
+    }
 
-//    LaunchedEffect(invoiceId) {
-//        if (invoiceId != null) {
-//            invoiceViewModel.getInvoiceById(invoiceId)
-//        }
-//    }
+    LaunchedEffect(invoiceId) {
+        if (invoiceId != null) {
+            isLoading = true
+            currentInvoiceWithItems = viewModel.getInvoiceByIdSync(invoiceId)
+            isLoading = false
+        } else {
+            isLoading = false
+        }
+    }
 
-    fun deleteInvoice(id: String) {
-//        invoiceViewModel.deleteById(id)
+    fun deleteInvoiceAction(id: String) {
+        viewModel.cancelInvoice(id)
         onBack()
     }
 
+    val customerName = currentInvoiceWithItems?.customer?.party?.businessName ?: "Unknown Customer"
+    val isCancelled = currentInvoiceWithItems?.invoice?.status == InvoiceStatus.CANCELLED
 
-    val invoiceNo = currentInvoice?.invoiceNo ?: "---"
-    val dateMillis = currentInvoice?.date?.toLongOrNull() ?: System.currentTimeMillis()
-    val date = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(dateMillis))
-    val customerName = currentInvoice?.customerDetails?.name ?: "Unknown Customer"
-    val grandTotal = "₹${String.format("%.2f", currentInvoice?.totalAmount ?: 0.0)}"
-    val status = currentInvoice?.status?.name ?: "DRAFT"
-
-
-
-    Scaffold(
-        containerColor = Color(0xFF000000),
-        topBar = {
-            PreviewTopBar(
-                onBack = onBack,
-                onDelete = { deleteInvoice(invoiceId ?: "") },
-                onUpdate = { onEditInvoice(invoiceId ?: "") })
-        },
-        bottomBar = {
-            currentInvoice?.let { nonNullInvoice ->
-                PreviewBottomBar(
-                    invoice = nonNullInvoice,
-                    logoUri = "",
-
-                    onGetPdfClick = {
-//                        invoiceViewModel.generatePdf(nonNullInvoice, "")
-                    }
-                )
-            }
+    AnimatedHeaderScrollView(
+        largeTitle = "Invoice Preview",
+        subtitle = customerName,
+        onBack = onBack,
+        selectionCount = 1,
+        showBack = true,
+        isSelectionMode = !isCancelled,
+        onDeleteClick = { invoiceId?.let { deleteInvoiceAction(it) } },
+        onEditClick = { invoiceId?.let { onEditInvoice(it) } },
+        onThirdOptionClick = {
+            currentInvoiceWithItems?.let { viewModel.generatePdf(it, "") }
         }
-    ) { paddingValues ->
-        val invoice = currentInvoice
+    ) {
+        val invoiceData = currentInvoiceWithItems
 
-        if (invoice == null) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color(0xFF3B82F6))
-            }
-        } else {
-            val date = remember(invoice.date) {
-                SimpleDateFormat(
-                    "MMM dd, yyyy",
-                    Locale.getDefault()
-                ).format(Date(invoice.date.toLongOrNull() ?: 0L))
-            }
-            val updatedText = remember(invoice.updatedAt) {
-                invoice.updatedAt?.let {
-                    val formatted = SimpleDateFormat(
-                        "MMM dd, yyyy • hh:mm a",
-                        Locale.getDefault()
-                    ).format(Date(it))
-                    "Updated $formatted"
+        if (isLoading || invoiceData == null) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = AxiomTheme.colors.accentBlue)
                 }
             }
+        } else {
+            val invoice = invoiceData.invoice
+            val customer = invoiceData.customer?.party
+            val seller = invoiceData.seller?.party
+            val payments = invoiceData.payments
 
-            Column(
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(bottom = 20.dp) // Extra space at bottom
-            ) {
-                // --- Header Card ---
-                HeaderCard(
-                    invoiceNo = invoice.invoiceNo,
-                    date = date,
-                    customer = invoice.customerDetails?.name ?: "Unknown Customer",
-                    status = invoice.status.name,
-                    updatedText = updatedText
-                )
+            item { HeaderCard(invoice = invoice) }
+            item { AddressSection(invoice = invoice, customer = customer) }
+            item { ProductDetailsSection(items = invoiceData.items, isCancelled = isCancelled) }
+            item { PaymentBreakdownCard(invoice = invoice, isCancelled = isCancelled) }
 
-                // --- Product Details ---
-                ProductDetailsSection(items = invoice.items)
-
-                // --- Payment Breakdown ---
-                PaymentBreakdownCard(invoice = invoice)
-
-                // --- Additional Info ---
-                AdditionalInfoSection()
+            // NEW: Payment History Section
+            if (payments.isNotEmpty()) {
+                item { PaymentHistorySection(payments = payments) }
             }
+
+            item { AdditionalInfoSection(invoice = invoice, seller = seller) }
+            item { Spacer(modifier = Modifier.height(32.dp)) }
         }
     }
 }
@@ -243,165 +172,84 @@ fun InvoicePreviewScreen(
 // -----------------------------------------------------------------------------
 
 @Composable
-fun PreviewTopBar(onBack: () -> Unit, onDelete: () -> Unit, onUpdate: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFF1C1D27))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
+fun HeaderCard(invoice: InvoiceEntity) {
+    val date = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(invoice.invoiceDate))
+    val isCancelled = invoice.status == InvoiceStatus.CANCELLED
 
-        AppIconButton(
-            icon = AppIcons.Back,
-            contentDescription = "back button",
-            onClick = onBack,
-        )
-        Text(
-            text = "Invoice Preview",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFFFFFFFF)
-        )
-
-        Row() {
-            // Hidden/Dummy Edit button to balance layout
-            AppIconButton(
-                icon = AppIcons.Edit,
-                contentDescription = "edit button",
-                onClick = onUpdate,
-            )
-            AppIconButton(
-                icon = AppIcons.Delete,
-                contentDescription = "delete button",
-                onClick = onDelete,
-            )
-        }
-
+    // Dynamic coloring based on AxiomTheme
+    val statusColor = when {
+        isCancelled -> AxiomTheme.colors.error
+        invoice.paymentStatus == PaymentStatus.PAID -> AxiomTheme.colors.accentGreen
+        invoice.paymentStatus == PaymentStatus.PARTIAL -> AxiomTheme.colors.accentBlue
+        else -> AxiomTheme.components.card.subtitle
     }
-    HorizontalDivider(color = Color(0xFF334155), thickness = 1.dp)
-}
 
-@Composable
-fun HeaderCard(
-    invoiceNo: String,
-    date: String,
-    customer: String,
-    status: String,
-    updatedText: String?
-) {
+    val statusBg = when {
+        isCancelled -> AxiomTheme.colors.error.copy(alpha = 0.15f)
+        invoice.paymentStatus == PaymentStatus.PAID -> AxiomTheme.colors.accentGreenBg
+        invoice.paymentStatus == PaymentStatus.PARTIAL -> AxiomTheme.colors.accentBlueBg
+        else -> AxiomTheme.colors.background
+    }
+
+    val displayStatus = if (isCancelled) "CANCELLED" else invoice.paymentStatus.name
+
     Box(
         modifier = Modifier
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF1C1D27))
-            .border(1.dp, Color(0xFF334155), RoundedCornerShape(16.dp))
+            .background(AxiomTheme.components.card.background)
+            .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(16.dp))
     ) {
-        // Decorative Circle
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = 10.dp, y = (-10).dp)
-                .size(96.dp)
-                .clip(RoundedCornerShape(bottomStart = 50.dp))
-                .background(Color(0xFF3B82F6).copy(alpha = 0.1f))
-        )
-
         Column(
             modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Top Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
                 Column {
-                    LabelText("INVOICE NUMBER")
+                    LabelText("INVOICE NO.")
                     Text(
-                        text = invoiceNo,
-                        fontSize = 20.sp,
+                        text = invoice.invoiceNumber,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFFFFFF)
+                        color = AxiomTheme.components.card.title,
+                        textDecoration = if (isCancelled) TextDecoration.LineThrough else TextDecoration.None
                     )
                 }
-                updatedText?.let {
-                    Column {
-                        LabelText("UPDATED AT")
-                        Text(
-                            text = it,
-                            fontSize = 11.sp,
-                            color = Color(0xFFFFFFFF),
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-
                 Column(horizontalAlignment = Alignment.End) {
                     LabelText("STATUS")
                     Box(
                         modifier = Modifier
-                            .background(Color(0xFF1E3A8A).copy(alpha = 0.5f), CircleShape)
-                            .padding(horizontal = 10.dp, vertical = 2.dp)
+                            .background(statusBg, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = status,
-                            color = Color(0xFF93C5FD),
+                            text = displayStatus,
+                            color = statusColor,
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
 
-            // Grid Row
             Row(modifier = Modifier.fillMaxWidth()) {
-                // Date
                 Column(modifier = Modifier.weight(1f)) {
-                    LabelText("DATE")
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.DateRange,
-                            null,
-                            tint = Color(0xFF94A3B8),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            date,
-                            color = Color(0xFFFFFFFF),
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp
-                        )
-                    }
+                    LabelText("INVOICE DATE")
+                    Text(date, color = AxiomTheme.components.card.title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 }
-                // Customer
                 Column(modifier = Modifier.weight(1f)) {
-                    LabelText("CUSTOMER")
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.AccountBox,
-                            null,
-                            tint = Color(0xFF94A3B8),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            customer,
-                            color = Color(0xFFFFFFFF),
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                    LabelText("PLACE OF SUPPLY")
+                    Text(
+                        invoice.placeOfSupplyCode.ifBlank { "N/A" },
+                        color = AxiomTheme.components.card.title,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
                 }
             }
         }
@@ -409,12 +257,67 @@ fun HeaderCard(
 }
 
 @Composable
-fun ProductDetailsSection(items: List<InvoiceItem>) {
-    Column(
+fun AddressSection(invoice: InvoiceEntity, customer: PartyEntity?) {
+    Row(
         modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 16.dp)
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(AxiomTheme.components.card.background)
+                .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(12.dp))
+                .padding(16.dp)
+        ) {
+            LabelText("BILLED TO")
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(customer?.businessName ?: "N/A", color = AxiomTheme.components.card.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            if (!customer?.gstNumber.isNullOrBlank()) {
+                Text("GSTIN: ${customer?.gstNumber}", color = AxiomTheme.colors.accentBlue, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                customer?.billingAddress ?: customer?.address ?: "No address provided",
+                color = AxiomTheme.components.card.subtitle,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(AxiomTheme.components.card.background)
+                .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(12.dp))
+                .padding(16.dp)
+        ) {
+            LabelText("SHIPPED TO")
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                invoice.shippedToAddress ?: "Same as billing address",
+                color = AxiomTheme.components.card.subtitle,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
+            )
+
+            if (!invoice.vehicleNumber.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                LabelText("VEHICLE NO.")
+                Text(invoice.vehicleNumber, color = AxiomTheme.components.card.title, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+}
+
+@Composable
+fun ProductDetailsSection(items: List<InvoiceItemEntity>, isCancelled: Boolean) {
+    Column(modifier = Modifier
+        .padding(horizontal = 16.dp, vertical = 8.dp)
+        .alpha(if (isCancelled) 0.6f else 1f)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -422,63 +325,74 @@ fun ProductDetailsSection(items: List<InvoiceItem>) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "Product Details",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFFFFFFF)
-            )
-            Text(
-                "${items.size} Items",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color(0xFF94A3B8)
-            )
+            Text("Items", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = AxiomTheme.components.card.title)
+            Text("${items.size} Total", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = AxiomTheme.components.card.subtitle)
         }
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF1C1D27))
-                .border(1.dp, Color(0xFF334155), RoundedCornerShape(12.dp))
+                .background(AxiomTheme.components.card.background)
+                .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(12.dp))
                 .padding(16.dp)
         ) {
-            // Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-            ) {
-                Text("ITEM", modifier = Modifier.weight(6f), style = headerStyle())
-                Text(
-                    "QTY",
-                    modifier = Modifier.weight(2f),
-                    style = headerStyle(),
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    "TOTAL",
-                    modifier = Modifier.weight(4f),
-                    style = headerStyle(),
-                    textAlign = TextAlign.End
-                )
+            Row(modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)) {
+                Text("ITEM & HSN", modifier = Modifier.weight(5f), style = headerStyle())
+                Text("QTY", modifier = Modifier.weight(2f), style = headerStyle(), textAlign = TextAlign.Center)
+                Text("TOTAL", modifier = Modifier.weight(3f), style = headerStyle(), textAlign = TextAlign.End)
             }
-            HorizontalDivider(color = Color(0xFF1F2937)) // Dark gray border
+            HorizontalDivider(color = AxiomTheme.components.card.border)
 
             items.forEachIndexed { index, item ->
-                ProductRow(
-                    name = item.name,
-                    sub = "₹${item.price} / ${item.unit}",
-                    qty = "${item.quantity.toInt()}",
-                    total = "₹${String.format("%.2f", item.total)}"
-                )
-
-                if (index < items.size - 1) {
-                    HorizontalDivider(
-                        color = Color(0xFF1F2937),
-                        modifier = Modifier.padding(vertical = 12.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(5f)) {
+                        Text(
+                            item.productNameSnapshot,
+                            color = AxiomTheme.components.card.title,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("HSN: ${item.hsnSnapshot}", color = AxiomTheme.components.card.subtitle, fontSize = 11.sp)
+                            Text("₹${item.sellingPriceAtTime}/${item.unitSnapshot}", color = AxiomTheme.components.card.mutedText, fontSize = 11.sp)
+                        }
+                    }
+                    Box(modifier = Modifier.weight(2f), contentAlignment = Alignment.Center) {
+                        Box(
+                            modifier = Modifier
+                                .background(AxiomTheme.colors.background, RoundedCornerShape(4.dp))
+                                .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                if (item.quantity % 1.0 == 0.0) "${item.quantity.toInt()}" else "${item.quantity}",
+                                color = AxiomTheme.components.card.title,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Text(
+                        formatCurrency(item.taxableAmount),
+                        modifier = Modifier.weight(3f),
+                        textAlign = TextAlign.End,
+                        color = AxiomTheme.components.card.title,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
                     )
+                }
+                if (index < items.size - 1) {
+                    HorizontalDivider(color = AxiomTheme.components.card.border, modifier = Modifier.padding(top = 12.dp))
                 }
             }
         }
@@ -486,275 +400,191 @@ fun ProductDetailsSection(items: List<InvoiceItem>) {
 }
 
 @Composable
-fun PaymentBreakdownCard(invoice: Invoice) {
-    // Assuming shipping charges are part of taxable amount logic from previous screen,
-    // but not explicitly stored in invoice domain model yet (as per provided domain file).
-    // For now, we calculate based on fields we have.
-    // If you add shipping to Invoice model, use that.
-    // Currently relying on totalBeforeTax - itemsTotal logic if we want to infer, or just displaying available fields.
-    // Based on create screen: totalBeforeTax = itemsTotal + shippingCharges.
-
-    val itemsTotal = invoice.totalBeforeTax
-    val shippingCharges = invoice.totalBeforeTax - itemsTotal
-
-    // Note: This inference works if only shipping is added to itemsTotal.
-
+fun PaymentBreakdownCard(invoice: InvoiceEntity, isCancelled: Boolean) {
     Column(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF1C1D27))
-            .border(1.dp, Color(0xFF334155), RoundedCornerShape(12.dp))
+            .background(AxiomTheme.components.card.background)
+            .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(12.dp))
             .padding(16.dp)
+            .alpha(if (isCancelled) 0.6f else 1f)
     ) {
         Text(
-            "Payment Breakdown",
-            fontSize = 14.sp,
+            "Payment Summary",
+            fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFFFFFFFF),
-            modifier = Modifier.padding(bottom = 8.dp)
+            color = AxiomTheme.components.card.title,
+            modifier = Modifier.padding(bottom = 12.dp)
         )
-        HorizontalDivider(color = Color(0xFF1F2937))
-        Spacer(modifier = Modifier.height(12.dp))
 
-        BreakdownRow("Subtotal", "₹${String.format("%.2f", itemsTotal)}")
-        if (shippingCharges > 0.01) {
-            BreakdownRow("Delivery Charges", "₹${String.format("%.2f", shippingCharges)}")
+        BreakdownRow("Item Subtotal", formatCurrency(invoice.itemSubTotal))
+        if (invoice.deliveryCharge > 0) BreakdownRow("Delivery Charges", "+ ${formatCurrency(invoice.deliveryCharge)}")
+        if (invoice.extraCharges > 0) BreakdownRow("Extra Charges", "+ ${formatCurrency(invoice.extraCharges)}")
+        if (invoice.globalDiscountAmount > 0) BreakdownRow(
+            "Discount",
+            "- ${formatCurrency(invoice.globalDiscountAmount)}",
+            valueColor = AxiomTheme.colors.accentGreen
+        )
+
+        HorizontalDivider(color = AxiomTheme.components.card.border, modifier = Modifier.padding(vertical = 8.dp))
+
+        Row(modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Taxable Amount", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = AxiomTheme.components.card.title)
+            Text(
+                formatCurrency(invoice.totalTaxableAmount),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = AxiomTheme.components.card.title
+            )
         }
 
-        // Tax Box
         Column(
             modifier = Modifier
                 .padding(top = 8.dp)
                 .fillMaxWidth()
-                .background(SurfaceDarker, RoundedCornerShape(8.dp))
+                .background(AxiomTheme.colors.background, RoundedCornerShape(8.dp))
+                .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(8.dp))
                 .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            val gst = invoice.gst
-            if (gst.igstAmount > 0) {
-                BreakdownRowSmall(
-                    "IGST (${gst.igstRate.toInt()}%)",
-                    "₹${String.format("%.2f", gst.igstAmount)}"
-                )
+            if (invoice.supplyType == SupplyType.INTER_STATE || invoice.igstAmount > 0) {
+                BreakdownRowSmall("IGST", formatCurrency(invoice.igstAmount))
             } else {
-                BreakdownRowSmall(
-                    "CGST (${gst.cgstRate.toInt()}%)",
-                    "₹${String.format("%.2f", gst.cgstAmount)}"
-                )
-                BreakdownRowSmall(
-                    "SGST (${gst.sgstRate.toInt()}%)",
-                    "₹${String.format("%.2f", gst.sgstAmount)}"
-                )
-            }
-
-            HorizontalDivider(
-                color = Color(0xFF334155),
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    "Total Taxes",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF94A3B8)
-                )
-                Text(
-                    "₹${String.format("%.2f", gst.totalTax)}",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF3B82F6)
-                )
+                BreakdownRowSmall("CGST", formatCurrency(invoice.cgstAmount))
+                BreakdownRowSmall("SGST", formatCurrency(invoice.sgstAmount))
             }
         }
 
-        HorizontalDivider(color = Color(0xFF1F2937), modifier = Modifier.padding(vertical = 12.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
-        ) {
-            Text(
-                "Grand Total",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFFFFFFF)
-            )
-            Text(
-                "₹${String.format("%.2f", invoice.totalAmount)}",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF3B82F6)
-            )
+        if (invoice.roundOff != 0.0) {
+            Spacer(modifier = Modifier.height(8.dp))
+            BreakdownRowSmall("Round Off", formatCurrency(invoice.roundOff))
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = invoice.amountInWords,
-            fontSize = 12.sp,
-            color = Color(0xFF94A3B8),
-            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-        )
+        HorizontalDivider(color = AxiomTheme.components.card.border, modifier = Modifier.padding(vertical = 12.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+            Text("Grand Total", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = AxiomTheme.components.card.title)
+            Text(formatCurrency(invoice.grandTotal), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = AxiomTheme.colors.accentBlue)
+        }
+
+        if (invoice.amountInWords.isNotBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "${invoice.amountInWords} Rupees Only",
+                fontSize = 12.sp,
+                color = AxiomTheme.components.card.subtitle,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+            )
+        }
     }
 }
 
 @Composable
-fun AdditionalInfoSection() {
+fun PaymentHistorySection(payments: List<PaymentTransactionEntity>) {
     Column(
-        modifier = Modifier
-            .padding(16.dp)
-            .padding(top = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
+        Text(
+            "Payment History",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = AxiomTheme.components.card.title,
+            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(AxiomTheme.components.card.background)
+                .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(12.dp))
+        ) {
+            payments.forEachIndexed { index, payment ->
+                val date = SimpleDateFormat("MMM dd, yyyy • hh:mm a", Locale.getDefault()).format(Date(payment.transactionDate))
+
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.CheckCircle, null, tint = AxiomTheme.colors.accentGreen, modifier = Modifier.size(16.dp))
+                            Text(payment.paymentMode.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = AxiomTheme.components.card.title)
+                        }
+                        Text(formatCurrency(payment.amount), fontWeight = FontWeight.Bold, fontSize = 15.sp, color = AxiomTheme.colors.accentGreen)
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(payment.notes ?: "Payment received", fontSize = 12.sp, color = AxiomTheme.components.card.subtitle)
+                        Text(date, fontSize = 11.sp, color = AxiomTheme.components.card.mutedText)
+                    }
+                }
+                if (index < payments.lastIndex) {
+                    HorizontalDivider(color = AxiomTheme.components.card.border)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AdditionalInfoSection(invoice: InvoiceEntity, seller: PartyEntity?) {
+    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             "Additional Information",
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFFFFFFFF),
+            color = AxiomTheme.components.card.title,
             modifier = Modifier.padding(start = 4.dp)
         )
 
-        // Bank Details
-        InfoCard(
-            icon = Icons.Default.AccountBox,
-            iconColor = Color(0xFF3B82F6),
-            iconBg = BlueBg.copy(alpha = 0.2f),
-            title = "Bank Details"
-        ) {
-            Text("HDFC Bank", fontSize = 14.sp, color = Color(0xFF94A3B8))
-            Text("AC: **** **** 4589", fontSize = 12.sp, color = TextDarkGray)
-        }
-
-        // Notes
-        InfoCard(
-            icon = Icons.Default.Menu,
-            iconColor = PurpleText,
-            iconBg = PurpleBg.copy(alpha = 0.2f),
-            title = "Notes & Terms"
-        ) {
-            Text("Payment due within 15 days.", fontSize = 12.sp, color = Color(0xFF94A3B8))
-            Text(
-                "Please include invoice number on your check.",
-                fontSize = 12.sp,
-                color = Color(0xFF94A3B8)
-            )
-        }
-
-        // Signature
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF1C1D27))
-                .border(1.dp, Color(0xFF334155), RoundedCornerShape(12.dp))
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+        if (!seller?.bankName.isNullOrBlank() || !seller?.accountNumber.isNullOrBlank()) {
+            InfoCard(
+                icon = Icons.Default.AccountBox,
+                iconColor = AxiomTheme.colors.accentBlue,
+                iconBg = AxiomTheme.colors.accentBlueBg,
+                title = "Bank Details"
             ) {
-                Box(
-                    modifier = Modifier
-                        .background(GreenBg.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                        .padding(8.dp)
-                ) {
-                    // Use a generic pen icon as ink_pen isn't in default set
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = null,
-                        tint = GreenText,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Column {
-                    Text(
-                        "Authorized Signature",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFFFFFF)
-                    )
-                    Text(
-                        "Attached",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = GreenText
-                    )
+                Text(seller?.bankName ?: "N/A", fontSize = 14.sp, color = AxiomTheme.components.card.title)
+                Text("A/C: ${seller?.accountNumber ?: "N/A"}", fontSize = 12.sp, color = AxiomTheme.components.card.subtitle)
+                Text("IFSC: ${seller?.ifscCode ?: "N/A"}", fontSize = 12.sp, color = AxiomTheme.components.card.subtitle)
+            }
+        }
+
+        if (!invoice.eWayBillNumber.isNullOrBlank()) {
+            InfoCard(
+                icon = Icons.Default.ShoppingCart,
+                iconColor = AxiomTheme.colors.error,
+                iconBg = AxiomTheme.colors.error.copy(alpha = 0.15f),
+                title = "E-Way Bill Details"
+            ) {
+                Text("E-Way Bill No: ${invoice.eWayBillNumber}", fontSize = 12.sp, color = AxiomTheme.components.card.subtitle)
+                invoice.eWayBillDate?.let {
+                    val date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(it))
+                    Text("Generated On: $date", fontSize = 12.sp, color = AxiomTheme.components.card.subtitle)
                 }
             }
-            Icon(
-                Icons.Default.CheckCircle,
-                null,
-                tint = TextDarkGray,
-                modifier = Modifier.size(28.dp)
-            )
+        }
+
+        InfoCard(
+            icon = Icons.Default.Info,
+            iconColor = AxiomTheme.colors.accentGreen,
+            iconBg = AxiomTheme.colors.accentGreenBg,
+            title = "Terms & Conditions"
+        ) {
+            Text("1. Goods once sold will not be taken back.", fontSize = 12.sp, color = AxiomTheme.components.card.subtitle)
+            Text("2. Interest @ 18% p.a. will be charged if payment is delayed.", fontSize = 12.sp, color = AxiomTheme.components.card.subtitle)
         }
     }
 }
-
-@Composable
-fun PreviewBottomBar(
-    invoice: Invoice,
-    logoUri: String,
-    onGetPdfClick: () -> Unit
-) {
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFF1C1D27))
-            .shadow(elevation = 20.dp)
-            .border(1.dp, Color(0xFF1F2937)) // Top border
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Print Button
-            OutlinedButton(
-                onClick = { /* Print Logic */ },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp),
-                shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, TextDarkGray),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFFFFFF))
-            ) {
-                Icon(Icons.Default.Edit, null, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Print", fontWeight = FontWeight.Bold)
-            }
-
-            // Export PDF Button
-            Button(
-
-                onClick = onGetPdfClick,
-                modifier = Modifier
-                    .weight(1.5f)
-                    .height(48.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
-            ) {
-                Icon(Icons.Default.Edit, null, modifier = Modifier.size(20.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Get PDF",
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
-
 
 // -----------------------------------------------------------------------------
 // HELPER COMPONENTS
@@ -764,116 +594,66 @@ fun PreviewBottomBar(
 fun LabelText(text: String) {
     Text(
         text = text,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = Color(0xFF94A3B8),
-        letterSpacing = 0.5.sp,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold,
+        color = AxiomTheme.components.card.mutedText,
+        letterSpacing = 0.8.sp,
         modifier = Modifier.padding(bottom = 4.dp)
     )
 }
 
 @Composable
 private fun headerStyle() = androidx.compose.ui.text.TextStyle(
-    color = TextDarkGray,
-    fontSize = 12.sp,
-    fontWeight = FontWeight.SemiBold,
+    color = AxiomTheme.components.card.subtitle,
+    fontSize = 11.sp,
+    fontWeight = FontWeight.Bold,
     letterSpacing = 0.5.sp
 )
 
 @Composable
-fun ProductRow(name: String, sub: String, qty: String, total: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(6f)) {
-            Text(
-                name,
-                color = Color(0xFFFFFFFF),
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(sub, color = Color(0xFF94A3B8), fontSize = 12.sp)
-        }
-        Box(
-            modifier = Modifier.weight(2f),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .background(Color(0xFF1F2937), RoundedCornerShape(4.dp))
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
-            ) {
-                Text(qty, color = Color(0xFFCBD5E1), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-        Text(
-            total,
-            modifier = Modifier.weight(4f),
-            textAlign = TextAlign.End,
-            color = Color(0xFFFFFFFF),
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp
-        )
-    }
-}
-
-@Composable
-fun BreakdownRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, fontSize = 14.sp, color = Color(0xFF94A3B8))
-        Text(value, fontSize = 14.sp, color = Color(0xFFFFFFFF), fontWeight = FontWeight.SemiBold)
+fun BreakdownRow(label: String, value: String, valueColor: Color = AxiomTheme.components.card.title) {
+    Row(modifier = Modifier
+        .fillMaxWidth()
+        .padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, fontSize = 14.sp, color = AxiomTheme.components.card.subtitle)
+        Text(value, fontSize = 14.sp, color = valueColor, fontWeight = FontWeight.SemiBold)
     }
 }
 
 @Composable
 fun BreakdownRowSmall(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, fontSize = 12.sp, color = Color(0xFF64748B))
-        Text(value, fontSize = 12.sp, color = Color(0xFFCBD5E1))
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, fontSize = 13.sp, color = AxiomTheme.components.card.subtitle)
+        Text(value, fontSize = 13.sp, color = AxiomTheme.components.card.title)
     }
 }
 
 @Composable
-fun InfoCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconColor: Color,
-    iconBg: Color,
-    title: String,
-    content: @Composable ColumnScope.() -> Unit
-) {
+fun InfoCard(icon: ImageVector, iconColor: Color, iconBg: Color, title: String, content: @Composable ColumnScope.() -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF1C1D27))
-            .border(1.dp, Color(0xFF334155), RoundedCornerShape(12.dp))
+            .background(AxiomTheme.components.card.background)
+            .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(12.dp))
             .padding(16.dp),
         verticalAlignment = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .background(iconBg, RoundedCornerShape(8.dp))
-                .padding(8.dp)
-        ) {
+        Box(modifier = Modifier
+            .background(iconBg, RoundedCornerShape(8.dp))
+            .padding(8.dp)) {
             Icon(icon, null, tint = iconColor, modifier = Modifier.size(20.dp))
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFFFFF))
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = AxiomTheme.components.card.title)
             content()
         }
     }
+}
+
+private fun formatCurrency(amount: Double): String {
+    val format = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
+    format.maximumFractionDigits = 2 // Keeps decimals for invoice precision
+    return format.format(amount)
 }

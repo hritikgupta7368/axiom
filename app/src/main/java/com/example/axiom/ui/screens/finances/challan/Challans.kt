@@ -1,42 +1,5 @@
 package com.example.axiom.ui.screens.finances.challan
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.axiom.ui.components.shared.header.AnimatedHeaderScrollView
-
 //@Composable
 //fun ChallansScreen() {
 //    AnimatedHeaderScrollView(
@@ -109,81 +72,129 @@ import com.example.axiom.ui.components.shared.header.AnimatedHeaderScrollView
 //}
 
 // for use with serach
+//@Composable
+//fun ChallansScreen() {
+//    var selectedItemIds by remember { mutableStateOf(setOf<Int>()) }
+//    val isSelectionMode = selectedItemIds.isNotEmpty()
+//    val iosYellow = Color(0xFFFFCC00)
+
+
+//    AnimatedHeaderScrollView(
+//        largeTitle = "Notes",
+//        subtitle = "14 Items",
+//        isSelectionMode = isSelectionMode,
+//        isParentRoute = false
+//        ) {
+//        // --- LIST CONTENT ---
+//        val dummyItems = (1..500).toList()
+//
+//        items(dummyItems, key = { it }) { itemId ->
+//            val isSelected = selectedItemIds.contains(itemId)
+//
+//
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(horizontal = 20.dp)
+//                    .background(Color(0xFF1C1C1E))
+//            ) {
+//                Column {
+//
+//                    Row(
+//                        verticalAlignment = Alignment.CenterVertically,
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .clickable {
+//                                selectedItemIds =
+//                                    if (isSelected) selectedItemIds - itemId else selectedItemIds + itemId
+//                            }
+//                            .padding(16.dp)
+//                    ) {
+//                        AnimatedVisibility(visible = isSelectionMode) {
+//                            Box(
+//                                modifier = Modifier
+//                                    .padding(end = 12.dp)
+//                                    .size(22.dp)
+//                                    .clip(RoundedCornerShape(11.dp))
+//                                    .background(if (isSelected) iosYellow else Color.Transparent)
+//                                    .border(
+//                                        1.5.dp,
+//                                        if (isSelected) iosYellow else Color.DarkGray,
+//                                        RoundedCornerShape(11.dp)
+//                                    ),
+//                                contentAlignment = Alignment.Center
+//                            ) {
+//                                if (isSelected) Icon(
+//                                    Icons.Rounded.Check,
+//                                    contentDescription = null,
+//                                    tint = Color.Black,
+//                                    modifier = Modifier.size(16.dp)
+//                                )
+//                            }
+//                        }
+//                        Text(
+//                            text = "Item $itemId",
+//                            color = Color.White,
+//                            fontSize = 17.sp,
+//                            modifier = Modifier.weight(1f)
+//                        )
+//                    }
+//                    if (itemId != dummyItems.last()) Spacer(
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .height(0.5.dp)
+//                            .background(Color(0xFF2C2C2E))
+//                    )
+//                }
+//            }
+//        }
+//    }
+//}
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.axiom.ui.components.shared.EmptyState.EmptyScreen
+
 @Composable
 fun ChallansScreen() {
-    var selectedItemIds by remember { mutableStateOf(setOf<Int>()) }
-    val isSelectionMode = selectedItemIds.isNotEmpty()
-    val iosYellow = Color(0xFFFFCC00)
+    if (true) {
+        EmptyScreen(
+            title = "No quotation are there",
+            description = "No quotation found",
+            onAdd = { },
+            buttonText = "Add quotation ",
 
-
-    AnimatedHeaderScrollView(
-        largeTitle = "Notes",
-        subtitle = "14 Items",
-        isSelectionMode = isSelectionMode
-    ) {
-        // --- LIST CONTENT ---
-        val dummyItems = (1..500).toList()
-
-        items(dummyItems, key = { it }) { itemId ->
-            val isSelected = selectedItemIds.contains(itemId)
-
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .background(Color(0xFF1C1C1E))
-            ) {
-                Column {
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                selectedItemIds =
-                                    if (isSelected) selectedItemIds - itemId else selectedItemIds + itemId
-                            }
-                            .padding(16.dp)
-                    ) {
-                        AnimatedVisibility(visible = isSelectionMode) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(end = 12.dp)
-                                    .size(22.dp)
-                                    .clip(RoundedCornerShape(11.dp))
-                                    .background(if (isSelected) iosYellow else Color.Transparent)
-                                    .border(
-                                        1.5.dp,
-                                        if (isSelected) iosYellow else Color.DarkGray,
-                                        RoundedCornerShape(11.dp)
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (isSelected) Icon(
-                                    Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                        Text(
-                            text = "Item $itemId",
-                            color = Color.White,
-                            fontSize = 17.sp,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    if (itemId != dummyItems.last()) Spacer(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(0.5.dp)
-                            .background(Color(0xFF2C2C2E))
-                    )
-                }
-            }
-        }
+            )
     }
 }
 

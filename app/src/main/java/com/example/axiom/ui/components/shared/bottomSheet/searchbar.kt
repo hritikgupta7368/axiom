@@ -9,10 +9,10 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -31,6 +31,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,7 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -58,10 +58,17 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.fontscaling.MathUtils.lerp
 import androidx.compose.ui.unit.sp
+
+//colors used
+val background = Color(0x1F767680) //dark gray
+val placeholderColor = Color(0xFF8E8E93) //light gray
+val cancelColor = Color(0xFFFFFFFF) //white
+
 
 @SuppressLint("UnrememberedMutableState", "RestrictedApi")
 @OptIn(ExperimentalAnimationApi::class)
@@ -86,7 +93,6 @@ fun SearchBar(
     var measuredWidthDp by remember { mutableStateOf(0.dp) }
     var isFocused by remember { mutableStateOf(false) }
 
-    // Use an active state so it doesn't re-center if you unfocus but text is still there
     val isActive = isFocused || value.isNotEmpty()
 
     val focusAnim = remember { Animatable(0f) }
@@ -97,7 +103,7 @@ fun SearchBar(
         if (isActive) {
             focusAnim.animateTo(1f, spring(dampingRatio = 0.8f, stiffness = 500f))
         } else {
-            focusAnim.animateTo(0f, tween(250))
+            focusAnim.animateTo(0f, spring(dampingRatio = 0.8f, stiffness = 500f))
         }
     }
 
@@ -111,10 +117,9 @@ fun SearchBar(
         }
     }
 
-    var searchWidthPx by remember { mutableFloatStateOf(0f) }
+    // FIX 2: Measure the total static row width to prevent mid-animation jumping
+    var totalRowWidthPx by remember { mutableFloatStateOf(0f) }
 
-    // Pre-calculate the exact static width of the placeholder text and icon
-    // to prevent jittery infinite measurement loops during animation.
     val staticContentWidthPx = remember(placeholder, density) {
         val placeholderWidth = textMeasurer.measure(
             text = placeholder,
@@ -127,12 +132,11 @@ fun SearchBar(
 
     val centerTranslateX by remember {
         derivedStateOf {
-            if (!centerWhenUnfocused || searchWidthPx == 0f) 0f
+            if (!centerWhenUnfocused || totalRowWidthPx == 0f) 0f
             else {
                 val horizontalPadding = with(density) { 12.dp.toPx() * 2 }
-                val availableWidth = searchWidthPx - horizontalPadding
+                val availableWidth = totalRowWidthPx - horizontalPadding
                 val centerOffset = (availableWidth - staticContentWidthPx) / 2f
-                // Apply coercion to prevent negative offset if the screen is too small
                 (centerOffset.coerceAtLeast(0f)) * (1f - focusAnim.value)
             }
         }
@@ -143,8 +147,10 @@ fun SearchBar(
             .fillMaxWidth()
             .padding(vertical = 8.dp)
             .onGloballyPositioned { layoutCoordinates ->
+                totalRowWidthPx = layoutCoordinates.size.width.toFloat()
                 if (containerWidth == null) {
-                    measuredWidthDp = (layoutCoordinates.size.width.toFloat() / density.density).dp
+                    measuredWidthDp =
+                        (layoutCoordinates.size.width.toFloat() / density.density).dp
                 }
             },
         verticalAlignment = Alignment.CenterVertically
@@ -153,16 +159,16 @@ fun SearchBar(
             modifier = Modifier
                 .weight(1f)
                 .height(IntrinsicSize.Min)
-                .onGloballyPositioned {
-                    searchWidthPx = it.size.width.toFloat()
-                }
         ) {
-            // Background Layer
+            // FIX 3: Background Layer with clipping so blur doesn't visually scale/swell
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
                     .graphicsLayer {
+                        clip = true // Crucial: Stops the blur from bleeding outside bounds
+                        shape = RoundedCornerShape(12.dp)
+
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                             val blurRadius = when {
                                 focusAnim.value <= 0.3f -> lerp(0f, 20f, focusAnim.value / 0.3f)
@@ -184,8 +190,7 @@ fun SearchBar(
                             } else null
                         }
                     }
-                    .background(color = Color(0x1E767680), shape = RoundedCornerShape(12.dp))
-                    .shadow(elevation = 0.dp, shape = RoundedCornerShape(12.dp))
+                    .background(color = background)
             )
 
             // Content Layer
@@ -209,12 +214,12 @@ fun SearchBar(
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "search",
-                            tint = Color(0xFF8E8E93),
+                            tint = placeholderColor,
                             modifier = Modifier.size(18.dp)
                         )
                     }
 
-                    // Input Field (Maintains weight(1f) to prevent layout jumps)
+                    // Input Field
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -255,9 +260,8 @@ fun SearchBar(
                                     if (value.isEmpty()) {
                                         Text(
                                             text = placeholder,
-                                            color = Color(0xFF8E8E93),
+                                            color = placeholderColor,
                                             fontSize = 17.sp
-                                            // Ensure this isn't globally centered, just left aligned inside the box
                                         )
                                     }
                                     innerTextField()
@@ -293,16 +297,17 @@ fun SearchBar(
             }
         }
 
-        // Cancel Button
+        // FIX 1: Use expandHorizontally to smoothly adjust the layout bounds
+        // preventing the weight(1f) search box from snapping instantly.
         AnimatedVisibility(
             visible = isFocused,
-            enter = slideInHorizontally(
-                animationSpec = tween(220),
-                initialOffsetX = { it }
-            ) + fadeIn(animationSpec = tween(180)),
-            exit = slideOutHorizontally(
-                animationSpec = tween(200),
-                targetOffsetX = { it }
+            enter = expandHorizontally(
+                animationSpec = spring(dampingRatio = 0.8f, stiffness = 500f),
+                expandFrom = Alignment.Start
+            ) + fadeIn(animationSpec = tween(200)),
+            exit = shrinkHorizontally(
+                animationSpec = spring(dampingRatio = 0.8f, stiffness = 500f),
+                shrinkTowards = Alignment.Start
             ) + fadeOut(animationSpec = tween(150))
         ) {
             Box(
@@ -313,7 +318,7 @@ fun SearchBar(
             ) {
                 Text(
                     text = "Cancel",
-                    color = tint,
+                    color = cancelColor,
                     fontSize = 17.sp,
                     modifier = Modifier.clickable(
                         indication = null,
@@ -326,6 +331,36 @@ fun SearchBar(
                     }
                 )
             }
+        }
+    }
+}
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true)
+@Composable
+fun SearchBarPreview() {
+    var text by remember { mutableStateOf("") }
+
+    AppBottomSheet(
+        showSheet = true,
+        onDismiss = { true }
+    ) {
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF1C1C1E)) // Dark mode style layout
+                .padding(16.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            SearchBar(
+                value = text,
+                onValueChange = { text = it },
+                placeholder = "Search",
+                centerWhenUnfocused = true,
+                tint = Color(0xFF0A84FF) // iOS Blue
+            )
         }
     }
 }

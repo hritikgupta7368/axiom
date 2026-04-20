@@ -11,31 +11,54 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import com.example.axiom.ui.components.shared.bottomSheet.SearchBar
+import com.example.axiom.ui.components.shared.button.Button
+import com.example.axiom.ui.components.shared.button.ButtonVariant
+import com.example.axiom.ui.components.shared.dialog.AppDialog
 import com.example.axiom.ui.screens.finances.product.constants.GST_UNITS
+import com.example.axiom.ui.theme.AxiomTheme
+import kotlinx.coroutines.delay
+
 
 @Composable
-fun UnitSelectionDialog(onDismiss: () -> Unit, onUnitSelected: (String) -> Unit) {
+fun UnitSelectionDialog(
+    onDismiss: () -> Unit,
+    onUnitSelected: (String) -> Unit
+) {
+    // Internal state to handle the exit animation gracefully
+    var isVisible by remember { mutableStateOf(true) }
+
+    // Trigger exit animation, then notify parent to remove the component
+    val triggerClose = {
+        isVisible = false
+    }
+
+    LaunchedEffect(isVisible) {
+        if (!isVisible) {
+            delay(650) // Wait for AnimatedDialog's exit animation to finish
+            onDismiss()
+        }
+    }
+
     var searchQuery by remember { mutableStateOf("") }
+
     val filteredUnits = remember(searchQuery) {
         GST_UNITS.filter {
             it.first.contains(searchQuery, ignoreCase = true) ||
@@ -43,31 +66,38 @@ fun UnitSelectionDialog(onDismiss: () -> Unit, onUnitSelected: (String) -> Unit)
         }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
+    // Wrapped in your custom AnimatedDialog
+    AppDialog(
+        visible = isVisible,
+        onDismissRequest = triggerClose
+    ) {
         Surface(
             shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
+            color = AxiomTheme.components.card.background,
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 600.dp)
+                .heightIn(max = 500.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    "Select Unit",
+                    text = "Select Unit",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = AxiomTheme.components.card.title
                 )
+
                 Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
+
+                SearchBar(
+                    containerWidth = 350.dp,
+                    tint = Color.White,
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search unit (e.g., KGS, Pieces)") },
-                    leadingIcon = { Icon(Icons.Default.Search, null) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
+                    placeholder = "Search Units",
+
+                    )
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 if (filteredUnits.isEmpty()) {
@@ -75,41 +105,52 @@ fun UnitSelectionDialog(onDismiss: () -> Unit, onUnitSelected: (String) -> Unit)
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f, fill = false)
-                            .padding(24.dp), contentAlignment = Alignment.Center
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            "No matching units found",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = "No matching units found",
+                            color = AxiomTheme.components.card.subtitle
                         )
                     }
                 } else {
                     LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
                         items(filteredUnits) { (code, name) ->
                             ListItem(
-                                headlineContent = { Text(name, fontWeight = FontWeight.Medium) },
+                                headlineContent = { Text(name, fontWeight = FontWeight.Medium, color = AxiomTheme.components.card.title) },
                                 supportingContent = {
                                     Text(
-                                        "Code: $code",
-                                        style = MaterialTheme.typography.bodySmall
+                                        text = "Code: $code",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = AxiomTheme.components.card.subtitle
                                     )
                                 },
+                                colors = ListItemDefaults.colors(
+                                    containerColor = AxiomTheme.components.card.background
+                                ),
                                 modifier = Modifier
-                                    .clickable { onUnitSelected(code) }
+                                    .clickable {
+                                        onUnitSelected(code)
+                                        triggerClose()
+                                    }
                                     .fillMaxWidth()
                             )
                             HorizontalDivider(
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(
-                                    alpha = 0.5f
-                                )
+                                color = AxiomTheme.components.card.border
                             )
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
-                    Text("Cancel")
-                }
+
+
+                Button(
+                    text = "Cancel",
+                    onClick = triggerClose,
+                    variant = ButtonVariant.White,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }

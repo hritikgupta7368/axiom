@@ -2,6 +2,13 @@
 
 package com.example.axiom.Backup
 
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceStatus
+import com.example.axiom.ui.screens.finances.Invoice.components.PaymentMode
+import com.example.axiom.ui.screens.finances.Invoice.components.PaymentStatus
+import com.example.axiom.ui.screens.finances.Invoice.components.SupplyType
+import com.example.axiom.ui.screens.finances.Invoice.components.TransactionType
+import com.example.axiom.ui.screens.finances.customer.components.ContactType
+import com.example.axiom.ui.screens.finances.customer.components.PartyType
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -66,145 +73,173 @@ data class NoteBackup(
 // Finances - product , customer firm , seller firm , supplier firm , purchasing records , invoices
 
 
+// --- PARTIES ---
 @Serializable
-enum class SupplyType {
-    INTRA_STATE,
-    INTER_STATE
-}
+data class PartyBackup(  // used for seller , supplier and customer table
+    val id: String,
+    val partyType: PartyType,
+    val businessName: String,
+    val logoUrl: String?,
+    val registrationType: String,
+    val gstNumber: String?,
+    val stateCode: String?,
+    val address: String?,
+    val createdAt: Long,
+    val updatedAt: Long?,
+    val isDeleted: Boolean,
+    val billingAddress: String?,
+    val defaultShippingAddress: String?,
+    val creditLimit: Double,
+    val openingBalance: Double,
+    val bankName: String?,
+    val branchName: String?,
+    val accountNumber: String?,
+    val ifscCode: String?,
+    val signatureUrl: String?,
+    val stampUrl: String?
+)
 
 @Serializable
-enum class InvoiceStatus {
-    DRAFT,
-    FINAL,
-    CANCELLED
-}
+data class PartyContactBackup(
+    val id: String,
+    val partyId: String,
+    val contactType: ContactType,
+    val value: String,
+    val isPrimary: Boolean
+)
 
+
+// --- PRODUCTS ---
 @Serializable
 data class ProductBackup(
     val id: String,
     val name: String,
+    val description: String?,
     val hsn: String,
-    val sellingPrice: Double,
-    val unit: String,
     val category: String,
-    val active: Boolean,
-    val createdAt: Long,
-    val updatedAt: Long? = null
-)
-
-@Serializable
-data class CustomerFirmBackup(
-    val id: String,
-    val name: String,
-    val gstin: String? = null,
-    val address: String,
-    val contactNumber: String? = null,
-    val email: String? = null,
-    val stateCode: String? = null,
-    val createdAt: Long,
-    val updatedAt: Long? = null,
-    val active: Boolean,
-    val image: String? = null
-)
-
-@Serializable
-data class SellerFirmBackup(
-    val id: String,
-    val stateCode: String,
-    val name: String,
-    val gstin: String,
-    val address: String,
-    val contactNumber: String,
-    val email: String? = null,
-    val createdAt: Long,
-    val updatedAt: Long? = null,
-    val isActive: Boolean = true
-)
-
-@Serializable
-data class SupplierFirmBackup(
-    val id: String,
-    val name: String,
-    val gstin: String?,
-    val address: String,
-    val contactNumber: String? = null,
-    val email: String? = null,
-    val stateCode: String? = null,
-    val createdAt: Long,
-    val updatedAt: Long? = null,
-    val isActive: Boolean = true
-)
-
-@Serializable
-data class PurchasedItemBackup(
-    val id: String,
-    val productId: String? = null,
-    val name: String,
-    val hsn: String? = null,
+    val brand: String?,
+    val costPrice: Double,
+    val sellingPrice: Double,
+    val lastSellingPrice: Double,
+    val peakPrice: Double,
+    val floorPrice: Double,
     val unit: String,
-    val quantity: Double,
-    val costPrice: Double
+    val imageUrl: String?,
+    val productLink: String?,
+    val createdAt: Long,
+    val updatedAt: Long?,
+    val isDeleted: Boolean
 )
 
+// --- INVOICES ---
 @Serializable
-data class PurchaseRecordBackup(
+data class InvoiceBackup(
     val id: String,
-    val supplierId: String,
-    val purchaseDate: Long,
-    val items: List<PurchasedItemBackup>,
-    val remarks: String? = null,
+    val invoiceNumber: String,
+    val customerId: String?,
+    val sellerId: String?,
+    val invoiceDate: Long,
+    val vehicleNumber: String?,
+    val shippedToAddress: String?,
+    val placeOfSupplyCode: String,
+    val supplyType: SupplyType,
+    val eWayBillNumber: String?,
+    val eWayBillDate: Long?,
+    val itemSubTotal: Double,
+    val deliveryCharge: Double,
+    val extraCharges: Double,
+    val globalDiscountAmount: Double,
+    val totalTaxableAmount: Double,
+    val globalGstRate: Double,
+    val cgstAmount: Double,
+    val sgstAmount: Double,
+    val igstAmount: Double,
+    val roundOff: Double,
+    val grandTotal: Double,
+    val amountInWords: String,
+    val paymentStatus: PaymentStatus,
+    val status: InvoiceStatus,
+    val isEdited: Boolean,
     val createdAt: Long,
-    val updatedAt: Long? = null
+    val updatedAt: Long
 )
 
 @Serializable
 data class InvoiceItemBackup(
     val id: String,
+    val invoiceId: String,
     val productId: String,
-    val name: String,
-    val unit: String,
-    val price: Double,
+    val linkedPurchaseItemId: String?,
+    val productNameSnapshot: String,
+    val hsnSnapshot: String,
+    val unitSnapshot: String,
     val quantity: Double,
-    val hsn: String,
-    val total: Double
+    val sellingPriceAtTime: Double,
+    val itemDiscountAmount: Double,
+    val taxableAmount: Double
 )
 
+// --- PURCHASES ---
 @Serializable
-data class GstBreakdownBackup(
-    val cgstRate: Double,
-    val sgstRate: Double,
-    val igstRate: Double,
+data class PurchaseRecordBackup(
+    val id: String,
+    val customerId: String?,
+    val supplierId: String?,
+    val supplierInvoiceNumber: String,
+    val purchaseDate: Long,
+    val placeOfSupplyCode: String?,
+    val reverseChargeApplicable: Boolean,
+    val eWayBillNumber: String?,
+    val eWayBillDate: Long?,
+    val vehicleNumber: String?,
+    val shippedToAddress: String?,
+    val supplyType: SupplyType,
+    val deliveryCharge: Double,
+    val extraCharges: Double,
+    val globalDiscountAmount: Double,
+    val itemSubTotal: Double,
+    val isEdited: Boolean,
+    val totalTaxableAmount: Double,
+    val globalGstRate: Double,
     val cgstAmount: Double,
     val sgstAmount: Double,
     val igstAmount: Double,
-    val totalTax: Double
+    val roundOff: Double,
+    val grandTotal: Double,
+    val isItcEligible: Boolean,
+    val createdAt: Long,
+    val updatedAt: Long?
 )
 
 @Serializable
-data class InvoiceBackup(
+data class PurchaseItemBackup(
     val id: String,
-    val invoiceNo: String,
-    val date: String,
-    val sellerId: String,
-    val customerDetails: CustomerFirmBackup?,
-    val supplyType: String,
-    val vehicleNumber: String?,
-    val shippedTo: String?,
-    val items: List<InvoiceItemBackup> = emptyList(),
-    val totalBeforeTax: Double,
-    val gst: GstBreakdownBackup,
-    val shippingCharge: Double?,
-    val totalAmount: Double,
-    val amountInWords: String,
-    val status: String,
-    val createdAt: Long,
-    val updatedAt: Long?,
-    val cancelledAt: Long?,
-    val cancelReason: String?,
-    val deleted: Boolean,
-    val deletedAt: Long?,
-    val version: Int
+    val purchaseId: String,
+    val productId: String,
+    val productNameSnapshot: String,
+    val hsnCode: String,
+    val unit: String,
+    val quantity: Double,
+    val costPrice: Double,
+    val taxableAmount: Double
 )
+
+// --- PAYMENTS ---
+@Serializable
+data class PaymentTransactionBackup(
+    val id: String,
+    val partyId: String,
+    val documentId: String?,
+    val type: TransactionType,
+    val amount: Double,
+    val paymentMode: PaymentMode,
+    val transactionDate: Long,
+    val referenceId: String?,
+    val notes: String?
+)
+
+// Quotation
+
 
 
 

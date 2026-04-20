@@ -1,23 +1,20 @@
 package com.example.axiom.Backup
 
-import com.example.axiom.data.finances.CustomerFirm
-import com.example.axiom.data.finances.CustomerFirmEntity
-import com.example.axiom.data.finances.GstBreakdown
-import com.example.axiom.data.finances.InvoiceEntity
-import com.example.axiom.data.finances.InvoiceItem
-import com.example.axiom.data.finances.InvoiceStatus
-import com.example.axiom.data.finances.ProductEntity
-import com.example.axiom.data.finances.PurchaseRecordEntity
-import com.example.axiom.data.finances.PurchasedItem
-import com.example.axiom.data.finances.SellerFirmEntity
-import com.example.axiom.data.finances.SupplierFirmEntity
-import com.example.axiom.data.finances.SupplyType
+
 import com.example.axiom.data.notes.NoteEntity
 import com.example.axiom.data.temp.EventEntity
 import com.example.axiom.data.temp.Priority
 import com.example.axiom.data.temp.TaskEntity
 import com.example.axiom.data.temp.TaskStatus
 import com.example.axiom.data.vault.VaultEntryEntity
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceEntity
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceItemEntity
+import com.example.axiom.ui.screens.finances.Invoice.components.PaymentTransactionEntity
+import com.example.axiom.ui.screens.finances.customer.components.PartyContactEntity
+import com.example.axiom.ui.screens.finances.customer.components.PartyEntity
+import com.example.axiom.ui.screens.finances.product.components.ProductEntity
+import com.example.axiom.ui.screens.finances.purchase.components.PurchaseItemEntity
+import com.example.axiom.ui.screens.finances.purchase.components.PurchaseRecordEntity
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -34,13 +31,15 @@ data class AppBackup(
     // Notes
     val notes: List<NoteBackup>,
 
-    // Finances
-//    val products: List<ProductBackup>,
-//    val customers: List<CustomerFirmBackup>,
-//    val sellers: List<SellerFirmBackup>,
-//    val suppliers: List<SupplierFirmBackup>,
-//    val purchases: List<PurchaseRecordBackup>,
-//    val invoices: List<InvoiceBackup>
+// Finances (UPDATED)
+    val parties: List<PartyBackup>,
+    val partyContacts: List<PartyContactBackup>,
+    val products: List<ProductBackup>,
+    val invoices: List<InvoiceBackup>,
+    val invoiceItems: List<InvoiceItemBackup>,
+    val purchases: List<PurchaseRecordBackup>,
+    val purchaseItems: List<PurchaseItemBackup>,
+    val payments: List<PaymentTransactionBackup>
 )
 
 
@@ -160,181 +159,110 @@ fun NoteBackup.toEntity(): NoteEntity =
         updatedAt = updatedAt
     )
 
-//Finances
-fun ProductEntity.toBackup(): ProductBackup = ProductBackup(
-    id, name, hsn, sellingPrice, unit,
-    category, active, createdAt, updatedAt
+// new code
+// --- PARTY MAPPERS ---
+fun PartyEntity.toBackup() = PartyBackup(
+    id, partyType, businessName, logoUrl, registrationType, gstNumber, stateCode, address,
+    createdAt, updatedAt, isDeleted, billingAddress, defaultShippingAddress, creditLimit,
+    openingBalance, bankName, branchName, accountNumber, ifscCode, signatureUrl, stampUrl
 )
 
-fun ProductBackup.toEntity(): ProductEntity = ProductEntity(
-    id, name, hsn, sellingPrice, unit,
-    category, active, createdAt, updatedAt
+fun PartyBackup.toEntity() = PartyEntity(
+    id, partyType, businessName, logoUrl, registrationType, gstNumber, stateCode, address,
+    createdAt, updatedAt, isDeleted, billingAddress, defaultShippingAddress, creditLimit,
+    openingBalance, bankName, branchName, accountNumber, ifscCode, signatureUrl, stampUrl
 )
 
-// Standalone mapper for the DAO
-fun CustomerFirmEntity.toBackup(): CustomerFirmBackup =
-    CustomerFirmBackup(
-        id = id, name = name, gstin = gstin, address = address,
-        contactNumber = contactNumber, email = email, stateCode = stateCode,
-        createdAt = createdAt, updatedAt = updatedAt, active = active, image = image
-    )
+fun PartyContactEntity.toBackup() = PartyContactBackup(id, partyId, contactType, value, isPrimary)
+fun PartyContactBackup.toEntity() = PartyContactEntity(id, partyId, contactType, value, isPrimary)
 
-// CustomerFirm
-fun CustomerFirm.toBackup(): CustomerFirmBackup =
-    CustomerFirmBackup(
-        id = id, name = name, gstin = gstin, address = address,
-        contactNumber = contactNumber, email = email, stateCode = stateCode,
-        createdAt = createdAt, updatedAt = updatedAt, active = active, image = image
-    )
+// --- PRODUCT MAPPERS ---
+fun ProductEntity.toBackup() = ProductBackup(
+    id, name, description, hsn, category, brand, costPrice, sellingPrice, lastSellingPrice,
+    peakPrice, floorPrice, unit,
+    imageUrl, productLink, createdAt, updatedAt, isDeleted
+)
 
-fun CustomerFirmBackup.toModel(): CustomerFirm = // Changed name to toModel to avoid confusion
-    CustomerFirm(
-        id = id, name = name, gstin = gstin, address = address,
-        contactNumber = contactNumber, email = email, stateCode = stateCode,
-        createdAt = createdAt, updatedAt = updatedAt, active = active, image = image
-    )
+fun ProductBackup.toEntity() = ProductEntity(
+    id, name, description, hsn, category, brand, costPrice, sellingPrice, lastSellingPrice,
+    peakPrice, floorPrice, unit,
+    imageUrl, productLink, createdAt, updatedAt, isDeleted
+)
 
-// SellerFirm
-fun SellerFirmEntity.toBackup(): SellerFirmBackup =
-    SellerFirmBackup(
-        id = id, stateCode = stateCode, name = name, gstin = gstin,
-        address = address, contactNumber = contactNumber, email = email,
-        createdAt = createdAt, updatedAt = updatedAt, isActive = isActive
-    )
+// --- INVOICE MAPPERS ---
+fun InvoiceEntity.toBackup() = InvoiceBackup(
+    id, invoiceNumber, customerId, sellerId, invoiceDate, vehicleNumber, shippedToAddress,
+    placeOfSupplyCode, supplyType, eWayBillNumber, eWayBillDate, itemSubTotal, deliveryCharge,
+    extraCharges, globalDiscountAmount, totalTaxableAmount, globalGstRate, cgstAmount,
+    sgstAmount, igstAmount, roundOff, grandTotal, amountInWords, paymentStatus, status,
+    isEdited, createdAt, updatedAt
+)
 
-fun SellerFirmBackup.toEntity(): SellerFirmEntity =
-    SellerFirmEntity(
-        id = id, stateCode = stateCode, name = name, gstin = gstin,
-        address = address, contactNumber = contactNumber, email = email,
-        createdAt = createdAt, updatedAt = updatedAt, isActive = isActive
-    )
+fun InvoiceBackup.toEntity() = InvoiceEntity(
+    id, invoiceNumber, customerId, sellerId, invoiceDate, vehicleNumber, shippedToAddress,
+    placeOfSupplyCode, supplyType, eWayBillNumber, eWayBillDate, itemSubTotal, deliveryCharge,
+    extraCharges, globalDiscountAmount, totalTaxableAmount, globalGstRate, cgstAmount,
+    sgstAmount, igstAmount, roundOff, grandTotal, amountInWords, paymentStatus, status,
+    isEdited, createdAt, updatedAt
+)
 
-// PurchasedItem
-fun PurchasedItem.toBackup(): PurchasedItemBackup =
-    PurchasedItemBackup(
-        id = id, productId = productId, name = name, hsn = hsn,
-        unit = unit, quantity = quantity, costPrice = costPrice
-    )
+fun InvoiceItemEntity.toBackup() = InvoiceItemBackup(
+    id, invoiceId, productId, linkedPurchaseItemId, productNameSnapshot, hsnSnapshot,
+    unitSnapshot, quantity, sellingPriceAtTime, itemDiscountAmount, taxableAmount
+)
 
-fun PurchasedItemBackup.toEntity(): PurchasedItem =
-    PurchasedItem(
-        id = id, productId = productId, name = name, hsn = hsn,
-        unit = unit, quantity = quantity, costPrice = costPrice
-    )
+fun InvoiceItemBackup.toEntity() = InvoiceItemEntity(
+    id, invoiceId, productId, linkedPurchaseItemId, productNameSnapshot, hsnSnapshot,
+    unitSnapshot, quantity, sellingPriceAtTime, itemDiscountAmount, taxableAmount
+)
 
-// PurchaseRecord
-fun PurchaseRecordEntity.toBackup(): PurchaseRecordBackup =
-    PurchaseRecordBackup(
-        id = id, supplierId = supplierId, purchaseDate = purchaseDate,
-        items = items.map { it.toBackup() },
-        remarks = remarks, createdAt = createdAt, updatedAt = updatedAt
-    )
+// --- PURCHASE MAPPERS ---
+fun PurchaseRecordEntity.toBackup() = PurchaseRecordBackup(
+    id, customerId, supplierId, supplierInvoiceNumber, purchaseDate, placeOfSupplyCode,
+    reverseChargeApplicable, eWayBillNumber, eWayBillDate, vehicleNumber, shippedToAddress,
+    supplyType, deliveryCharge, extraCharges, globalDiscountAmount, itemSubTotal, isEdited,
+    totalTaxableAmount, globalGstRate, cgstAmount, sgstAmount, igstAmount, roundOff, grandTotal,
+    isItcEligible, createdAt, updatedAt
+)
 
-fun PurchaseRecordBackup.toEntity(): PurchaseRecordEntity =
-    PurchaseRecordEntity(
-        id = id, supplierId = supplierId, purchaseDate = purchaseDate,
-        items = items.map { it.toEntity() },
-        remarks = remarks, createdAt = createdAt, updatedAt = updatedAt
-    )
+fun PurchaseRecordBackup.toEntity() = PurchaseRecordEntity(
+    id, customerId, supplierId, supplierInvoiceNumber, purchaseDate, placeOfSupplyCode,
+    reverseChargeApplicable, eWayBillNumber, eWayBillDate, vehicleNumber, shippedToAddress,
+    supplyType, deliveryCharge, extraCharges, globalDiscountAmount, itemSubTotal, isEdited,
+    totalTaxableAmount, globalGstRate, cgstAmount, sgstAmount, igstAmount, roundOff, grandTotal,
+    isItcEligible, createdAt, updatedAt
+)
 
+fun PurchaseItemEntity.toBackup() = PurchaseItemBackup(
+    id, purchaseId, productId, productNameSnapshot, hsnCode, unit, quantity, costPrice, taxableAmount
+)
 
-// --- SUPPLIER MAPPERS (Was missing from your candidate list) ---
-fun SupplierFirmEntity.toBackup(): SupplierFirmBackup =
-    SupplierFirmBackup(
-        id = id, name = name, gstin = gstin, address = address,
-        contactNumber = contactNumber, email = email, stateCode = stateCode,
-        createdAt = createdAt, updatedAt = updatedAt, isActive = isActive
-    )
+fun PurchaseItemBackup.toEntity() = PurchaseItemEntity(
+    id, purchaseId, productId, productNameSnapshot, hsnCode, unit, quantity, costPrice, taxableAmount
+)
 
-fun SupplierFirmBackup.toEntity(): SupplierFirmEntity =
-    SupplierFirmEntity(
-        id = id, name = name, gstin = gstin, address = address,
-        contactNumber = contactNumber, email = email, stateCode = stateCode,
-        createdAt = createdAt, updatedAt = updatedAt, isActive = isActive
-    )
+// --- PAYMENT MAPPERS ---
+fun PaymentTransactionEntity.toBackup() = PaymentTransactionBackup(
+    id = id,
+    partyId = partyId,
+    documentId = documentId,
+    type = type,
+    amount = amount,
+    paymentMode = paymentMode,
+    transactionDate = transactionDate,
+    referenceId = referenceId,
+    notes = notes
+)
 
-// --- CUSTOMER ENTITY MAPPER (For Restore) ---
-// Add this so backup.customers.map { it.toEntity() } works for the DAO
-fun CustomerFirmBackup.toEntity(): CustomerFirmEntity =
-    CustomerFirmEntity(
-        id = id, name = name, gstin = gstin, address = address,
-        contactNumber = contactNumber, email = email, stateCode = stateCode,
-        createdAt = createdAt, updatedAt = updatedAt, active = active, image = image
-    )
+fun PaymentTransactionBackup.toEntity() = PaymentTransactionEntity(
+    id = id,
+    partyId = partyId,
+    documentId = documentId,
+    type = type,
+    amount = amount,
+    paymentMode = paymentMode,
+    transactionDate = transactionDate,
+    referenceId = referenceId,
+    notes = notes
+)
 
-// InvoiceItem
-fun InvoiceItem.toBackup(): InvoiceItemBackup =
-    InvoiceItemBackup(
-        id = id, productId = productId, name = name, unit = unit,
-        price = price, quantity = quantity, hsn = hsn, total = total
-    )
-
-fun InvoiceItemBackup.toEntity(): InvoiceItem =
-    InvoiceItem(
-        id = id, productId = productId, name = name, unit = unit,
-        price = price, quantity = quantity, hsn = hsn, total = total
-    )
-
-// Gst Breakdown
-fun GstBreakdown.toBackup(): GstBreakdownBackup =
-    GstBreakdownBackup(
-        cgstRate, sgstRate, igstRate, cgstAmount, sgstAmount, igstAmount, totalTax
-    )
-
-fun GstBreakdownBackup.toEntity(): GstBreakdown =
-    GstBreakdown(
-        cgstRate, sgstRate, igstRate, cgstAmount, sgstAmount, igstAmount, totalTax
-    )
-
-// Invoice (Renamed from InvoiceEntity to Invoice)
-fun InvoiceEntity.toBackup(): InvoiceBackup =
-    InvoiceBackup(
-        id = id,
-        invoiceNo = invoiceNo,
-        date = date,
-        sellerId = sellerId,
-        customerDetails = customerDetails?.toBackup(), // Uses CustomerFirm mapper
-        supplyType = supplyType.name, // Enum mapping
-        vehicleNumber = vehicleNumber,
-        shippedTo = shippedTo,
-        items = items.map { it.toBackup() },
-        totalBeforeTax = totalBeforeTax,
-        gst = gst.toBackup(),
-        shippingCharge = shippingCharge,
-        totalAmount = totalAmount,
-        amountInWords = amountInWords,
-        status = status.name,
-        createdAt = createdAt,
-        updatedAt = updatedAt,
-        cancelledAt = cancelledAt,
-        cancelReason = cancelReason,
-        deleted = deleted,
-        deletedAt = deletedAt,
-        version = version
-    )
-
-fun InvoiceBackup.toEntity(): InvoiceEntity =
-    InvoiceEntity(
-        id = id,
-        invoiceNo = invoiceNo,
-        date = date,
-        sellerId = sellerId,
-        customerDetails = customerDetails?.toModel(),
-        supplyType = SupplyType.valueOf(supplyType),
-        vehicleNumber = vehicleNumber,
-        shippedTo = shippedTo,
-        items = items.map { it.toEntity() },
-        totalBeforeTax = totalBeforeTax,
-        gst = gst.toEntity(),
-        shippingCharge = shippingCharge,
-        totalAmount = totalAmount,
-        amountInWords = amountInWords,
-        status = InvoiceStatus.valueOf(status),
-        createdAt = createdAt,
-        updatedAt = updatedAt,
-        cancelledAt = cancelledAt,
-        cancelReason = cancelReason,
-        deleted = deleted,
-        deletedAt = deletedAt,
-        version = version
-    )

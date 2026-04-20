@@ -5,6 +5,7 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,27 +26,22 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -59,29 +54,38 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.axiom.ui.components.shared.Dropdown.Dropdown
+import com.example.axiom.ui.components.shared.ImagePicker.CompactImagePicker
+import com.example.axiom.ui.components.shared.Switch.AnimatedSwitch
+import com.example.axiom.ui.components.shared.Switch.SwitchSize
+import com.example.axiom.ui.components.shared.TextInput.Input
 import com.example.axiom.ui.components.shared.bottomSheet.SearchBar
 import com.example.axiom.ui.components.shared.bottomSheet.SheetHeadingText
 import com.example.axiom.ui.components.shared.button.AppIconButton
 import com.example.axiom.ui.components.shared.button.AppIcons
+import com.example.axiom.ui.components.shared.button.Button
+import com.example.axiom.ui.components.shared.button.ButtonVariant
+import com.example.axiom.ui.screens.finances.Invoice.components.extractStateCodeFromGst
+import com.example.axiom.ui.theme.AxiomTheme
 import java.util.UUID
 
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CustomerListSheet(
-    customers: List<PartyEntity>,
+    customers: List<PartyWithContacts>,
     searchQuery: String,
     onSearchChange: (String) -> Unit,
-    selectedIds: Set<String>,
-    onToggleSelection: (String) -> Unit,
-    onConfirmSelection: () -> Unit,
+    selectedId: String?,
+    onSelect: (PartyWithContacts) -> Unit,
     onCreateClick: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -101,7 +105,9 @@ fun CustomerListSheet(
                 icon = AppIcons.Add,
                 contentDescription = "Add",
                 onClick = onCreateClick,
-                enclosedInCircle = true
+                enclosedInCircle = true,
+                circleColor = AxiomTheme.components.card.title,
+                tint = AxiomTheme.components.card.background
             )
         }
 
@@ -123,28 +129,33 @@ fun CustomerListSheet(
         ) {
             items(
                 items = customers,
-                key = { it.id }
+                key = { it.party.id }
             ) { customer ->
-                val isSelected = selectedIds.contains(customer.id)
+
+                val party = customer.party
+
+
+                val isSelected = selectedId == party.id
                 val borderColor =
-                    if (isSelected) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.outline
+                    if (isSelected) AxiomTheme.components.card.selectedBorder
+                    else AxiomTheme.components.card.border
 
                 val backgroundColor =
-                    if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                    else MaterialTheme.colorScheme.surface
+                    if (isSelected) AxiomTheme.components.card.selectedBackground
+                    else AxiomTheme.components.card.background
 
                 Card(
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
                         .combinedClickable(
-                            onClick = { onToggleSelection(customer.id) },
+                            onClick = { onSelect(customer) },
                             onLongClick = { }
-                        )
-                        .background(backgroundColor)
-                        .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+                        ),
+                    colors = CardDefaults.cardColors(
+                        containerColor = backgroundColor
+                    ),
+                    border = BorderStroke(1.dp, borderColor)
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -167,38 +178,25 @@ fun CustomerListSheet(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = customer.businessName.ifBlank { "Unknown Business" },
+                                text = party.businessName.ifBlank { "Unknown Business" },
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = AxiomTheme.components.card.title,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Spacer(modifier = Modifier.height(2.dp))
 
                             Text(
-                                text = if (!customer.gstNumber.isNullOrBlank()) "GST: ${customer.gstNumber}" else "Unregistered",
+                                text = if (!party.gstNumber.isNullOrBlank()) "GST: ${party.gstNumber}" else "Unregistered",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = AxiomTheme.components.card.subtitle,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
 
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = customer.city ?: "N/A",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            if ((customer.openingBalance) > 0) {
-                                Text(
-                                    text = "Bal: ₹${customer.openingBalance}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
+
                     }
                 }
             }
@@ -208,22 +206,132 @@ fun CustomerListSheet(
 
         // Bottom buttons
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             Button(
+                text = "Cancel",
                 onClick = onBack,
+                variant = ButtonVariant.White,
                 modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+
+@Composable
+fun ContactCard(
+    contact: PartyContactEntity,
+    onEdit: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null
+) {
+
+    val (icon, label) = when (contact.contactType) {
+        ContactType.PHONE -> Icons.Default.Person to "Mobile Number"
+        ContactType.EMAIL -> Icons.Default.Email to "Email Address"
+        ContactType.WEBSITE -> Icons.Default.Info to "Website"
+    }
+
+    val highlightColor = if (contact.isPrimary)
+        MaterialTheme.colorScheme.primary
+    else
+        MaterialTheme.colorScheme.outlineVariant
+
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF1C1C1E)
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = highlightColor.copy(alpha = 0.25f)
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+
+            // Icon Circle
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(highlightColor.copy(alpha = 0.15f)),
+                contentAlignment = Alignment.Center
             ) {
-                Text("Cancel")
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = highlightColor,
+                    modifier = Modifier.size(20.dp)
+                )
             }
 
-            Button(
-                onClick = onConfirmSelection,
-                enabled = selectedIds.isNotEmpty(),
+            // Text Section
+            Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Add (${selectedIds.size})")
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+
+                    Text(
+                        text = contact.value,
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    if (contact.isPrimary) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(highlightColor.copy(alpha = 0.2f))
+                                .border(
+                                    1.dp,
+                                    highlightColor.copy(alpha = 0.3f),
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "PRIMARY",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = highlightColor
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = label,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Action Button
+            IconButton(
+                onClick = {
+                    if (onEdit != null) onEdit() else onDelete?.invoke()
+                }
+            ) {
+                Icon(
+                    imageVector = if (onEdit != null) Icons.Default.Edit else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -233,376 +341,326 @@ fun CustomerListSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomerForm(
-    customerId: String? = null,
     partyWithContacts: PartyWithContacts?,
     isEditing: Boolean,
-    loadCustomer: (suspend (String) -> PartyEntity?)? = null,
     onSave: (PartyEntity, List<PartyContactEntity>) -> Unit,
     onCancel: () -> Unit
 ) {
 
-
-    // Local state for form fields
-//    var currentData by remember {
-//        mutableStateOf(
-//            PartyEntity(
-//                id = customerId ?: UUID.randomUUID().toString(),
-//                partyType = PartyType.CUSTOMER // Defaulting strictly to CUSTOMER
-//            )
-//        )
-//    }
-//    var contacts by remember {
-//        mutableStateOf(
-//            mutableListOf<PartyContactEntity>()
-//        )
-//    }
-//
-//
-//    LaunchedEffect(customerId) {
-//        if (isEditing && customerId != null && loadCustomer != null) {
-//            val loaded = loadCustomer(customerId)
-//            if (loaded != null) {
-//                currentData = loaded
-//            }
-//        }
-//    }
-
-    var currentData by remember {
-        mutableStateOf(
-            partyWithContacts?.party
-                ?: PartyEntity(
-                    id = UUID.randomUUID().toString(),
-                    partyType = PartyType.CUSTOMER
-                )
-        )
-    }
+    // Dialog state
+    var showMultiDialog by remember { mutableStateOf(false) }
+    var hasSubmitted by remember { mutableStateOf(false) }
+    var isSameAsShipping by remember { mutableStateOf(false) }
 
     val contacts = remember { mutableStateListOf<PartyContactEntity>() }
 
-    LaunchedEffect(partyWithContacts) {
-        if (partyWithContacts != null) {
+    // Temp state for price text fields to handle string/double conversion smoothly
+    var creditLimitText by remember { mutableStateOf("") }
+    var openingBalanceText by remember { mutableStateOf("") }
+
+
+    var currentData by remember {
+        mutableStateOf(
+            PartyEntity(
+                id = UUID.randomUUID().toString(),
+                partyType = PartyType.CUSTOMER
+            )
+        )
+    }
+
+
+    LaunchedEffect(partyWithContacts, isEditing) {
+        if (isEditing && partyWithContacts != null) {
             currentData = partyWithContacts.party
+
+            // Populate contacts
             contacts.clear()
             contacts.addAll(partyWithContacts.contacts)
+
+            // Populate text fields securely
+            creditLimitText = partyWithContacts.party.creditLimit
+                .takeIf { it != 0.0 }
+                ?.toString() ?: ""
+
+            openingBalanceText = partyWithContacts.party.openingBalance
+                .takeIf { it != 0.0 }
+                ?.toString() ?: ""
+
         }
     }
-    // Double conversion states
-    var creditLimitText by remember(currentData.creditLimit) {
-        mutableStateOf(if (currentData.creditLimit == 0.0 && !isEditing) "" else currentData.creditLimit.toString())
-    }
-    var openingBalanceText by remember(currentData.openingBalance) {
-        mutableStateOf(if (currentData.openingBalance == 0.0 && !isEditing) "" else currentData.openingBalance.toString())
+
+    // for check box
+    LaunchedEffect(isSameAsShipping, currentData.defaultShippingAddress) {
+        if (isSameAsShipping) {
+            currentData = currentData.copy(
+                billingAddress = currentData.defaultShippingAddress
+            )
+        }
     }
 
-
-    // Validation
-    var nameError by remember { mutableStateOf<String?>(null) }
 
     fun validate(): Boolean {
-        var isValid = true
+        hasSubmitted = true
 
-        if (currentData.businessName.isBlank()) {
-            nameError = "Business Name is required"
-            isValid = false
-        } else {
-            nameError = null
-        }
-
-        // Apply string-to-double conversions before saving
-        val credit = creditLimitText.toDoubleOrNull() ?: 0.0
-        val opening = openingBalanceText.toDoubleOrNull() ?: 0.0
-        currentData = currentData.copy(creditLimit = credit, openingBalance = opening)
-
-        return isValid
+        return currentData.businessName.isNotBlank() &&
+                currentData.billingAddress?.isNotBlank() == true
     }
 
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val maxHeight = screenHeight * 0.85f
+    fun onSubmit() {
+        if (validate()) {
+            val creditLimit = creditLimitText.toDoubleOrNull() ?: 0.0
+            val openingBalance = openingBalanceText.toDoubleOrNull() ?: 0.0
+            val derivedStateCode = extractStateCodeFromGst(currentData.gstNumber)
+
+            // Update the timestamp before saving
+            val finalData = currentData.copy(
+                stateCode = derivedStateCode ?: currentData.stateCode,
+                creditLimit = creditLimit,
+                openingBalance = openingBalance,
+                updatedAt = if (isEditing) System.currentTimeMillis() else null
+            )
+
+            onSave(finalData, contacts)
+        }
+    }
+
+
+// Unit Selection Dialog
+    if (showMultiDialog) {
+        MultiContactDialog(
+            partyId = currentData.id,
+            onDismiss = { showMultiDialog = false },
+            onAdd = { newContact ->
+                if (newContact.isPrimary) {
+                    contacts.replaceAll { it.copy(isPrimary = false) }
+                }
+                contacts.add(newContact)
+            }
+        )
+    }
+
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(max = maxHeight)
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-            .padding(bottom = 32.dp),
+            .padding(15.dp)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
+        SheetHeadingText(
             text = if (isEditing) "Edit Customer" else "Add New Customer",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
         )
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-        // Business Name
-        OutlinedTextField(
-            value = currentData.businessName,
-            onValueChange = {
-                currentData =
-                    currentData.copy(businessName = it); if (nameError != null) nameError = null
-            },
-            label = { Text("Business Name *") },
-            isError = nameError != null,
-            supportingText = { if (nameError != null) Text(nameError!!) },
+        //1st row
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        Row {
-            FilterChip(
-                selected = currentData.registrationType == GstRegistrationType.REGISTERED,
-                onClick = {
-                    currentData = currentData.copy(
-                        registrationType = GstRegistrationType.REGISTERED
-                    )
-                },
-                label = { Text("Registered (B2B)") }
-            )
-
-            FilterChip(
-                selected = currentData.registrationType == GstRegistrationType.UNREGISTERED,
-                onClick = {
-                    currentData = currentData.copy(
-                        registrationType = GstRegistrationType.UNREGISTERED,
-                        gstNumber = null
-                    )
-                },
-                label = { Text("Unregistered (B2C)") }
-            )
-        }
-
-        // GST Number
-        OutlinedTextField(
-            value = currentData.gstNumber ?: "",
-            onValueChange = { currentData = currentData.copy(gstNumber = it) },
-            label = { Text("GST Number (Optional)") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        // ---------------- CONTACT SECTION ----------------
-
-        Text(
-            text = "Contacts",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-
-        Button(
-            onClick = {
-                contacts.add(
-                    PartyContactEntity(
-                        id = UUID.randomUUID().toString(),
-                        partyId = currentData.id,
-                        contactType = ContactType.PHONE,
-                        value = "",
-                        isPrimary = contacts.isEmpty()
-                    )
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.Bottom
         ) {
-            Text("Add Contact")
+            CompactImagePicker(
+                onClick = { /* TODO: Open Image Picker */ },
+                label = "Logo"
+            )
+
+            Box(modifier = Modifier.weight(0.75f)) {
+                Input(
+                    value = currentData.businessName ?: "",
+                    onValueChange = { currentData = currentData.copy(businessName = it) },
+                    label = "Business Name",
+                    placeholder = "e.g. Acme Corp",
+                    singleLine = true,
+                    keyboardType = KeyboardType.Text,
+                    isError = currentData.businessName.isEmpty(),
+                    imeAction = ImeAction.Next,
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        contacts.forEachIndexed { index, contact ->
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-
-                    // Contact Type Dropdown
-                    var expanded by remember { mutableStateOf(false) }
-
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = !expanded }
-                    ) {
-                        OutlinedTextField(
-                            value = contact.contactType.name,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Contact Type") },
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded)
-                            },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-
-                        ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            ContactType.values().forEach { type ->
-                                DropdownMenuItem(
-                                    text = { Text(type.name) },
-                                    onClick = {
-                                        contacts[index] =
-                                            contact.copy(contactType = type)
-                                        expanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    // Contact Value Field
-                    OutlinedTextField(
-                        value = contact.value,
-                        onValueChange = {
-                            contacts[index] =
-                                contact.copy(value = it)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+//            //Gst / non gst
+            Box(modifier = Modifier.weight(0.4f)) {
+                Dropdown(
+                    label = "Registration Type",
+                    items = listOf("GST", "No GST"),
+                    selectedValue = currentData.registrationType,
+                    placeholder = "Select type",
+                    onItemSelected = { currentData = currentData.copy(registrationType = it) },
+                    isError = currentData.registrationType.isEmpty()
+                )
+            }
+            Box(modifier = Modifier.weight(0.6f)) {
+                if (currentData.registrationType == "GST") {
+                    Input(
+                        value = currentData.gstNumber ?: "",
+                        onValueChange = { input ->
+                            // GSTIN is always 15 chars, alphanumeric, uppercase
+                            val formatted = input.uppercase().filter { it.isLetterOrDigit() }.take(15)
+                            currentData = currentData.copy(gstNumber = formatted)
                         },
-                        label = { Text("Contact Value") },
-                        keyboardOptions = when (contact.contactType) {
-                            ContactType.PHONE ->
-                                KeyboardOptions(keyboardType = KeyboardType.Phone)
+                        label = "GSTIN",
+                        placeholder = "22AAAAA0000A1Z5",
+                        allCaps = true,
+                        singleLine = true,
+                        keyboardType = KeyboardType.Ascii,
+                        isError = currentData.gstNumber?.let { it.isNotEmpty() && it.length != 15 } ?: false,
+                        imeAction = ImeAction.Next,
 
-                            ContactType.EMAIL ->
-                                KeyboardOptions(keyboardType = KeyboardType.Email)
-
-                            ContactType.WEBSITE ->
-                                KeyboardOptions(keyboardType = KeyboardType.Uri)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = contact.isPrimary,
-                            onCheckedChange = { checked ->
-                                contacts.replaceAll {
-                                    it.copy(isPrimary = false)
-                                }
-                                contacts[index] =
-                                    contacts[index].copy(isPrimary = checked)
-                            }
                         )
-                        Text("Primary Contact")
-                    }
-
-                    TextButton(
-                        onClick = {
-                            contacts.removeAt(index)
-                        }
-                    ) {
-                        Text("Remove Contact")
-                    }
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // Location Info
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(
-                value = currentData.city ?: "",
-                onValueChange = { currentData = currentData.copy(city = it) },
-                label = { Text("City") },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            )
 
-            OutlinedTextField(
-                value = currentData.state ?: "",
-                onValueChange = { currentData = currentData.copy(state = it) },
-                label = { Text("State") },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-
-        // Address
-        OutlinedTextField(
+        //Billing address same as shipping address
+        Input(
             value = currentData.billingAddress ?: "",
             onValueChange = { currentData = currentData.copy(billingAddress = it) },
-            label = { Text("Billing Address") },
+            label = "Billing Address",
+            placeholder = "e.g. 123 Street Name,\nCity, State, 110001",
+            imeAction = ImeAction.Default,
+            singleLine = false,
             minLines = 2,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        )
+            keyboardType = KeyboardType.Text,
+            isError = currentData.billingAddress.isNullOrBlank(),
 
-        // Balances
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(
-                value = openingBalanceText,
-                onValueChange = {
-                    if (it.all { char -> char.isDigit() || char == '.' }) openingBalanceText = it
-                },
-                label = { Text("Opening Balance") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+            )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+
+            Text(
+                text = "Same as Shipping Address",
+                color = AxiomTheme.components.card.title
             )
 
-            OutlinedTextField(
-                value = creditLimitText,
-                onValueChange = {
-                    if (it.all { char -> char.isDigit() || char == '.' }) creditLimitText = it
+            AnimatedSwitch(
+                checked = isSameAsShipping,
+                onCheckedChange = {
+                    isSameAsShipping = it
                 },
-                label = { Text("Credit Limit") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                size = SwitchSize.SM,
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        //Credit Limit and opening Balance
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(modifier = Modifier.weight(1f)) {
+                Input(
+                    value = creditLimitText,
+                    onValueChange = { input ->
+                        // Allows only one decimal point and restricts to 2 decimal places
+                        if (input.isEmpty() || input.matches(Regex("""^\d*\.?\d{0,2}$"""))) {
+                            creditLimitText = input
+                        }
+                    },
+                    label = "Credit Limit",
+                    placeholder = "0.00",
+                    keyboardType = KeyboardType.Decimal,
+                    singleLine = true,
+                    isError = creditLimitText.isNotEmpty() && creditLimitText.toDoubleOrNull() == null
+                )
+            }
+            Box(modifier = Modifier.weight(1f)) {
+                Input(
+                    value = openingBalanceText,
+                    onValueChange = { input ->
+                        // Standard financial regex: digits, optional dot, max 2 decimals
+                        if (input.isEmpty() || input.matches(Regex("""^\d*\.?\d{0,2}$"""))) {
+                            openingBalanceText = input
+                        }
+                    },
+                    label = "Opening Balance", // Keep it clean; handle '*' via validation logic
+                    placeholder = "0.00",
+                    keyboardType = KeyboardType.Decimal,
+                    singleLine = true,
+                    // Error if mandatory field is blank
+                    isError = openingBalanceText.isBlank()
+                )
+            }
+        }
+
+        //Contact Details
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+
+            Text(
+                text = "Contact Details",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = AxiomTheme.components.card.title
+            )
+
+            AppIconButton(
+                icon = AppIcons.Add,
+                contentDescription = "Add",
+                onClick = { showMultiDialog = true },
+                iconSize = 20.dp,          // control visual weight
+                modifier = Modifier.size(36.dp), // touch target
+                tint = AxiomTheme.components.card.title
+            )
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
+            if (contacts.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No contacts added",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AxiomTheme.components.card.subtitle
+                    )
+                }
+            } else {
+                contacts.forEach { contact ->
+                    ContactCard(
+                        contact = contact,
+                        onDelete = {
+                            contacts.remove(contact)
+                        }
+                    )
+                }
+            }
+        }
+
 
         // Action Buttons
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            OutlinedButton(
+            Button(
+                text = "Cancel",
                 onClick = onCancel,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Cancel")
-            }
+                variant = ButtonVariant.Gray,
+                modifier = Modifier.weight(1f)
+            )
 
             Button(
-                onClick = {
-                    if (validate()) {
-                        val finalData = if (isEditing) {
-                            currentData.copy(updatedAt = System.currentTimeMillis())
-                        } else {
-                            currentData
-                        }
-                        onSave(currentData, contacts.toList())
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(if (isEditing) "Update" else "Save")
-            }
+                text = if (isEditing) "Update" else "Save",
+                onClick = { onSubmit() },
+                icon = Icons.Default.Check,
+                variant = ButtonVariant.White,
+                modifier = Modifier.weight(1f)
+            )
+
         }
+
+
     }
 }
 
@@ -615,7 +673,7 @@ enum class CustomerSheetMode {
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun CustomerListSheetWrapper(
-    onConfirmSelection: (List<PartyEntity>) -> Unit,
+    onConfirmSelection: (PartyWithContacts) -> Unit,
     onBack: () -> Unit
 ) {
 
@@ -625,10 +683,10 @@ fun CustomerListSheetWrapper(
         factory = CustomerListViewModelFactory(context)
     )
 
-    val customers by viewModel.customers.collectAsState()
+    val customers by viewModel.customersWithContacts.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
 
-    var selectedIds by remember { mutableStateOf(setOf<String>()) }
+    var selectedId by remember { mutableStateOf<String?>(null) }
     var mode by remember { mutableStateOf(CustomerSheetMode.LIST) }
 
     AnimatedContent(
@@ -643,34 +701,40 @@ fun CustomerListSheetWrapper(
                 CustomerListSheet(
                     customers = customers,
                     searchQuery = searchQuery,
-                    selectedIds = selectedIds,
+                    selectedId = selectedId,
                     onSearchChange = viewModel::updateSearchQuery,
-                    onToggleSelection = { id ->
-                        selectedIds = if (selectedIds.contains(id)) {
-                            selectedIds - id
-                        } else {
-                            selectedIds + id
-                        }
+                    onSelect = { party ->
+                        selectedId = party.party.id
+                        onConfirmSelection(party)
                     },
-                    onConfirmSelection = {
-                        val selected = customers.filter { selectedIds.contains(it.id) }
-                        onConfirmSelection(selected)
-                        selectedIds = emptySet()
+
+                    onCreateClick = {
+                        mode = CustomerSheetMode.CREATE
                     },
-                    onCreateClick = { mode = CustomerSheetMode.CREATE },
                     onBack = onBack
                 )
             }
 
             CustomerSheetMode.CREATE -> {
-//                CustomerForm(
-//                    isEditing = false,
-//                    onSave = { customer ->
-//                        viewModel.insertCustomer(customer)
-//                        mode = CustomerSheetMode.LIST
-//                    },
-//                    onCancel = { mode = CustomerSheetMode.LIST }
-//                )
+
+                CustomerForm(
+                    partyWithContacts = null,
+                    isEditing = false,
+
+                    onSave = { party, contacts ->
+
+                        viewModel.saveCustomer(
+                            party,
+                            contacts
+                        )
+
+                        mode = CustomerSheetMode.LIST
+                    },
+
+                    onCancel = {
+                        mode = CustomerSheetMode.LIST
+                    }
+                )
             }
         }
     }

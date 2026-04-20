@@ -2,138 +2,188 @@ package com.example.axiom.ui.screens.finances.analytics
 
 
 //import com.example.axiom.data.finances.BusinessAnalyticsViewModelFactory
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Divider
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import java.text.NumberFormat
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.axiom.ui.components.shared.header.AnimatedHeaderScrollView
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceViewModel
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceViewModelFactory
+import com.example.axiom.ui.theme.AxiomTheme
+import java.text.DateFormatSymbols
 import java.util.Locale
 
 // -----------------------------------------------------------------------------
 // 1. DATA MODELS
 // -----------------------------------------------------------------------------
-
-data class GstSummary(
-    val outputTax: Double, // Liability (Sales)
-    val inputTax: Double,  // ITC (Purchases)
-    val pendingItc: Double // Stuck ITC (Vendor hasn't filed)
+data class B2bInvoice(
+    val id: String,
+    val gstin: String,
+    val invoiceNo: String,
+    val date: String,
+    val totalVal: Double,
+    val taxableVal: Double,
+    val igst: Double,
+    val cgst: Double,
+    val sgst: Double
 )
 
-data class TaxSlab(
-    val percentage: String,
-    val amount: Double,
-    val color: Color
+data class HsnSummary(
+    val id: String, val hsnCode: String, val uqc: String, val totalQty: Double,
+    val taxableVal: Double, val rate: Double, val igst: Double, val cgst: Double, val sgst: Double
 )
 
-data class FilingStatus(
-    val title: String,
-    val dueDate: String,
-    val status: String,
-    val isCompleted: Boolean,
-    val estimatedPay: Double? = null
-)
 
-data class DashboardUiState(
-    val currentMonth: String = "October 2023",
-    val complianceStatus: String = "Action Required",
-    val summary: GstSummary = GstSummary(0.0, 0.0, 0.0),
-    val slabs: List<TaxSlab> = emptyList(),
-    val filings: List<FilingStatus> = emptyList()
-)
+@Composable
+fun MonthYearPickerDialog(
+    initialMonth: Int,
+    initialYear: Int,
+    onDismissRequest: () -> Unit,
+    onDateSelected: (month: Int, year: Int) -> Unit
+) {
+    var currentYear by remember { mutableIntStateOf(initialYear) }
+    var currentMonth by remember { mutableIntStateOf(initialMonth) }
 
-// -----------------------------------------------------------------------------
-// 2. VIEWMODEL
-// -----------------------------------------------------------------------------
+    val months = remember { DateFormatSymbols().shortMonths.take(12) }
 
-class GSTAnalyticsViewModel : ViewModel() {
-    private val _uiState = MutableStateFlow(DashboardUiState())
-    val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+    Dialog(onDismissRequest = onDismissRequest) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header (Year Selector)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { currentYear-- }) {
+                        Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Previous Year")
+                    }
+                    Text(
+                        text = currentYear.toString(),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    IconButton(onClick = { currentYear++ }) {
+                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Next Year")
+                    }
+                }
 
-    init {
-        // Simulating network delay for animation effect
-        _uiState.value = DashboardUiState()
-        loadDummyData()
-    }
+                Spacer(modifier = Modifier.height(16.dp))
 
-    private fun loadDummyData() {
-        _uiState.value = DashboardUiState(
-            currentMonth = "October 2023",
-            complianceStatus = "Action Required",
-            summary = GstSummary(
-                outputTax = 125000.00,
-                inputTax = 85000.00,
-                pendingItc = 15000.00
-            ),
-            slabs = listOf(
-                TaxSlab("5%", 5000.0, Color(0xFF4ADE80)),
-                TaxSlab("12%", 12000.0, Color(0xFFFACC15)),
-                TaxSlab("18%", 95000.0, Color(0xFF3B82F6)),
-                TaxSlab("28%", 13000.0, Color(0xFFEF4444))
-            ),
-            filings = listOf(
-                FilingStatus("GSTR-1", "11th Oct", "Data Ready", true),
-                FilingStatus("GSTR-3B", "20th Oct", "Estimated Pay", false, 40000.00)
-            )
-        )
+                // Months Grid
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.height(200.dp)
+                ) {
+                    itemsIndexed(months) { index, monthName ->
+                        val isSelected = currentMonth == index
+                        val bgColor =
+                            if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent
+                        val textColor =
+                            if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(bgColor)
+                                .clickable { currentMonth = index }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = monthName.uppercase(),
+                                fontSize = 13.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = textColor
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Action Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismissRequest) {
+                        Text("Cancel")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(onClick = {
+                        onDateSelected(currentMonth, currentYear)
+                        onDismissRequest()
+                    }) {
+                        Text("Apply")
+                    }
+                }
+            }
+        }
     }
 }
+
 
 // -----------------------------------------------------------------------------
 // 3. MAIN SCREEN
@@ -145,536 +195,304 @@ fun GSTAnalyticsScreen(
     onBack: () -> Unit, // Back navigation callback
 
 ) {
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val isDark = isSystemInDarkTheme()
 
-//    val context = LocalContext.current
-//    val analyticsViewModel: BusinessAnalyticsViewModel = viewModel(
-//        factory = BusinessAnalyticsViewModelFactory(context)
-//    )
-//    val totalSales by analyticsViewModel.totalSales.collectAsState()
-//    val totalPurchases by analyticsViewModel.totalPurchases.collectAsState()
-//
-//    val outputTax = totalSales * 0.18
-//    val inputTax = totalPurchases * 0.18
-//    val pendingItc = inputTax * 0.15
-//
-//    val summary = GstSummary(
-//        outputTax = outputTax,
-//        inputTax = inputTax,
-//        pendingItc = pendingItc
-//    )
-//
-//    val slabs = listOf(
-//        TaxSlab("5%", totalSales * 0.05, Color(0xFF4ADE80)),
-//        TaxSlab("12%", totalSales * 0.12, Color(0xFFFACC15)),
-//        TaxSlab("18%", totalSales * 0.18, Color(0xFF3B82F6))
-//    )
-//
-//    val filings = listOf(
-//        FilingStatus(
-//            title = "GSTR-1",
-//            dueDate = "11th",
-//            status = "Data Ready",
-//            isCompleted = true
-//        ),
-//        FilingStatus(
-//            title = "GSTR-3B",
-//            dueDate = "20th",
-//            status = "Estimated Pay",
-//            isCompleted = false,
-//            estimatedPay = outputTax - inputTax
-//        )
-//    )
-//
-//    val complianceStatus =
-//        if (outputTax > inputTax) "Action Required" else "Safe"
-//
-//
-//    // Animation Trigger State
-//    var isVisible by remember { mutableStateOf(false) }
-//
-//    LaunchedEffect(Unit) {
-//        isVisible = true
-//    }
-//
-//    Scaffold(
-//        containerColor = MaterialTheme.colorScheme.background,
-//    ) { paddingValues ->
-//        LazyColumn(
-//            modifier = Modifier
-//                .padding(paddingValues)
-//                .fillMaxSize(),
-//            contentPadding = PaddingValues(bottom = 32.dp),
-//            verticalArrangement = Arrangement.spacedBy(24.dp)
-//        ) {
-//            // --- Sticky Header ---
-//            stickyHeader {
-//                GSTHeader(
-//                    month = "Current Month",
-//                    status = complianceStatus,
-//                    onBack = onBack
-//                )
-//            }
-//
-//            // --- Section 1: Cash Flow Trio ---
-//            item {
-//                StaggeredEntry(visible = isVisible, index = 0) {
-//                    CashFlowSection(summary = summary)
-//                }
-//            }
-//
-//            // --- Section 2: ITC Visualizer ---
-//            item {
-//                StaggeredEntry(visible = isVisible, index = 1) {
-//                    ITCVisualizerSection(summary = summary)
-//
-//                }
-//            }
-//
-//            // --- Section 3: Slab Distribution ---
-//            item {
-//                StaggeredEntry(visible = isVisible, index = 2) {
-//                    SlabDistributionSection(slabs = slabs)
-//
-//                }
-//            }
-//
-//            // --- Section 4: Filing Timeline ---
-//            item {
-//                StaggeredEntry(visible = isVisible, index = 3) {
-//                    FilingTimelineSection(filings = filings)
-//
-//                }
-//            }
-//        }
-//    }
-}
+    val context = LocalContext.current
 
-// -----------------------------------------------------------------------------
-// 4. ANIMATION HELPERS
-// -----------------------------------------------------------------------------
-
-@Composable
-fun StaggeredEntry(
-    visible: Boolean,
-    index: Int,
-    content: @Composable () -> Unit
-) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = slideInVertically(
-            initialOffsetY = { 50 * (index + 1) }, // Slight offset for slide effect
-            animationSpec = tween(
-                durationMillis = 500,
-                delayMillis = index * 100,
-                easing = FastOutSlowInEasing
-            )
-        ) + fadeIn(
-            animationSpec = tween(durationMillis = 500, delayMillis = index * 100)
-        )
-    ) {
-        content()
-    }
-}
-
-@Composable
-fun AnimatedCounter(
-    targetValue: Double,
-    style: TextStyle,
-    color: Color = MaterialTheme.colorScheme.onSurface,
-    prefix: String = ""
-) {
-    val animatedValue = remember { Animatable(0f) }
-
-    LaunchedEffect(targetValue) {
-        animatedValue.animateTo(
-            targetValue = targetValue.toFloat(),
-            animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing)
-        )
-    }
-
-    Text(
-        text = formatCurrency(animatedValue.value.toDouble()),
-        style = style,
-        color = color
+    val viewModel: InvoiceViewModel = viewModel(
+        factory = InvoiceViewModelFactory(context)
     )
+
+    val b2bInvoices by viewModel.b2bInvoices.collectAsState()
+    val hsnSummaryList by viewModel.hsnSummaryList.collectAsState()
+
+    val selectedMonth by viewModel.selectedMonth.collectAsState()
+    val selectedYear by viewModel.selectedYear.collectAsState()
+
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    // Format the date for the button (e.g., "Oct 2023")
+    val monthName = remember(selectedMonth) {
+        DateFormatSymbols().shortMonths[selectedMonth]
+    }
+
+    if (showDatePicker) {
+        MonthYearPickerDialog(
+            initialMonth = selectedMonth,
+            initialYear = selectedYear,
+            onDismissRequest = { showDatePicker = false },
+            onDateSelected = { month, year ->
+                viewModel.setMonthAndYear(month, year) // This automatically triggers the DB fetch!
+            }
+        )
+    }
+
+
+
+    AnimatedHeaderScrollView(
+        largeTitle = "Gst Analytics",
+        subtitle = "$monthName $selectedYear",
+        onBack = onBack,
+        onHeaderClick = { showDatePicker = true }
+    ) {
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                // --- Tab Layout ---
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            if (isDark) Color.White.copy(alpha = 0.05f) else Color(0xFFE5E7EB),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(4.dp)
+                ) {
+                    TabButton(
+                        text = "GSTR-1",
+                        isSelected = selectedTab == 0,
+                        modifier = Modifier.weight(1f)
+                    ) { selectedTab = 0 }
+                    TabButton(
+                        text = "GSTR-3B",
+                        isSelected = selectedTab == 1,
+                        modifier = Modifier.weight(1f)
+                    ) { selectedTab = 1 }
+                }
+
+                // --- Content ---
+                if (selectedTab == 0) {
+                    Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                        B2bInvoiceTable(b2bInvoices)
+                        HsnSummaryTable(hsnSummaryList)
+                        DocumentsIssuedSection()
+                    }
+                } else {
+                    // Placeholder for 3B
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "GSTR-3B Dashboard Coming Soon...",
+                            color = AxiomTheme.components.card.mutedText
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
-// -----------------------------------------------------------------------------
-// 5. COMPONENTS
-// -----------------------------------------------------------------------------
 
 @Composable
-fun GSTHeader(month: String, status: String, onBack: () -> Unit) {
-    val isSafe = status == "Safe"
-    val badgeColor =
-        if (isSafe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-    val badgeBg = badgeColor.copy(alpha = 0.1f)
+fun B2bInvoiceTable(invoices: List<B2bInvoice>) {
+    var ackedRows by remember { mutableStateOf(setOf<String>()) }
 
-    Surface(
-        color = MaterialTheme.colorScheme.background.copy(alpha = 0.95f),
-        modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 4.dp // Slight shadow for sticky effect
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(AxiomTheme.components.card.background)
+            .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(20.dp))
     ) {
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 8.dp, vertical = 12.dp) // Adjusted padding for back button
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Back Button
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = MaterialTheme.colorScheme.onBackground
+        // Table Header
+        Text(
+            text = "1. B2B Invoices (Table 4A, 4B, 4C, 6B, 6C)",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = AxiomTheme.components.card.title,
+            modifier = Modifier.padding(20.dp)
+        )
+        Divider(color = AxiomTheme.components.card.border)
+
+        // Sync Scrolling Table
+        Row(modifier = Modifier.fillMaxWidth()) {
+
+            // --- STICKY COLUMN (Ack) ---
+
+            Column(
+                modifier = Modifier
+                    .width(50.dp)
+                    .background(AxiomTheme.components.card.background)
+            ) {
+                // 1. Header Cell
+                Box(
+                    modifier = Modifier
+                        .height(56.dp)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "ACK",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Gray
+                    )
+                }
+
+                // 2. Divider matching the right side header
+                Divider(color = AxiomTheme.components.card.border)
+
+                // 3. Data Cells (Checkboxes)
+                invoices.forEach { invoice ->
+                    val isAcked = ackedRows.contains(invoice.id)
+                    Box(
+                        modifier = Modifier
+                            .height(56.dp)
+                            .fillMaxWidth()
+                            .background(
+                                if (isAcked) AxiomTheme.components.card.background.copy(alpha = 0.05f)
+                                else AxiomTheme.components.card.background
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Checkbox(
+                            checked = isAcked,
+                            onCheckedChange = {
+                                ackedRows =
+                                    if (it) ackedRows + invoice.id else ackedRows - invoice.id
+                            },
+                            colors = CheckboxDefaults.colors(checkedColor = Color(0xFF3B82F6))
+                        )
+                    }
+
+                    // 4. Divider matching the right side data rows
+                    Divider(color = AxiomTheme.components.card.border)
+                }
+
+                // 5. Total Row Space (Matching height and background)
+                Box(
+                    modifier = Modifier
+                        .height(56.dp)
+                        .fillMaxWidth()
+                        .background(Color(0xFF3B82F6).copy(alpha = 0.1f))
                 )
             }
 
+
+            // --- HORIZONTAL SCROLLABLE COLUMNS ---
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .horizontalScroll(rememberScrollState())
             ) {
-                Column {
-                    Text(
-                        text = "GST Overview",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .padding(top = 4.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .clickable { /* Date Picker Logic */ }
-                            .padding(end = 4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = month,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = "Select Month",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
 
-                // Compliance Badge
-                Surface(
-                    color = badgeBg,
-                    shape = RoundedCornerShape(100),
-                    border = BorderStroke(1.dp, badgeColor.copy(alpha = 0.3f))
+                // Helper to generate a fully dynamic column
+                @Composable
+                fun TableDataColumn(
+                    header: String,
+                    isRight: Boolean = false,
+                    totalValue: String = "", // Empty string if no total for this column
+                    isTotalBold: Boolean = true,
+                    dataCellContent: @Composable (B2bInvoice, Boolean) -> Unit
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = if (isSafe) Icons.Default.CheckCircle else Icons.Default.Warning,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = badgeColor
+                    Column {
+                        // Header Cell
+                        DynamicTableCell(
+                            text = header,
+                            isHeader = true,
+                            isRight = isRight,
+                            backgroundColor = AxiomTheme.components.card.background
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = status,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = badgeColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
+                        Divider(color = AxiomTheme.components.card.border)
 
-@Composable
-fun CashFlowSection(summary: GstSummary) {
-    val netPayable = summary.outputTax - summary.inputTax
-    val isPayable = netPayable > 0
-
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        SectionTitle("Cash Flow")
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Liability
-            SummaryCard(
-                modifier = Modifier.weight(1f),
-                title = "Output Tax",
-                amount = summary.outputTax,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            // ITC
-            SummaryCard(
-                modifier = Modifier.weight(1f),
-                title = "Input Credit",
-                amount = summary.inputTax,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Net Payable Card
-        GlassCard(
-            modifier = Modifier.fillMaxWidth(),
-            containerColor = if (isPayable) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.08f)
-            else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.08f),
-            borderColor = if (isPayable) MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
-            else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-        ) {
-            Row(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text(
-                        text = "Net Payable",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = if (isPayable) "Liability" else "Carry Forward",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (isPayable) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-                AnimatedCounter(
-                    targetValue = Math.abs(netPayable),
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                    color = if (isPayable) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun SummaryCard(modifier: Modifier = Modifier, title: String, amount: Double, color: Color) {
-    GlassCard(modifier = modifier) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            AnimatedCounter(
-                targetValue = amount,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                color = color
-            )
-        }
-    }
-}
-
-@Composable
-fun ITCVisualizerSection(summary: GstSummary) {
-    val totalITC = summary.inputTax + summary.pendingItc
-    val matchedPercentage = if (totalITC > 0) (summary.inputTax / totalITC).toFloat() else 0f
-
-    // Animation state
-    val animatedProgress = remember { Animatable(0f) }
-    LaunchedEffect(matchedPercentage) {
-        // Delay slightly so the user sees the chart grow after the page slide-in
-        delay(300)
-        animatedProgress.animateTo(
-            targetValue = matchedPercentage,
-            animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing)
-        )
-    }
-
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        SectionTitle("ITC Reconciliation")
-        Text(
-            text = "Missing Credit: Supplier hasn't uploaded invoices",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        GlassCard(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .padding(24.dp)
-                    .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Donut Chart
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(130.dp)
-                ) {
-                    val primaryColor = MaterialTheme.colorScheme.primary
-                    val warningColor =
-                        MaterialTheme.colorScheme.tertiary // Or specific warning color
-
-                    Canvas(modifier = Modifier.size(130.dp)) {
-                        val strokeWidth = 14.dp.toPx()
-                        val size = Size(size.width - strokeWidth, size.height - strokeWidth)
-                        val topLeft = Offset(strokeWidth / 2, strokeWidth / 2)
-
-                        // Background Arc (Pending)
-                        drawArc(
-                            color = warningColor.copy(alpha = 0.3f),
-                            startAngle = 0f,
-                            sweepAngle = 360f,
-                            useCenter = false,
-                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-                            topLeft = topLeft,
-                            size = size
-                        )
-
-                        // Foreground Arc (Matched) - Animated
-                        drawArc(
-                            color = primaryColor,
-                            startAngle = -90f,
-                            sweepAngle = 360f * animatedProgress.value,
-                            useCenter = false,
-                            style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
-                            topLeft = topLeft,
-                            size = size
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "${(animatedProgress.value * 100).toInt()}%",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Matched",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(24.dp))
-
-                // Legend
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    LegendItem(
-                        color = MaterialTheme.colorScheme.primary,
-                        label = "Matched ITC",
-                        value = summary.inputTax
-                    )
-                    LegendItem(
-                        color = MaterialTheme.colorScheme.tertiary,
-                        label = "Pending ITC",
-                        value = summary.pendingItc
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun SlabDistributionSection(slabs: List<TaxSlab>) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        SectionTitle("Tax Slab Distribution")
-
-        GlassCard(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                val maxAmount = slabs.maxOfOrNull { it.amount } ?: 1.0
-
-                slabs.forEachIndexed { index, slab ->
-                    val fillFraction = (slab.amount / maxAmount).toFloat()
-
-                    // Animate Bar Width
-                    val animatedWidth = remember { Animatable(0f) }
-                    LaunchedEffect(fillFraction) {
-                        delay(500 + (index * 100).toLong()) // Staggered bars
-                        animatedWidth.animateTo(
-                            targetValue = fillFraction,
-                            animationSpec = tween(1000, easing = FastOutSlowInEasing)
-                        )
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Label
-                        Text(
-                            text = slab.percentage,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.width(40.dp)
-                        )
-
-                        // Bar
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(10.dp)
-                                .clip(RoundedCornerShape(100))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(animatedWidth.value)
-                                    .fillMaxHeight()
-                                    .clip(RoundedCornerShape(100))
-                                    .background(slab.color)
-                            )
+                        // Data Cells
+                        invoices.forEach { invoice ->
+                            val isAcked = ackedRows.contains(invoice.id)
+                            dataCellContent(invoice, isAcked)
+                            Divider(color = AxiomTheme.components.card.border)
                         }
 
-                        // Value
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = formatCurrency(slab.amount),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.width(80.dp),
-                            textAlign = TextAlign.End
+                        // Total Cell
+                        DynamicTableCell(
+                            text = totalValue,
+                            isRight = isRight,
+                            isBold = isTotalBold,
+                            backgroundColor = Color(0xFF3B82F6).copy(alpha = 0.1f),
+                            textColor = if (totalValue.contains("TOTAL")) Color(0xFF3B82F6) else AxiomTheme.components.card.title
                         )
                     }
                 }
-            }
-        }
-    }
-}
 
-@Composable
-fun FilingTimelineSection(filings: List<FilingStatus>) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        SectionTitle("Filing Timeline")
+                // 1. GSTIN Column
+                TableDataColumn(
+                    header = "GSTIN / UIN",
+                    totalValue = "TOTAL FOR B2B"
+                ) { invoice, isAcked ->
+                    DynamicTableCell(text = invoice.gstin, isAcked = isAcked, isBold = true)
+                }
 
-        GlassCard(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                filings.forEachIndexed { index, filing ->
-                    TimelineItem(
-                        filing = filing,
-                        isLast = index == filings.lastIndex
+                // 2. Invoice No Column
+                TableDataColumn(header = "Invoice No.") { invoice, isAcked ->
+                    DynamicTableCell(text = invoice.invoiceNo, isAcked = isAcked)
+                }
+
+                // 3. Date Column
+                TableDataColumn(header = "Date") { invoice, isAcked ->
+                    DynamicTableCell(text = invoice.date, isAcked = isAcked)
+                }
+
+                // 4. Total Invoice Value
+                TableDataColumn(
+                    header = "Total Inv Val",
+                    isRight = true,
+                    totalValue = invoices.sumOf { it.totalVal }.toInr()
+                ) { invoice, isAcked ->
+                    DynamicTableCell(
+                        text = invoice.totalVal.toInr(),
+                        isRight = true,
+                        isAcked = isAcked,
+                        isBold = true
                     )
+                }
+
+                // 5. Taxable Value
+                TableDataColumn(
+                    header = "Taxable Val",
+                    isRight = true,
+                    totalValue = invoices.sumOf { it.taxableVal }.toInr()
+                ) { invoice, isAcked ->
+                    DynamicTableCell(
+                        text = invoice.taxableVal.toInr(),
+                        isRight = true,
+                        isAcked = isAcked
+                    )
+                }
+
+                // 6. IGST
+                TableDataColumn(
+                    header = "IGST",
+                    isRight = true,
+                    totalValue = invoices.sumOf { it.igst }.toInr()
+                ) { invoice, isAcked ->
+                    DynamicTableCell(text = invoice.igst.toInr(), isRight = true, isAcked = isAcked)
+                }
+
+                // 7. CGST
+                TableDataColumn(
+                    header = "CGST",
+                    isRight = true,
+                    totalValue = invoices.sumOf { it.cgst }.toInr()
+                ) { invoice, isAcked ->
+                    DynamicTableCell(text = invoice.cgst.toInr(), isRight = true, isAcked = isAcked)
+                }
+
+                // 8. SGST
+                TableDataColumn(
+                    header = "SGST",
+                    isRight = true,
+                    totalValue = invoices.sumOf { it.sgst }.toInr()
+                ) { invoice, isAcked ->
+                    DynamicTableCell(text = invoice.sgst.toInr(), isRight = true, isAcked = isAcked)
                 }
             }
         }
@@ -682,76 +500,186 @@ fun FilingTimelineSection(filings: List<FilingStatus>) {
 }
 
 @Composable
-fun TimelineItem(filing: FilingStatus, isLast: Boolean) {
-    Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-        // Line & Dot
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.width(24.dp)
-        ) {
-            val dotColor =
-                if (filing.isCompleted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+fun DynamicTableCell(
+    text: String,
+    isHeader: Boolean = false,
+    isRight: Boolean = false,
+    isBold: Boolean = false,
+    isAcked: Boolean = false,
+    backgroundColor: Color = Color.Transparent,
+    textColor: Color = AxiomTheme.components.card.title
+) {
+    val textAlpha = if (isAcked && !isHeader) 0.5f else 1f
+    val decoration = if (isAcked && !isHeader) TextDecoration.LineThrough else TextDecoration.None
 
-            // Dot
-            Box(
+    // Resolve row background color if not explicitly passed
+    val resolvedBg = if (backgroundColor == Color.Transparent) {
+        if (isAcked) AxiomTheme.components.card.background.copy(alpha = 0.05f)
+        else AxiomTheme.components.card.background
+    } else backgroundColor
+
+    Box(
+        modifier = Modifier
+            .height(56.dp)
+            .fillMaxWidth()
+            .defaultMinSize(minWidth = 100.dp) // Prevents empty columns (like Total row gaps) from shrinking to 0
+            .background(resolvedBg)
+            .padding(horizontal = 16.dp),
+        contentAlignment = if (isRight) Alignment.CenterEnd else Alignment.CenterStart
+    ) {
+        Text(
+            text = text.takeIf { it != "₹ 0" } ?: "-",
+            fontSize = if (isHeader) 11.sp else 13.sp,
+            fontWeight = if (isHeader || isBold) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (isHeader) Color.Gray else textColor.copy(alpha = textAlpha),
+            textDecoration = decoration,
+            maxLines = 1,
+            softWrap = false // CRITICAL: This prevents text from wrapping and forces the column to stretch dynamically
+        )
+    }
+}
+
+@Composable
+fun HsnSummaryTable(hsnList: List<HsnSummary>) {
+    var ackedRows by remember { mutableStateOf(setOf<String>()) }
+
+
+
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(AxiomTheme.components.card.background)
+            .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(20.dp))
+    ) {
+        Text(
+            text = "2. HSN Wise Summary (Table 12)",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = AxiomTheme.components.card.title,
+            modifier = Modifier.padding(20.dp)
+        )
+        Divider(color = AxiomTheme.components.card.border)
+
+        Row(modifier = Modifier.fillMaxWidth()) {
+
+            // --- STICKY COLUMN (Ack) ---
+            Column(
                 modifier = Modifier
-                    .size(12.dp)
-                    .clip(CircleShape)
-                    .background(dotColor)
-                    .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
-            )
+                    .width(50.dp)
+                    .background(AxiomTheme.components.card.background)
+            ) {
+                TableHeaderCell("Ack", isCenter = true)
+                hsnList.forEach { hsn ->
+                    val isAcked = ackedRows.contains(hsn.id)
+                    Box(
+                        modifier = Modifier
+                            .height(56.dp)
+                            .fillMaxWidth()
 
-            // Line
-            if (!isLast) {
+                            .border(1.dp, AxiomTheme.components.card.border),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Checkbox(
+                            checked = isAcked,
+                            onCheckedChange = {
+                                ackedRows = if (it) ackedRows + hsn.id else ackedRows - hsn.id
+                            },
+                            colors = CheckboxDefaults.colors(checkedColor = Color(0xFF3B82F6))
+                        )
+                    }
+                }
                 Box(
                     modifier = Modifier
-                        .width(2.dp)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                        .height(56.dp)
+                        .fillMaxWidth()
+                        .background(Color(0xFF3B82F6).copy(alpha = 0.1f))
                 )
             }
-        }
 
-        Spacer(modifier = Modifier.width(12.dp))
+            // --- HORIZONTAL SCROLLABLE COLUMNS ---
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .horizontalScroll(rememberScrollState())
+            ) {
+                Row {
+                    TableHeaderCell("HSN Code", width = 100.dp)
+                    TableHeaderCell("UQC", width = 60.dp, isCenter = true)
+                    TableHeaderCell("Total Qty", width = 100.dp, isRight = true)
+                    TableHeaderCell("Taxable Val", width = 120.dp, isRight = true)
+                    TableHeaderCell("Rate (%)", width = 80.dp, isCenter = true)
+                    TableHeaderCell("IGST", width = 100.dp, isRight = true)
+                    TableHeaderCell("CGST", width = 100.dp, isRight = true)
+                    TableHeaderCell("SGST", width = 100.dp, isRight = true)
+                }
 
-        // Content
-        Column(modifier = Modifier.padding(bottom = if (isLast) 0.dp else 24.dp)) {
-            Text(
-                text = filing.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = "Due: ${filing.dueDate}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(4.dp))
+                hsnList.forEach { hsn ->
+                    val isAcked = ackedRows.contains(hsn.id)
+                    Row(
+                        modifier = Modifier
+                            .height(56.dp)
+                            .background(
+                                if (isAcked) AxiomTheme.components.card.background.copy(
+                                    alpha = 0.05f
+                                ) else AxiomTheme.components.card.background
+                            )
+                    ) {
+                        TableCell(hsn.hsnCode, 100.dp, isAcked = isAcked, isBold = true)
+                        TableCell(hsn.uqc, 60.dp, isCenter = true, isAcked = isAcked)
+                        TableCell(
+                            hsn.totalQty.toString(),
+                            100.dp,
+                            isRight = true,
+                            isAcked = isAcked
+                        )
+                        TableCell(
+                            hsn.taxableVal.toInr(),
+                            120.dp,
+                            isRight = true,
+                            isAcked = isAcked,
+                            isBold = true
+                        )
+                        TableCell(hsn.rate.toString(), 80.dp, isCenter = true, isAcked = isAcked)
+                        TableCell(hsn.igst.toInr(), 100.dp, isRight = true, isAcked = isAcked)
+                        TableCell(hsn.cgst.toInr(), 100.dp, isRight = true, isAcked = isAcked)
+                        TableCell(hsn.sgst.toInr(), 100.dp, isRight = true, isAcked = isAcked)
+                    }
+                    Divider(color = AxiomTheme.components.card.border)
+                }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    color = if (filing.isCompleted) MaterialTheme.colorScheme.primaryContainer.copy(
-                        alpha = 0.5f
-                    )
-                    else MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(6.dp)
+                // Total Row
+                Row(
+                    modifier = Modifier
+                        .height(56.dp)
+                        .background(Color(0xFF3B82F6).copy(alpha = 0.1f))
                 ) {
-                    Text(
-                        text = filing.status.uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (filing.isCompleted) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        fontWeight = FontWeight.Bold
+                    TableCell("TOTAL FOR HSN", 260.dp, isBold = true)
+                    TableCell(
+                        hsnList.sumOf { it.taxableVal }.toInr(),
+                        120.dp,
+                        isRight = true,
+                        isBold = true
                     )
-                }
-
-                if (filing.estimatedPay != null) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    AnimatedCounter(
-                        targetValue = filing.estimatedPay,
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.error
+                    TableCell("", 80.dp)
+                    TableCell(
+                        hsnList.sumOf { it.igst }.toInr(),
+                        100.dp,
+                        isRight = true,
+                        isBold = true
+                    )
+                    TableCell(
+                        hsnList.sumOf { it.cgst }.toInr(),
+                        100.dp,
+                        isRight = true,
+                        isBold = true
+                    )
+                    TableCell(
+                        hsnList.sumOf { it.sgst }.toInr(),
+                        100.dp,
+                        isRight = true,
+                        isBold = true
                     )
                 }
             }
@@ -759,74 +687,187 @@ fun TimelineItem(filing: FilingStatus, isLast: Boolean) {
     }
 }
 
-// -----------------------------------------------------------------------------
-// 5. HELPER UI ELEMENTS
-// -----------------------------------------------------------------------------
-
 @Composable
-fun GlassCard(
-    modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surface,
-    borderColor: Color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-    content: @Composable ColumnScope.() -> Unit
-) {
-    ElevatedCard(
-        modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = containerColor),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+fun DocumentsIssuedSection() {
+    val isDark = isSystemInDarkTheme()
+
+
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(AxiomTheme.components.card.background)
+            .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(20.dp))
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Box(
-            modifier = Modifier.border(
-                BorderStroke(1.dp, borderColor),
-                RoundedCornerShape(24.dp)
-            )
+        Text(
+            text = "3. Documents Issued (Table 13)",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            color = AxiomTheme.components.card.title
+        )
+
+        // Only doing Outward Supplies for brevity
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, AxiomTheme.components.card.border, RoundedCornerShape(12.dp))
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Column {
-                content()
+            Text(
+                "Invoices for Outward Supply",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = AxiomTheme.components.card.title
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "Serial No. From",
+                    fontSize = 12.sp,
+                    color = AxiomTheme.components.card.subtitle
+                )
+                Text(
+                    "INV-001",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = AxiomTheme.components.card.title
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Serial No. To", fontSize = 12.sp, color = AxiomTheme.components.card.subtitle)
+                Text(
+                    "INV-003",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = AxiomTheme.components.card.title
+                )
+            }
+            Divider(
+                modifier = Modifier.padding(vertical = 4.dp),
+                color = AxiomTheme.components.card.border
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Total Number", fontSize = 12.sp, color = AxiomTheme.components.card.subtitle)
+                Text(
+                    "3",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AxiomTheme.components.card.title
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "Net Issued",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AxiomTheme.components.card.title
+                )
+                Text("3", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF3B82F6))
             }
         }
     }
 }
 
-@Composable
-fun SectionTitle(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
-    )
-}
+// --- Helper Composables & Extensions ---
 
 @Composable
-fun LegendItem(color: Color, label: String, value: Double) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .clip(CircleShape)
-                .background(color)
+fun TabButton(
+    text: String,
+    isSelected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val isDark = isSystemInDarkTheme()
+    val bg = if (isSelected) (if (isDark) Color(0xFF18181A) else Color.White) else Color.Transparent
+    val textColor = if (isSelected) (if (isDark) Color.White else Color(0xFF111827)) else Color.Gray
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(bg)
+            .clickable { onClick() }
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            fontSize = 13.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = textColor
         )
-        Spacer(modifier = Modifier.width(8.dp))
-        Column {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            AnimatedCounter(
-                targetValue = value,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
     }
 }
 
-fun formatCurrency(amount: Double): String {
-    val format = NumberFormat.getCurrencyInstance(Locale("en", "IN"))
-    format.maximumFractionDigits = 0
-    return format.format(amount)
+@Composable
+fun TableHeaderCell(
+    text: String,
+    width: androidx.compose.ui.unit.Dp? = null,
+    isRight: Boolean = false,
+    isCenter: Boolean = false
+) {
+    Box(
+        modifier = Modifier
+            .height(56.dp)
+            .then(if (width != null) Modifier.width(width) else Modifier.fillMaxWidth())
+            .padding(horizontal = 12.dp),
+        contentAlignment = if (isRight) Alignment.CenterEnd else if (isCenter) Alignment.Center else Alignment.CenterStart
+    ) {
+        Text(
+            text = text.uppercase(),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = AxiomTheme.components.card.subtitle,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
 }
+
+@Composable
+fun TableCell(
+    text: String, width: androidx.compose.ui.unit.Dp,
+    isRight: Boolean = false, isCenter: Boolean = false,
+    isAcked: Boolean = false, isBold: Boolean = false,
+
+    ) {
+
+    val decoration = if (isAcked) TextDecoration.LineThrough else TextDecoration.None
+
+    Box(
+        modifier = Modifier
+            .height(56.dp)
+            .width(width)
+            .padding(horizontal = 12.dp),
+        contentAlignment = if (isRight) Alignment.CenterEnd else if (isCenter) Alignment.Center else Alignment.CenterStart
+    ) {
+        Text(
+            text = text.takeIf { it != "₹ 0" } ?: "-", // Display dash for 0 value
+            fontSize = 13.sp,
+            fontWeight = if (isBold) FontWeight.SemiBold else FontWeight.Normal,
+            color = AxiomTheme.components.card.title,
+            textDecoration = decoration,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+// Simple INR formatter
+fun Double.toInr(): String = "₹ ${String.format(Locale.US, "%,.0f", this)}"

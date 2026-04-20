@@ -1,23 +1,24 @@
 package com.example.axiom.ui.utils
 
+
 import android.content.Context
 import android.net.Uri
 import androidx.core.content.FileProvider
-import com.example.axiom.data.finances.Invoice
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceWithItems
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
 class InvoicePdfRepository(private val context: Context) {
 
-    suspend fun generate(invoice: Invoice, logoUri: String): Uri =
+    suspend fun generate(invoice: InvoiceWithItems, logoUri: String): Uri =
         withContext(Dispatchers.IO) {
 
             val html = InvoiceHtmlGenerator.generateInvoiceHtml(invoice, logoUri)
 
             val pdfFile = File(
                 context.cacheDir,
-                "invoice_${invoice.invoiceNo}.pdf"
+                "invoice_${invoice.invoice.invoiceNumber}.pdf"
             ).apply {
                 if (exists()) delete()
             }
@@ -31,3 +32,6 @@ class InvoicePdfRepository(private val context: Context) {
             )
         }
 }
+
+
+

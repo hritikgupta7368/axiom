@@ -13,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.axiom.preferences.theme.ThemeMode
 import com.example.axiom.preferences.theme.ThemeViewModel
@@ -22,10 +21,8 @@ import com.example.axiom.preferences.theme.ThemeViewModelFactory
 @Composable
 fun ThemeToggle(showText: Boolean = true) {
     val context = LocalContext.current
-    val owner = LocalViewModelStoreOwner.current!!
 
     val themeViewModel: ThemeViewModel = viewModel(
-        viewModelStoreOwner = owner,
         factory = ThemeViewModelFactory(context)
     )
 

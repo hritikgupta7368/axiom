@@ -1,6 +1,8 @@
 package com.example.axiom.ui.components.shared.header
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -9,22 +11,27 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -36,9 +43,11 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,15 +58,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +81,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.example.axiom.R
+import com.example.axiom.ui.theme.AxiomTheme
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
@@ -78,6 +94,110 @@ val yellow = Color(0xFFFED702)
 val searchbar = Color(0xFF373739)
 val placeholder = Color(0xFFFFFFFF)
 
+
+@Composable
+fun TopRightPillMenu(
+    isSelectionMode: Boolean,
+    selectionCount: Int,
+    onAddClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onThirdOptionClick: () -> Unit = {} // Reserved space!
+) {
+
+
+    val iconTint = AxiomTheme.components.card.title
+
+
+    Surface(
+        shape = CircleShape,
+//        color = Color(0xFF131313),
+        color = AxiomTheme.components.card.background,
+        border = BorderStroke(
+            width = 1.dp,
+            color = Color(0xFF222222)
+        ),
+        modifier = Modifier
+            .padding(end = 16.dp)
+            // This is the magic for the smooth iOS pill expansion/contraction
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = 0.85f,
+                    stiffness = Spring.StiffnessMediumLow
+                ),
+                alignment = Alignment.CenterEnd
+            )
+    ) {
+        AnimatedContent(
+            targetState = isSelectionMode,
+            transitionSpec = {
+                (fadeIn(tween(220)) + scaleIn(initialScale = 0.8f, animationSpec = tween(220)))
+                    .togetherWith(
+                        fadeOut(tween(150)) + scaleOut(
+                            targetScale = 0.8f,
+                            animationSpec = tween(150)
+                        )
+                    )
+                    .using(SizeTransform(clip = false))
+            },
+            label = "PillActions"
+        ) { selectionActive ->
+            Row(
+                modifier = Modifier.padding(horizontal = 5.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (selectionActive) {
+                    // --- STATE 2: Grouped Icons (Edit, Delete, + Space for 3rd) ---
+
+                    // Option 1: Edit
+                    if (selectionCount == 1) {
+                        IconButton(onClick = onEditClick, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                Icons.Rounded.Edit,
+                                contentDescription = "Edit",
+                                tint = iconTint,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+
+                    // Option 2: Delete
+                    IconButton(onClick = onDeleteClick, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Rounded.Delete,
+                            contentDescription = "Delete",
+                            tint = iconTint,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    IconButton(onClick = onThirdOptionClick, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Rounded.Favorite,
+                            contentDescription = "pin",
+                            tint = iconTint,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+
+                } else {
+                    // --- STATE 1: Single Icon (Add) ---
+                    IconButton(onClick = onAddClick, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            Icons.Rounded.Add,
+                            contentDescription = "Add",
+                            tint = iconTint,
+                            modifier = Modifier.size(25.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun AnimatedHeaderScrollView(
     largeTitle: String,
@@ -85,13 +205,21 @@ fun AnimatedHeaderScrollView(
     query: String = "",
     updateQuery: (String) -> Unit = {},
     isSelectionMode: Boolean = false,
+    showBack: Boolean = false,
+    selectionCount: Int = 0,
+    onToggleSelectionMode: () -> Unit = {},
     onAddClick: () -> Unit = {},
     onEditClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
+    onThirdOptionClick: () -> Unit = {},
     onBack: () -> Unit = {},
-    content: LazyListScope.() -> Unit,
+    backText: String = "Back",
     isParentRoute: Boolean = true,
+    onHeaderClick: (() -> Unit)? = null,
+    content: LazyListScope.() -> Unit
+
 ) {
+    val focusManager = LocalFocusManager.current
     val lazyListState = rememberLazyListState()
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
@@ -185,21 +313,31 @@ fun AnimatedHeaderScrollView(
         label = "titleAlpha"
     )
 
+    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val totalHeaderHeight = headerHeight + statusBarHeight
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(AxiomTheme.colors.background)
+//            .background(Color(0xFFF3F4F6)) //from drible -> Color(0xFFF6F6F6)
             .nestedScroll(nestedScrollConnection)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    focusManager.clearFocus() // Drops focus, hides keyboard
+                })
+            }
     ) {
         // --- 1. MAIN SCROLLABLE CONTENT ---
         LazyColumn(
             state = lazyListState,
+
             modifier = Modifier
                 .fillMaxSize()
                 .haze(hazeState)
                 .graphicsLayer { translationY = overscrollOffset.value }
         ) {
-            item {
+            item(key = "large_title_header") {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -212,111 +350,155 @@ fun AnimatedHeaderScrollView(
                             transformOrigin = TransformOrigin(0f, 1f)
                         }
                 ) {
-                    Text(
-                        text = largeTitle,
-                        fontSize = 38.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.4).sp,
-                        color = Color.White
-                    )
-                    if (subtitle != null) {
-                        Text(
-                            text = subtitle,
-                            fontSize = 16.sp,
-                            color = Color.Gray,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
-                }
-            }
-
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .height(searchHeight)
-                        .graphicsLayer { alpha = searchAlpha }
-                        .clip(RoundedCornerShape(10.dp)),
-                    contentAlignment = Alignment.BottomCenter // Keeps it anchored to the bottom as it opens
-                ) {
-                    // The actual internal row is always full height so it doesn't squish, it just gets masked
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp)
-                            .height(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(searchbar)
-                            .padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = if (onHeaderClick != null) {
+                            Modifier.clickable { onHeaderClick() }
+                        } else {
+                            Modifier
+                        }
                     ) {
-                        Icon(
-                            Icons.Rounded.Search,
-                            contentDescription = null,
-                            tint = Color(0xFF8E8E93),
-                            modifier = Modifier.size(20.dp)
+                        Text(
+                            text = largeTitle,
+                            fontSize = 38.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.4).sp,
+                            color = AxiomTheme.colors.textPrimary
                         )
-                        BasicTextField(
-                            value = query,
-                            onValueChange = { updateQuery(it) },
-                            textStyle = TextStyle(
-                                color = Color.White,
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.Normal,
-                                letterSpacing = (-0.4).sp,
-                            ),
-                            cursorBrush = SolidColor(Color(0xFFFFCC00)),
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 8.dp),
-                            decorationBox = { innerTextField ->
-                                if (query.isEmpty()) {
-                                    Text("Search", color = Color(0xFF8E8E93), fontSize = 17.sp)
-                                }
-                                innerTextField()
-                            }
-                        )
-                        if (query.isNotEmpty()) {
-                            Icon(
-                                imageVector = Icons.Rounded.Close,
-                                contentDescription = "Clear",
-                                tint = Color.Black,
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF8E8E93))
-                                    .clickable { updateQuery("") }
+                        if (subtitle != null) {
+                            Text(
+                                text = subtitle,
+                                fontSize = 16.sp,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(top = 4.dp)
                             )
                         }
                     }
                 }
             }
+            if (isParentRoute) {
+                item(key = "search_bar_header") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .height(searchHeight)
+                            .graphicsLayer { alpha = searchAlpha }
+                            .clip(RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.BottomCenter // Keeps it anchored to the bottom as it opens
+                    ) {
+                        // The actual internal row is always full height so it doesn't squish, it just gets masked
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp)
+                                .height(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(searchbar)
+                                .padding(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Rounded.Search,
+                                contentDescription = null,
+                                tint = Color(0xFF8E8E93),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            BasicTextField(
+                                value = query,
+                                onValueChange = { updateQuery(it) },
+                                textStyle = TextStyle(
+                                    color = Color.White,
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    letterSpacing = (-0.4).sp,
+                                ),
+                                cursorBrush = SolidColor(Color(0xFFFFCC00)),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 8.dp),
+                                decorationBox = { innerTextField ->
+                                    if (query.isEmpty()) {
+                                        Text("Search", color = Color(0xFF8E8E93), fontSize = 17.sp)
+                                    }
+                                    innerTextField()
+                                }
+                            )
+                            if (query.isNotEmpty()) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Close,
+                                    contentDescription = "Clear",
+                                    tint = Color.Black,
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF8E8E93))
+                                        .clickable { updateQuery("") }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+
 
             content()
-            item {
-                Spacer(modifier = Modifier.height(100.dp))
-            }
+            item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(100.dp)) }
+
+
         }
 
-        // --- 2. FIXED TOP HEADER (Glass & Title) ---
+// --- 2. FIXED TOP HEADER (Glass & Title) ---
         if (smallHeaderOpacity > 0f) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(headerHeight)
+                    .height(totalHeaderHeight)
                     .zIndex(100f)
                     .graphicsLayer { alpha = smallHeaderOpacity }
             ) {
+                // THE BLURRED BACKGROUND WITH EASED FEATHERING
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .hazeChild(state = hazeState)
-                        .background(Color.Black.copy(alpha = 0.3f))
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                        .hazeChild(
+                            state = hazeState,
+                            // To look like iOS, you need a high blur radius.
+                            // Ensure your Haze configuration is using at least 20.dp - 30.dp
+                        )
+                        // This tint replicates the iOS dark mode translucent material
+                        .background(Color(0x801C1C1E))
+                        .drawWithContent {
+                            drawContent()
+
+                            // This array mimics an iOS-style cubic bezier easing curve
+                            // It eliminates the ugly, harsh linear banding.
+                            val smoothGradientStops = arrayOf(
+                                0.0f to Color.Black,
+                                0.55f to Color.Black,                     // Solid behind the status bar
+                                0.70f to Color.Black.copy(alpha = 0.85f), // Gentle falloff begins
+                                0.85f to Color.Black.copy(alpha = 0.45f), // Midpoint of the curve
+                                0.95f to Color.Black.copy(alpha = 0.10f), // Very soft tail
+                                1.0f to Color.Transparent                 // Completely fades out
+                            )
+
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colorStops = smoothGradientStops,
+                                    startY = 0f,
+                                    endY = size.height
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                        }
                 )
+
+                // THE CRISP TEXT
                 Box(
                     modifier = Modifier
                         .matchParentSize()
+                        .padding(top = statusBarHeight)
                         .zIndex(200f)
                         .graphicsLayer { alpha = animatedTitleAlpha },
                     contentAlignment = Alignment.BottomCenter
@@ -328,95 +510,160 @@ fun AnimatedHeaderScrollView(
                         color = Color.White,
                         modifier = Modifier
                             .padding(bottom = 12.dp)
-
                     )
                 }
             }
         }
 
-        // --- 3 & 4. COMBINED ACTION CONTAINER ---
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(headerHeight)
-                .zIndex(300f),
-            contentAlignment = Alignment.Center
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // LEFT SIDE
-                Row(
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { onBack() }
-                        .padding(horizontal = 4.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.back_ios),
-                        contentDescription = "Back",
-                        tint = yellow,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Text(
-                        text = "Folders",
-                        color = yellow,
-                        fontSize = 17.sp,
-                        letterSpacing = (-0.2).sp,
-                        modifier = Modifier.offset(x = (-5).dp)
-                    )
-                }
 
-                // RIGHT SIDE
-                AnimatedContent(
-                    targetState = isSelectionMode, // Replace with your selection active state
-                    transitionSpec = {
-                        if (targetState) {
-                            (slideInVertically(tween(300)) { it } + fadeIn(tween(300))) togetherWith (slideOutVertically(
-                                tween(300)
-                            ) { -it } + fadeOut(tween(300)))
-                        } else {
-                            (slideInVertically(tween(300)) { -it } + fadeIn(tween(300))) togetherWith (slideOutVertically(
-                                tween(300)
-                            ) { it } + fadeOut(tween(300)))
-                        }
-                    },
-                    label = "Actions"
-                ) { selectionActive ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (selectionActive) {
-                            IconButton(onClick = onEditClick) {
-                                Icon(
-                                    Icons.Rounded.Edit,
-                                    contentDescription = "Edit",
-                                    tint = Color(0xFFFFCC00),
-                                    modifier = Modifier.size(24.dp)
+        // --- 3 & 4. COMBINED ACTION CONTAINER ---
+        if (isParentRoute) {
+            val yellow = Color(0xFFFFCC00) // Assuming your original yellow color
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(headerHeight)
+                    .zIndex(300f),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    // --- LEFT SIDE: Back vs Cancel ---
+                    AnimatedContent(
+                        targetState = isSelectionMode,
+                        transitionSpec = {
+                            fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+                        },
+                        label = "LeftHeaderAction"
+                    )
+//                    { selectionActive ->
+//                        if (selectionActive) {
+//                            // Cancel Button
+//                            Text(
+//                                text = "Cancel",
+//                                color = yellow,
+//                                fontSize = 17.sp,
+//                                modifier = Modifier
+//                                    .padding(start = 16.dp)
+//                                    .clip(RoundedCornerShape(8.dp))
+//                                    .clickable { onToggleSelectionMode() } // Usually toggles isSelectionMode to false
+//                                    .padding(vertical = 8.dp)
+//                            )
+//                        } else {
+//                            // Back Button with Icon
+//                            Row(
+//                                modifier = Modifier
+//                                    .padding(start = 8.dp)
+//                                    .clip(RoundedCornerShape(8.dp))
+//                                    .clickable { onBack() }
+//                                    .padding(horizontal = 4.dp, vertical = 8.dp),
+//                                verticalAlignment = Alignment.CenterVertically,
+//                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+//                            ) {
+//                                Icon(
+//                                    painter = painterResource(id = R.drawable.back_ios),
+//                                    contentDescription = "Back",
+//                                    tint = yellow,
+//                                    modifier = Modifier.size(24.dp)
+//                                )
+//                                Text(
+//                                    text = backText,
+//                                    color = yellow,
+//                                    fontSize = 17.sp,
+//                                    letterSpacing = (-0.2).sp,
+//                                    modifier = Modifier.offset(x = (-5).dp)
+//                                )
+//                            }
+//                        }
+//                    }
+
+                    { selectionActive ->
+
+                        when {
+                            showBack -> {
+                                // Back (forced)
+                                Row(
+                                    modifier = Modifier
+                                        .padding(start = 8.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { onBack() }
+                                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.back_ios),
+                                        contentDescription = "Back",
+                                        tint = yellow,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(
+                                        text = backText,
+                                        color = yellow,
+                                        fontSize = 17.sp,
+                                        letterSpacing = (-0.2).sp,
+                                        modifier = Modifier.offset(x = (-5).dp)
+                                    )
+                                }
+                            }
+
+                            selectionActive -> {
+                                // Cancel
+                                Text(
+                                    text = "Cancel",
+                                    color = yellow,
+                                    fontSize = 17.sp,
+                                    modifier = Modifier
+                                        .padding(start = 16.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { onToggleSelectionMode() }
+                                        .padding(vertical = 8.dp)
                                 )
                             }
-                            IconButton(onClick = onDeleteClick) {
-                                Icon(
-                                    Icons.Rounded.Delete,
-                                    contentDescription = "Delete",
-                                    tint = Color(0xFFFF453A),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        } else {
-                            IconButton(onClick = onAddClick) {
-                                Icon(
-                                    Icons.Rounded.Add,
-                                    contentDescription = "Add",
-                                    tint = Color(0xFFFFCC00),
-                                    modifier = Modifier.size(24.dp)
-                                )
+
+                            else -> {
+                                // Default Back
+                                Row(
+                                    modifier = Modifier
+                                        .padding(start = 8.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .clickable { onBack() }
+                                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.back_ios),
+                                        contentDescription = "Back",
+                                        tint = yellow,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Text(
+                                        text = backText,
+                                        color = yellow,
+                                        fontSize = 17.sp,
+                                        letterSpacing = (-0.2).sp,
+                                        modifier = Modifier.offset(x = (-5).dp)
+                                    )
+                                }
                             }
                         }
                     }
+
+                    // --- RIGHT SIDE: The Pill Menu ---
+                    TopRightPillMenu(
+                        isSelectionMode = isSelectionMode,
+                        selectionCount = selectionCount,
+                        onAddClick = onAddClick,
+                        onEditClick = onEditClick,
+                        onDeleteClick = onDeleteClick,
+                        onThirdOptionClick = { onThirdOptionClick() }
+                    )
                 }
             }
         }

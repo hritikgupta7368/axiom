@@ -37,10 +37,9 @@ import androidx.compose.ui.unit.sp
 import com.example.axiom.BuildConfig
 import com.example.axiom.ui.components.shared.ThemeToggle
 import com.example.axiom.ui.components.shared.header.AnimatedHeaderScrollView
+import com.example.axiom.ui.theme.AxiomTheme
 
 
-private val CardBackground = Color(0xFF1C1C1E)
-private val BorderColor = Color(0xFF2C2C2E)
 private val TextGray = Color(0xFF666666)
 private val IconBgColor = Color(0x260A84FF)
 
@@ -53,10 +52,13 @@ fun SettingsScreen(
     AnimatedHeaderScrollView(
         largeTitle = "Settings",
         subtitle = "Manage your preferences",
+        isParentRoute = false
     ) {
 
         // --- APPEARANCE SECTION ---
-        item { SettingsSectionTitle("APPEARANCE") }
+        item {
+            SettingsSectionTitle("APPEARANCE")
+        }
         item {
             SettingsCardContainer {
                 SettingsRow(
@@ -71,8 +73,12 @@ fun SettingsScreen(
             }
         }
 
+
         // --- ACCOUNT SECTION ---
-        item { SettingsSectionTitle("ACCOUNT") }
+        item {
+            SettingsSectionTitle("ACCOUNTS")
+        }
+
         item {
             SettingsCardContainer {
                 SettingsRow(
@@ -90,8 +96,11 @@ fun SettingsScreen(
             }
         }
 
+
         // --- DATA SECTION ---
-        item { SettingsSectionTitle("DATA") }
+        item {
+            SettingsSectionTitle("DATA")
+        }
         item {
             SettingsCardContainer {
                 SettingsRow(
@@ -111,8 +120,11 @@ fun SettingsScreen(
             }
         }
 
+
         // --- ABOUT SECTION ---
-        item { SettingsSectionTitle("ABOUT") }
+        item {
+            SettingsSectionTitle("ABOUT")
+        }
         item {
             SettingsCardContainer {
                 SettingsRow(
@@ -135,6 +147,7 @@ fun SettingsScreen(
                 )
             }
         }
+
     }
 }
 
@@ -158,7 +171,7 @@ private fun SettingsCardContainer(content: @Composable ColumnScope.() -> Unit) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(CardBackground)
+            .background(AxiomTheme.components.card.background)
     ) {
         content()
     }
@@ -211,7 +224,7 @@ private fun SettingsRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    color = Color.White,
+                    color = AxiomTheme.components.card.title,
                     fontSize = 17.sp,
                     letterSpacing = (-0.4).sp
                 )
@@ -219,7 +232,7 @@ private fun SettingsRow(
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = subtitle,
-                        color = TextGray,
+                        color = AxiomTheme.components.card.subtitle,
                         fontSize = 13.sp
                     )
                 }
@@ -234,7 +247,7 @@ private fun SettingsRow(
         // Bottom Divider
         if (!isLast) {
             HorizontalDivider(
-                color = BorderColor,
+                color = AxiomTheme.components.card.mutedText,
                 thickness = 1.dp,
                 modifier = Modifier.padding(start = 68.dp) // Aligns with text start
             )
@@ -243,61 +256,4 @@ private fun SettingsRow(
 }
 
 
-//@Composable
-//private fun SettingsSection(
-//    title: String,
-//    content: @Composable ColumnScope.() -> Unit
-//) {
-//    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-//        Text(
-//            text = title,
-//            style = MaterialTheme.typography.titleSmall,
-//            color = MaterialTheme.colorScheme.primary
-//        )
-//
-//        Surface(
-//            shape = RoundedCornerShape(16.dp),
-//            tonalElevation = 2.dp
-//        ) {
-//            Column(
-//                modifier = Modifier.padding(vertical = 4.dp)
-//            ) {
-//                content()
-//            }
-//        }
-//    }
-//}
-//
-//@Composable
-//private fun SettingsRow(
-//    icon: Any,
-//    title: String,
-//    subtitle: String,
-//    onClick: (() -> Unit)? = null
-//) {
-//    Row(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .clickable(enabled = onClick != null) {
-//                onClick?.invoke()
-//            }
-//            .padding(horizontal = 16.dp, vertical = 14.dp),
-//        verticalAlignment = Alignment.CenterVertically
-//    ) {
-//
-//        AppIconButton(AppIcons.ArrowForward, contentDescription = "settings item", onClick = {})
-//
-//        Spacer(Modifier.width(16.dp))
-//
-//        Column(Modifier.weight(1f)) {
-//            Text(title, style = MaterialTheme.typography.bodyLarge)
-//            Text(
-//                subtitle,
-//                style = MaterialTheme.typography.bodySmall,
-//                color = MaterialTheme.colorScheme.onSurfaceVariant
-//            )
-//        }
-//
-//
-//    }
-//}
+

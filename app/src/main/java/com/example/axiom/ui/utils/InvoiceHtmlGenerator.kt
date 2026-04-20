@@ -1,13 +1,14 @@
 package com.example.axiom.ui.utils
 
-import com.example.axiom.data.finances.Invoice
+import com.example.axiom.ui.screens.finances.Invoice.components.InvoiceWithItems
+import com.example.axiom.ui.screens.finances.customer.components.ContactType
+import com.example.axiom.ui.screens.finances.customer.components.PartyWithContacts
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 fun convertLongToTime(time: Long): String {
     val date = Date(time)
-    // Use dd/MM/yyyy (Note: MM must be uppercase for Month)
     val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     return format.format(date)
 }
@@ -16,14 +17,19 @@ object InvoiceHtmlGenerator {
 
     private const val MAX_ROWS = 16
 
+    fun PartyWithContacts.getPhone(): String? {
+        return contacts.firstOrNull { it.contactType == ContactType.PHONE }?.value
+    }
+
 
     fun generateInvoiceHtml(
-        invoice: Invoice,
+        invoice: InvoiceWithItems,
         logoUri: String
     ): String {
-        val hasShipping = invoice.shippingCharge != null && invoice.shippingCharge > 0
-        val itemLimit = if (hasShipping) MAX_ROWS - 1 else MAX_ROWS
 
+
+        val hasShipping = invoice.invoice.deliveryCharge > 0
+        val itemLimit = if (hasShipping) MAX_ROWS - 1 else MAX_ROWS
 
         val itemRows = buildString {
 
@@ -34,16 +40,16 @@ object InvoiceHtmlGenerator {
                 if (item != null) {
                     append(
                         """
-                <tr class="item-row">
-                    <td>${i + 1}</td>
-                    <td>${item.name}</td>
-                    <td>${item.hsn}</td>
-                    <td class="">${item.quantity.toInt()}</td>
-                    <td>${item.unit}</td>
-                    <td class="right">${"%.2f".format(item.price)}</td>
-                    <td class="right">${"%.2f".format(item.total)}</td>
-                </tr>
-                """.trimIndent()
+                        <tr class="item-row">
+                            <td>${i + 1}</td>
+                            <td>${item.productNameSnapshot}</td>
+                            <td>${item.hsnSnapshot}</td>
+                            <td>${item.quantity.toInt()}</td>
+                            <td>${item.unitSnapshot}</td>
+                            <td class="right">${"%.2f".format(item.sellingPriceAtTime)}</td>
+                            <td class="right">${"%.2f".format(item.taxableAmount)}</td>
+                        </tr>
+                        """.trimIndent()
                     )
                 } else {
                     append(
@@ -73,12 +79,45 @@ object InvoiceHtmlGenerator {
                 <td>&nbsp;</td>
                 <td>&nbsp;</td>
                 <td>&nbsp;</td>
-                <td class="right">${"%.2f".format(invoice.shippingCharge)}</td>
+                <td class="right">${"%.2f".format(invoice.invoice.deliveryCharge)}</td>
             </tr>
             """.trimIndent()
                 )
             }
         }
+
+        val vehicleNo = invoice.invoice.vehicleNumber.orEmpty()
+        val eWayNo = invoice.invoice.eWayBillNumber.orEmpty()
+        val shippedTo = invoice.invoice.shippedToAddress.orEmpty()
+        val customerPhone = invoice.customer?.getPhone().orEmpty()
+        val totalTax = invoice.invoice.cgstAmount +
+                invoice.invoice.sgstAmount +
+                invoice.invoice.igstAmount
+
+        val reverseCharge = "N.A."
+        val gstRate = invoice.invoice.globalGstRate
+
+        val sellerAddress = invoice.seller?.party?.address.orEmpty()
+
+
+        val sellerPhone = invoice.seller
+            ?.contacts
+            ?.firstOrNull { it.contactType == ContactType.PHONE }
+            ?.value.orEmpty()
+
+        val sellerEmail = invoice.seller
+            ?.contacts
+            ?.firstOrNull { it.contactType == ContactType.EMAIL }
+            ?.value.orEmpty()
+
+        val sellerWebsite = invoice.seller
+            ?.contacts
+            ?.firstOrNull { it.contactType == ContactType.WEBSITE }
+            ?.value.orEmpty()
+
+
+
+
 
         return """
 <!doctype html>
@@ -402,8 +441,8 @@ object InvoiceHtmlGenerator {
             <!-- section-1 -->
             <div class="section-1 border-b">
                 <img src="file:///android_asset/logo.png" class="invoice-logo" />
-                <div class="s1-left">Gst : 09AFVPG6478A2Z1</div>
-                <div class="s1-center">Megha Enterprises</div>
+                <div class="s1-left">GST : ${invoice.seller?.party?.gstNumber ?: ""}</div>
+                <div class="s1-center">${invoice.seller?.party?.businessName ?: ""}</div>
                 <div class="s1-right">Original for Recipient</div>
             </div>
             
@@ -412,15 +451,19 @@ object InvoiceHtmlGenerator {
             <!--section-3-->
                   <div class="section-3 border-b">
                       <div class="s3-left">
-                          <p>33/12, Site 2 Loni Road</p>
-                          <p>UPSIDC INDL AREA, Mohan Nagar</p>
-                          <p>Ghaziabad (U.P) - 201007</p>
+                           ${
+            (invoice.seller?.party?.billingAddress ?: "")
+                .replace("\r\n", "\n")
+                .split("\n")
+                .filter { it.isNotBlank() }
+                .joinToString("") { "<p>${it.trim()}</p>" }
+        }
                       </div>
 
                       <div class="s3-right">
-                          <p>Mob : 9212047198</p>
-                          <p>Web : </p>
-                          <p>Email : </p>
+                        <p>Mob : ${sellerPhone}</p>
+                        <p>Web : ${sellerWebsite}</p>
+                        <p>Email : ${sellerEmail}</p>
                       </div>
                   </div>
 
@@ -435,22 +478,22 @@ object InvoiceHtmlGenerator {
 
                           <div class="row">
                               <span class="label">M/S</span>
-                              <span class="value">${invoice.customerDetails?.name}</span>
+                              <span class="value">${invoice.customer?.party?.businessName ?: ""}</span>
                           </div>
 
                           <div class="row">
                               <span class="label">Address</span>
-                              <span class="value">${invoice.customerDetails?.address}</span>
+                              <span class="value">${invoice.customer?.party?.billingAddress ?: ""}</span>
                           </div>
 
                           <div class="row">
                               <span class="label">Phone</span>
-                              <span class="value"></span>
+                              <span class="value">${customerPhone}</span>
                           </div>
 
                           <div class="row">
                               <span class="label">GSTIN</span>
-                              <span class="value">${invoice.customerDetails?.gstin}</span>
+                              <span class="value">${invoice.customer?.party?.gstNumber ?: ""}</span>
                           </div>
                       </div>
 
@@ -459,34 +502,34 @@ object InvoiceHtmlGenerator {
                           <div class="col-header">&nbsp;</div>
                           <div class="row">
                               <span class="label">Invoice no.</span>
-                              <span class="value">${invoice.invoiceNo}</span>
+                              <span class="value">${invoice.invoice.invoiceNumber}</span>
                           </div>
 
                           <div class="row">
                               <span class="label">Invoice Date</span>
-                              <span class="value">${convertLongToTime(invoice.date.toLong())}</span>
+                              <span class="value">${convertLongToTime(invoice.invoice.invoiceDate)}</span>
                           </div>
 
                           <div class="row">
-                              <span class="label">Reverse Charge</span>
-                              <span class="value"></span> 
+                              <span class="label">E-Way Bill Date</span>
+                              <span class="value">${invoice.invoice.eWayBillDate?.let { convertLongToTime(it) } ?: ""}</span>
                           </div>
 
                           <div class="row">
                               <span class="label">Vehicle No.</span>
-                              <span class="value">${invoice.vehicleNumber}</span>
+                              <span class="value">$vehicleNo</span>
                           </div>
 
                           <div class="row">
                               <span class="label">E-Way No.</span>
-                              <span class="value"></span>
+                              <span class="value">$eWayNo</span>
                           </div>
                       </div>
 
                       <!-- COLUMN 3 -->
                       <div class="col col-3">
                           <div class="col-header">Shipped To :</div>
-                          <div class="shipped-value"> ${invoice.shippedTo} </div>
+                          <div class="shipped-value">$shippedTo</div>
                       </div>
                   </div>
 
@@ -530,7 +573,7 @@ object InvoiceHtmlGenerator {
                       <td>&nbsp;</td>
                       <td>&nbsp;</td>
                       <td>&nbsp;</td>
-                      <td class="totalAmount">${invoice.totalBeforeTax}</td>
+                      <td class="totalAmount">${"%.2f".format(invoice.invoice.totalTaxableAmount)}</td>
                   </tr>
                   <tr class="border-b">
                       <td colspan="7">&nbsp;</td>
@@ -538,52 +581,61 @@ object InvoiceHtmlGenerator {
                   <tr class="border-b total-row">
                       <td colspan="3" class="section-title border-r">Total in Words</td>
                       <td colspan="3" class="label left">Taxable Amount</td>
-                      <td class="value">${invoice.totalBeforeTax}</td>
+                      <td class="value">${"%.2f".format(invoice.invoice.totalTaxableAmount)}</td>
                   </tr>
+                  
                   <tr class="border-b total-row">
-                      <td rowspan="2" colspan="3" class="center border-r">Rupees ${invoice.amountInWords} Only</td>
-                      <td colspan="3" class="label left">${if (invoice.gst.igstRate > 0 && invoice.gst.igstAmount > 0) "Add: IGST @ ${invoice.gst.igstRate}%" else "&nbsp;"}</td>
-                      <td class="value">${if (invoice.gst.igstRate > 0 && invoice.gst.igstAmount > 0) invoice.gst.igstAmount else "&nbsp;"}</td>
+                      <td rowspan="2" colspan="3" class="center border-r">Rupees ${invoice.invoice.amountInWords} Only</td>
+                      <td colspan="3" class="label left">${if (invoice.invoice.igstAmount > 0) "Add: IGST @ ${gstRate}%" else "&nbsp;"}</td>
+                      <td class="value">${if (invoice.invoice.igstAmount > 0) "%.2f".format(invoice.invoice.igstAmount) else "&nbsp;"}</td>
                   </tr>
                    <!--CGST-->
                   <tr class="border-b total-row">
-                      <td colspan="3" class="label left">${if (invoice.gst.cgstRate > 0 && invoice.gst.cgstAmount > 0) "Add: CGST @ ${invoice.gst.cgstRate}%" else "&nbsp;"}</td>
-                      <td class="value">${if (invoice.gst.cgstRate > 0 && invoice.gst.cgstAmount > 0) invoice.gst.cgstAmount else "&nbsp;"}</td>
+                      <td colspan="3" class="label left">${if (invoice.invoice.cgstAmount > 0) "Add: CGST @ ${"%.0f".format(gstRate / 2)}%" else "&nbsp;"}</td>
+                      <td class="value">${if (invoice.invoice.cgstAmount > 0) "%.2f".format(invoice.invoice.cgstAmount) else "&nbsp;"}</td>
 
                   </tr>
+                  
                   <!--Bank header + SGST-->
                   <tr class="border-b">
                       <td colspan="3" class="section-title border-r">Bank Details</td>
-                      <td colspan="3" class="label left">${if (invoice.gst.sgstRate > 0 && invoice.gst.sgstAmount > 0) "Add: SGST @ ${invoice.gst.sgstRate}%" else "&nbsp;"}</td>
-                      <td class="value">${if (invoice.gst.sgstRate > 0 && invoice.gst.sgstAmount > 0) invoice.gst.sgstAmount else "&nbsp;"}</td>
-
+                      <td colspan="3" class="label left">${if (invoice.invoice.sgstAmount > 0) "Add: SGST @ ${"%.0f".format(gstRate / 2)}%" else "&nbsp;"}</td>
+                      <td class="value">${if (invoice.invoice.sgstAmount > 0) "%.2f".format(invoice.invoice.sgstAmount) else "&nbsp;"}</td>
                   </tr>
+                  
+                   <!-- ROUND OFF (NEW) -->
+                    <tr class="border-b">
+                      <td colspan="3" class="border-r">&nbsp;</td>
+                      <td colspan="3" class="label left">Total Tax</td>
+                      <td class="value">${"%.2f".format(totalTax)}</td>
+                  </tr>
+                  
                   <!--Bank name + total tax-->
                   <tr class="bank-row">
                       <td colspan="2" class="left">Bank Name</td>
-                      <td class="left border-r">Bank of India</td>
-                      <td colspan="3" class="label border-b left">Total Tax</td>
-                      <td class="border-b value">${invoice.gst.totalTax}</td>
+                      <td class="left border-r">${invoice.seller?.party?.bankName ?: ""}</td>
+                      <td colspan="3" class="label border-b left" style="font-style: italic;" >Adjustment (Round Off)</td>
+                     <td class="border-b value" style="font-style: italic;" >${if (invoice.invoice.roundOff != 0.0) "%.2f".format(invoice.invoice.roundOff) else "&nbsp;"}</td>
                   </tr>
                   <!--Branch + total after tax-->
                   <tr class="bank-row">
                       <td colspan="2" class="left">Branch Name</td>
-                      <td class="left border-r">Sahibabad</td>
-                      <td colspan="3" class="label border-b left">Total Amount After Tax</td>
-                      <td class="value border-b">${invoice.totalAmount}</td>
+                      <td class="left border-r">${invoice.seller?.party?.branchName ?: ""}</td>
+                      <td colspan="3" class="label border-b left">Grand Total</td>
+                      <td class="value border-b">${"%.2f".format(invoice.invoice.grandTotal)}</td>
                   </tr>
                   <!--Account + E&O.E-->
                   <tr class="bank-row">
                       <td colspan="2" class="left">Bank Account Number</td>
-                      <td class="left border-r">714620110000095</td>
+                      <td class="left border-r">${invoice.seller?.party?.accountNumber ?: ""}</td>
                       <td colspan="4" class="value border-b">(E &amp; O.E)</td>
                   </tr>
                   <!--IFSC + Reverse Charge-->
                   <tr class="border-b bank-row">
                       <td colspan="2" class="left">Bank Branch IFSC</td>
-                      <td class="left border-r">BKID0007146</td>
+                      <td class="left border-r">${invoice.seller?.party?.ifscCode ?: ""}</td>
                       <td colspan="3" class="label border-r left">GST Payable on Reverse Charge</td>
-                      <td class="value">N.A.</td>
+                      <td class="value">${reverseCharge}</td>
                   </tr>
                   <!--Terms + Company-->
                   <tr class="border-b">

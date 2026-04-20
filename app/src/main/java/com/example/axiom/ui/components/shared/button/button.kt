@@ -1,157 +1,183 @@
 package com.example.axiom.ui.components.shared.button
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/**
- * A custom, reusable button component with support for loading and icons.
- *
- * @param text The text to display on the button.
- * @param onClick The callback to be invoked when the button is clicked.
- * @param modifier The modifier to be applied to the button.
- * @param icon The optional icon to display to the left of the text.
- * @param enabled Whether the button is enabled and can be interacted with.
- * @param loading Whether the button is in a loading state.
- * @param buttonColor The background color of the button when enabled. Defaults to MaterialTheme's primary color.
- * @param contentColor The color of the text and icon when enabled. Defaults to MaterialTheme's onPrimary color.
- */
+enum class ButtonVariant { Gray, Red, White }
+
 @Composable
-fun AppButton(
+fun Button(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    variant: ButtonVariant = ButtonVariant.Gray,
     icon: ImageVector? = null,
-    enabled: Boolean = true,
-    loading: Boolean = false,
-    buttonColor: Color = MaterialTheme.colorScheme.primary,
-    contentColor: Color = MaterialTheme.colorScheme.onPrimary,
+    contentPadding: PaddingValues = PaddingValues(vertical = 14.dp, horizontal = 16.dp),
+    enabled: Boolean = true
 ) {
+
+
+    // Map variants to specific background, text, and border colors based on the theme
+    val (bgColor, textColor, borderColor) = when (variant) {
+        ButtonVariant.Gray -> Triple(
+            MaterialTheme.colorScheme.surfaceVariant,
+            MaterialTheme.colorScheme.onSurface,
+            MaterialTheme.colorScheme.outline
+        ) // Dark Mode
+        ButtonVariant.Red -> Triple(Color(0xFFFD5252), Color.White, Color.Transparent)
+        ButtonVariant.White -> Triple(
+            MaterialTheme.colorScheme.onSurface,
+            MaterialTheme.colorScheme.surface,
+            MaterialTheme.colorScheme.outline
+        )
+    }
+
+    // Animation states
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 500f),
-        label = "button-scale"
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f), // Snappy spring animation
+        label = "ButtonScaleAnimation"
     )
 
-    val showIconSlot = loading || icon != null
-    val isEffectivelyEnabled = enabled && !loading
-
-    // --- START: Updated Color Logic ---
-    val finalButtonColor = if (isEffectivelyEnabled) {
-        buttonColor
-    } else {
-        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-    }
-
-    val finalContentColor = if (isEffectivelyEnabled) {
-        contentColor
-    } else {
-        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-    }
-    // --- END: Updated Color Logic ---
-
-    val rippleColor = contentColor.copy(alpha = 0.25f)
-    val buttonShape = RoundedCornerShape(12.dp)
-
-    Box(
+    Row(
         modifier = modifier
-            .height(56.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .shadow(
-                elevation = if (isEffectivelyEnabled) 8.dp else 0.dp,
-                shape = buttonShape,
-                ambientColor = buttonColor,
-                spotColor = buttonColor
-            )
-            .background(
-                color = finalButtonColor, // Use the new variable
-                shape = buttonShape
-            )
-            .clip(buttonShape)
+            .scale(scale) // Applies the scale down effect
+            .alpha(if (enabled) 1f else 0.5f)
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .background(bgColor)
             .clickable(
-                enabled = isEffectivelyEnabled,
-                role = Role.Button,
                 interactionSource = interactionSource,
-                indication = ripple(bounded = true, color = rippleColor),
+                enabled = enabled,
                 onClick = onClick
             )
-            .padding(horizontal = 24.dp)
-            .animateContentSize(),
-        contentAlignment = Alignment.Center
+            .padding(contentPadding),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            if (showIconSlot) {
-                Box(
-                    modifier = Modifier.size(20.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (loading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            color = finalContentColor, // Use the new variable
-                            strokeWidth = 2.dp
-                        )
-                    } else if (icon != null) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = finalContentColor, // Use the new variable
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(10.dp))
-            }
-
-            Text(
-                text = text,
-                color = finalContentColor, // Use the new variable
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.4.sp,
-                maxLines = 1
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = textColor,
+                modifier = Modifier.size(19.dp)
             )
+
+            Spacer(Modifier.width(8.dp))
         }
+        Text(
+            text = text,
+            color = textColor,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 700)
+@Composable
+fun ButtonPreview() {
+    Column(modifier = Modifier.fillMaxSize()) {
+
+        // Upper half — Light mode
+        MaterialTheme(colorScheme = lightColorScheme()) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .background(Color.White)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ButtonRowLight()
+            }
+        }
+
+        // Lower half — Dark mode
+        MaterialTheme(colorScheme = darkColorScheme()) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .background(Color(0xFF000000))
+
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ButtonRowLight()
+            }
+        }
+    }
+}
+
+@Composable
+private fun ButtonRowLight() {
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Button(
+            text = "Cancel",
+            onClick = {},
+            variant = ButtonVariant.Gray,
+            modifier = Modifier.weight(1f)
+        )
+
+        Button(
+            text = "Cancel",
+            onClick = {},
+            variant = ButtonVariant.White,
+            modifier = Modifier.weight(1f)
+        )
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Button(
+            text = "Cancel",
+            onClick = {},
+            variant = ButtonVariant.Red,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
