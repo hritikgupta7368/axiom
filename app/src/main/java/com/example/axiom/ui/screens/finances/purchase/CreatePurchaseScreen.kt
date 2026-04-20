@@ -152,7 +152,13 @@ fun CreatePurchaseScreen(mode: PurchaseFormMode, onBack: () -> Unit) {
 
 
     var formState by remember {
-        mutableStateOf(PurchaseRecordEntity(id = UUID.randomUUID().toString()))
+        mutableStateOf(
+            PurchaseRecordEntity(
+                id = UUID.randomUUID().toString(),
+                globalGstRate = 18.0,
+                eWayBillDate = null
+            ),
+        )
     }
     val purchaseItems = remember { mutableStateListOf<PurchaseItemEntity>() }
     var selectedSupplier by remember { mutableStateOf<PartyWithContacts?>(null) }
